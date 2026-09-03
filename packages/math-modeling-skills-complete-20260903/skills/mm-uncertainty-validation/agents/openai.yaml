@@ -1,7 +1,7 @@
 interface:
-  display_name: "数学建模：结果验证"
-  short_description: "做误差、敏感性、稳健性和复现审计。"
+  display_name: "数学建模：独立验证"
+  short_description: "重算目标、攻击强声明，并做外部基准与稳健性检查。"
   brand_color: "#2563EB"
-  default_prompt: "请使用 $mm-uncertainty-validation 对这些结果做独立验证，并给出 PASS、PARTIAL 或 FAIL。"
+  default_prompt: "请使用 $mm-uncertainty-validation 独立验证结果：先对照 PROBLEM_SEMANTICS 重算正式目标和硬约束，再做数值收敛、统计/随机稳定和情景稳健；随后主动构造反例/替代初值/替代算法，并在规则允许且有外部策略时执行同 evaluator 的 BENCHMARK_CHALLENGE。多种子聚类不能证明搜索空间覆盖；外部可行解领先超过预设容差时必须把“最佳/稳定最优”降级并返回求解。competition_compact 只把改变结论的关键验证放正文，完整审计进附录。"
 policy:
   allow_implicit_invocation: true
