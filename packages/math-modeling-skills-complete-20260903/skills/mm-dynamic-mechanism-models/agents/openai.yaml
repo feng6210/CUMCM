@@ -1,0 +1,7 @@
+interface:
+  display_name: "数学建模：动力动态"
+  short_description: "建立微分方程、状态空间与动态规划模型。"
+  brand_color: "#2563EB"
+  default_prompt: "请使用 $mm-dynamic-mechanism-models 建立动态机理或动态规划模型，并设计误差与收敛核验。"
+policy:
+  allow_implicit_invocation: true

@@ -1,0 +1,7 @@
+interface:
+  display_name: "数学建模：结果验证"
+  short_description: "做误差、敏感性、稳健性和复现审计。"
+  brand_color: "#2563EB"
+  default_prompt: "请使用 $mm-uncertainty-validation 对这些结果做独立验证，并给出 PASS、PARTIAL 或 FAIL。"
+policy:
+  allow_implicit_invocation: true

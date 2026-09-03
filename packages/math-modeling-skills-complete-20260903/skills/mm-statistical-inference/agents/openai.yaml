@@ -1,0 +1,7 @@
+interface:
+  display_name: "数学建模：统计推断"
+  short_description: "设计抽样、检验、区间和纵向统计证据。"
+  brand_color: "#2563EB"
+  default_prompt: "请使用 $mm-statistical-inference 设计抽样或统计推断方案，并检查泄漏、校准和不确定性。"
+policy:
+  allow_implicit_invocation: true

@@ -1,0 +1,7 @@
+interface:
+  display_name: "数学建模：结果交付"
+  short_description: "生成美观鲜明、数量完整且数值可追溯的 CUMCM 中文图表。"
+  brand_color: "#2563EB"
+  default_prompt: "请使用 $mm-visualization-delivery 将已验证结果生成美观且图证完整的 CUMCM 中文图表：先逐问规划数据诊断、模型机制、主结果、对比、验证、稳健性六类读者任务，每问至少 4 个不同图号，主结果和验证必须分别有独立内容的正文图，核心结论必须绑定证据图或验证图，其余缺项写明不适用理由；再按用户偏好选择 cumcm-clean、cumcm-highlight、cumcm-data-dense、cumcm-vivid 或 cumcm-mechanism。允许鲜明配色、透明填充、渐变、局部放大、多面板和必要三维，只要最终尺寸清楚且不改变数据含义。数据图可用 Origin、MATLAB 或 Matplotlib，炫酷和复杂论文图优先 MATLAB，机制与流程图优先 Visio；同时保留原生可编辑文件、XeLaTeX PDF、来源数据、哈希和声明映射。"
+policy:
+  allow_implicit_invocation: true

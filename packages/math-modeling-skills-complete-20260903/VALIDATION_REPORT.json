@@ -1,0 +1,160 @@
+{
+  "validator": "quick_validate.py",
+  "python": "3.12",
+  "utf8": true,
+  "skill_count": 22,
+  "passed": 22,
+  "failed": 0,
+  "package_checks": {
+    "every_skill_has_skill_md": true,
+    "every_skill_has_agents_openai_yaml": true,
+    "cache_or_compiled_python_artifacts": 0,
+    "ai_usage_compliance_capability_hits": 0,
+    "github_or_network_runtime_required": false,
+    "installer_empty_destination_dry_run": "PASSED",
+    "installer_replace_existing_dry_run": "PASSED",
+    "environment_check": "PASSED",
+    "python_packages_ready": true,
+    "pyyaml_version": "6.0.3",
+    "xelatex_available": true,
+    "latexmk_available": true,
+    "bibtex_available": true,
+    "pdftoppm_available": true,
+    "origin_com_backend_detected": true,
+    "visio_com_backend_detected": true
+  },
+  "results": [
+    {
+      "skill": "math-modeling-orchestrator",
+      "status": "PASSED",
+      "exit_code": 0,
+      "output": "Skill is valid!"
+    },
+    {
+      "skill": "mm-abstract-polisher",
+      "status": "PASSED",
+      "exit_code": 0,
+      "output": "Skill is valid!"
+    },
+    {
+      "skill": "mm-classification-clustering",
+      "status": "PASSED",
+      "exit_code": 0,
+      "output": "Skill is valid!"
+    },
+    {
+      "skill": "mm-contest-operations-planner",
+      "status": "PASSED",
+      "exit_code": 0,
+      "output": "Skill is valid!"
+    },
+    {
+      "skill": "mm-data-eda-cleaning",
+      "status": "PASSED",
+      "exit_code": 0,
+      "output": "Skill is valid!"
+    },
+    {
+      "skill": "mm-dynamic-mechanism-models",
+      "status": "PASSED",
+      "exit_code": 0,
+      "output": "Skill is valid!"
+    },
+    {
+      "skill": "mm-evaluation-models",
+      "status": "PASSED",
+      "exit_code": 0,
+      "output": "Skill is valid!"
+    },
+    {
+      "skill": "mm-graph-network-models",
+      "status": "PASSED",
+      "exit_code": 0,
+      "output": "Skill is valid!"
+    },
+    {
+      "skill": "mm-model-innovation-designer",
+      "status": "PASSED",
+      "exit_code": 0,
+      "output": "Skill is valid!"
+    },
+    {
+      "skill": "mm-model-selector",
+      "status": "PASSED",
+      "exit_code": 0,
+      "output": "Skill is valid!"
+    },
+    {
+      "skill": "mm-optimization-models",
+      "status": "PASSED",
+      "exit_code": 0,
+      "output": "Skill is valid!"
+    },
+    {
+      "skill": "mm-paper-compile",
+      "status": "PASSED",
+      "exit_code": 0,
+      "output": "Skill is valid!"
+    },
+    {
+      "skill": "mm-paper-reviewer",
+      "status": "PASSED",
+      "exit_code": 0,
+      "output": "Skill is valid!"
+    },
+    {
+      "skill": "mm-paper-structure-writer",
+      "status": "PASSED",
+      "exit_code": 0,
+      "output": "Skill is valid!"
+    },
+    {
+      "skill": "mm-prediction-models",
+      "status": "PASSED",
+      "exit_code": 0,
+      "output": "Skill is valid!"
+    },
+    {
+      "skill": "mm-problem-decomposer",
+      "status": "PASSED",
+      "exit_code": 0,
+      "output": "Skill is valid!"
+    },
+    {
+      "skill": "mm-signal-image-trajectory",
+      "status": "PASSED",
+      "exit_code": 0,
+      "output": "Skill is valid!"
+    },
+    {
+      "skill": "mm-simulation-models",
+      "status": "PASSED",
+      "exit_code": 0,
+      "output": "Skill is valid!"
+    },
+    {
+      "skill": "mm-statistical-inference",
+      "status": "PASSED",
+      "exit_code": 0,
+      "output": "Skill is valid!"
+    },
+    {
+      "skill": "mm-uncertainty-validation",
+      "status": "PASSED",
+      "exit_code": 0,
+      "output": "Skill is valid!"
+    },
+    {
+      "skill": "mm-variable-assumption-builder",
+      "status": "PASSED",
+      "exit_code": 0,
+      "output": "Skill is valid!"
+    },
+    {
+      "skill": "mm-visualization-delivery",
+      "status": "PASSED",
+      "exit_code": 0,
+      "output": "Skill is valid!"
+    }
+  ]
+}

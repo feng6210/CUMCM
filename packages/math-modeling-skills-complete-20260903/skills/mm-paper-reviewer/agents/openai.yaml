@@ -1,0 +1,7 @@
+interface:
+  display_name: "数学建模：论文审稿"
+  short_description: "冷审查分问叙事、模型证据、图表和 LaTeX 闭环。"
+  brand_color: "#2563EB"
+  default_prompt: "请使用 $mm-paper-reviewer 冷审查这份数学建模论文的分问依赖、共享内核、逐问证据闭环、图表角色、关键数字和 CUMCM LaTeX 结构。"
+policy:
+  allow_implicit_invocation: true
