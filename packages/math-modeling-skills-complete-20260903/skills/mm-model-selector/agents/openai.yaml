@@ -1,7 +1,7 @@
 interface:
-  display_name: "数学建模：模型选型"
-  short_description: "按题型、数据和约束推荐候选模型。"
+  display_name: "数学建模：结构化模型选型"
+  short_description: "按已锁定题意、基线不足和问题结构推荐模型。"
   brand_color: "#2563EB"
-  default_prompt: "请使用 $mm-model-selector 根据题目拆解和数据条件推荐建模方法。"
+  default_prompt: "请使用 $mm-model-selector 在 PROBLEM_SEMANTICS 已锁定且最小正确基线已明确后选型。先诊断基线具体不足，再按机理/数据/连续离散结构/不确定性/验证成本选择 2--4 个候选；每个候选都要说明修复哪项基线失败及其机制。简单模型足够时允许明确不升级，不能因为模型新颖或复杂就推荐。优化类先按 LP/MILP/NLP/分解/黑箱等结构选路线，不机械叠加启发式。"
 policy:
   allow_implicit_invocation: true

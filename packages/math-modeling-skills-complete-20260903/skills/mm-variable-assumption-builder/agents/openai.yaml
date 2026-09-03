@@ -1,7 +1,7 @@
 interface:
-  display_name: "数学建模：变量假设"
-  short_description: "生成变量、参数、假设、目标和约束草案。"
+  display_name: "数学建模：变量假设与目标语义"
+  short_description: "形式化变量、假设、目标和约束，并锁定题意语义。"
   brand_color: "#2563EB"
-  default_prompt: "请使用 $mm-variable-assumption-builder 帮我设计变量、参数、假设和约束。"
+  default_prompt: "请使用 $mm-variable-assumption-builder 基于题面和 PROBLEM_SEMANTICS 草案建立变量、参数、假设、候选目标函数和约束；对总和/最小值/同时覆盖/集合并交/资源复用/一对一指派等会改变解结构的解释逐项对照。不得因为某个目标更容易优化就静默选择；高风险歧义未裁决时返回 SEMANTICS_REVIEW。语义锁定后再给边界/极端校验案例。"
 policy:
   allow_implicit_invocation: true
