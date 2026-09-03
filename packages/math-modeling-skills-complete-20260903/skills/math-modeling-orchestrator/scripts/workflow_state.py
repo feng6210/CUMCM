@@ -23,13 +23,17 @@ TASK_MODES = ("training", "live_contest", "coursework", "research", "business", 
 DELIVERABLE_MODES = ("analysis", "code", "figures", "paper_outline", "cumcm_latex_paper", "submission_package")
 REPORTING_PROFILES = ("competition_compact", "research_audit")
 
+# The minimum-baseline stage is deliberately mandatory.  A task whose baseline is
+# genuinely not applicable still passes through BASELINE_SOLVING -> BASELINE_READY
+# with an explicit not-applicable baseline record; it must not jump directly from
+# semantics/data audit to MODEL_PLANNED.
 ALLOWED = {
     "NEW": {"INPUT_REGISTERED", "BLOCKED_INPUT"},
     "INPUT_REGISTERED": {"DECOMPOSED", "BLOCKED_INPUT"},
     "DECOMPOSED": {"SEMANTICS_REVIEW", "BLOCKED_INPUT"},
     "SEMANTICS_REVIEW": {"SEMANTICS_LOCKED", "DECOMPOSED", "BLOCKED_INPUT"},
-    "SEMANTICS_LOCKED": {"DATA_AUDITED", "BASELINE_SOLVING", "MODEL_PLANNED", "BLOCKED_INPUT"},
-    "DATA_AUDITED": {"BASELINE_SOLVING", "MODEL_PLANNED", "BLOCKED_INPUT", "BLOCKED_CAPABILITY"},
+    "SEMANTICS_LOCKED": {"DATA_AUDITED", "BASELINE_SOLVING", "BLOCKED_INPUT"},
+    "DATA_AUDITED": {"BASELINE_SOLVING", "BLOCKED_INPUT", "BLOCKED_CAPABILITY"},
     "BASELINE_SOLVING": {"BASELINE_READY", "BLOCKED_INPUT", "BLOCKED_CAPABILITY"},
     "BASELINE_READY": {"MODEL_PLANNED", "INNOVATION_PROPOSED", "BLOCKED_CAPABILITY"},
     "MODEL_PLANNED": {"INNOVATION_PROPOSED", "BLOCKED_CAPABILITY"},
@@ -49,8 +53,8 @@ ALLOWED = {
     "FIGURES": {"DELIVERING", "REVIEWING", "SOLVING", "SEMANTICS_REVIEW"},
     "DELIVERING": {"REVIEWING"},
     "REVIEWING": {"COMPLETE", "SOLVING", "WRITING", "SEMANTICS_REVIEW"},
-    "BLOCKED_INPUT": {"INPUT_REGISTERED", "DECOMPOSED", "SEMANTICS_REVIEW", "DATA_AUDITED", "INNOVATION_PROPOSED"},
-    "BLOCKED_CAPABILITY": {"MODEL_PLANNED", "BASELINE_SOLVING", "SOLVING"},
+    "BLOCKED_INPUT": {"INPUT_REGISTERED", "DECOMPOSED", "SEMANTICS_REVIEW", "DATA_AUDITED", "BASELINE_SOLVING", "INNOVATION_PROPOSED"},
+    "BLOCKED_CAPABILITY": {"BASELINE_SOLVING", "SOLVING"},
     "COMPLETE": set(),
 }
 
@@ -165,8 +169,8 @@ def transition(path: Path, target: str, next_skill: str | None, evidence_status:
         "REVIEWING", "BENCHMARK_CHALLENGE",
     }:
         raise ValueError("initial main SOLVING requires USER_APPROVED; use BASELINE_SOLVING for pre-approval baselines")
-    if target == "MODEL_PLANNED" and current not in {"SEMANTICS_LOCKED", "DATA_AUDITED", "BASELINE_READY", "BLOCKED_CAPABILITY"}:
-        raise ValueError("MODEL_PLANNED requires locked semantics")
+    if target == "MODEL_PLANNED" and current != "BASELINE_READY":
+        raise ValueError("MODEL_PLANNED requires BASELINE_READY; record an explicit not-applicable baseline when necessary")
     new_evidence = evidence_status or state["evidence_status"]
     if target == "DELIVERING" and new_evidence not in {"PASS", "PARTIAL"}:
         raise ValueError("DELIVERING requires PASS or PARTIAL evidence")
