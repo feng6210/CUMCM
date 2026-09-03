@@ -1,7 +1,7 @@
 interface:
-  display_name: "数学建模：论文审稿"
-  short_description: "冷审查分问叙事、模型证据、图表和 LaTeX 闭环。"
+  display_name: "数学建模：论文冷审稿"
+  short_description: "优先攻击题意、目标、外部击穿，再审叙事与图表。"
   brand_color: "#2563EB"
-  default_prompt: "请使用 $mm-paper-reviewer 冷审查这份数学建模论文的分问依赖、共享内核、逐问证据闭环、图表角色、关键数字和 CUMCM LaTeX 结构。"
+  default_prompt: "请使用 $mm-paper-reviewer 做对抗性冷审稿：先逐问对照题面和 PROBLEM_SEMANTICS 检查目标函数、并/交、时长计数、资源复用和多目标聚合；再检查硬约束、最小基线、正式 evaluator、求解边界和 BENCHMARK_CHALLENGE。外部更优可行解击穿“最佳”声明按 P1 处理。随后审查 NARRATIVE_MAP、FIGURE_PLAN 和 competition_compact：复杂几何/机理是否缺解释图，验证图是否过量，正文是否泄漏大量 gate/hash/旧失败谱系而变成软件 QA 报告。最后再检查摘要、LaTeX、引用与排版。"
 policy:
   allow_implicit_invocation: true
