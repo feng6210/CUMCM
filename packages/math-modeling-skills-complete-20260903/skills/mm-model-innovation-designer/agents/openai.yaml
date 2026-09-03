@@ -1,7 +1,7 @@
 interface:
   display_name: "数学建模：模型创新"
-  short_description: "设计可验证的模型创新、基线对照、消融实验和用户批准方案。"
+  short_description: "只针对已证实的基线不足设计可验证创新。"
   brand_color: "#2563EB"
-  default_prompt: "请使用 $mm-model-innovation-designer 为分问模型设计可验证创新，并在用户批准前暂停求解。"
+  default_prompt: "请使用 $mm-model-innovation-designer 在题意语义已锁定、最小正确基线已有结果的前提下设计路线。每个创新必须写清 baseline failure→改动→生效机理→可观察证据→新增验证负担→失败回退；没有基线不足证据时允许明确不升级。外部优秀论文若给出可行策略且规则允许，除结构借鉴外还要登记为后续 BENCHMARK_CHALLENGE 输入。不要用 DE/PSO/GA/SA 名称堆叠冒充创新。"
 policy:
   allow_implicit_invocation: true
