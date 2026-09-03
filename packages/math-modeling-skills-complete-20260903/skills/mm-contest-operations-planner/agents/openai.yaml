@@ -1,0 +1,7 @@
+interface:
+  display_name: "数学建模：竞赛运营"
+  short_description: "规划选题、分工、赛程、交接与终稿检查。"
+  brand_color: "#2563EB"
+  default_prompt: "请使用 $mm-contest-operations-planner 为数学建模竞赛制定选题、分工和交接计划。"
+policy:
+  allow_implicit_invocation: true

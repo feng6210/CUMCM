@@ -1,0 +1,7 @@
+interface:
+  display_name: "数学建模：摘要优化"
+  short_description: "按分问事实链压缩模型、结果、验证与边界。"
+  brand_color: "#2563EB"
+  default_prompt: "请使用 $mm-abstract-polisher 按每问的输出目标、本题化模型、关键结果、验证和声明边界检查并优化中文数学建模摘要。"
+policy:
+  allow_implicit_invocation: true

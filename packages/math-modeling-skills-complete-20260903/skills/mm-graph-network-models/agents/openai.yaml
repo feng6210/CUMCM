@@ -1,0 +1,7 @@
+interface:
+  display_name: "数学建模：图论网络"
+  short_description: "建立路径、网络流、连通与传播模型。"
+  brand_color: "#2563EB"
+  default_prompt: "请使用 $mm-graph-network-models 把这个问题转成图结构，选择算法并给出可核验结果。"
+policy:
+  allow_implicit_invocation: true

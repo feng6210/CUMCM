@@ -1,0 +1,4 @@
+# Preserve released package bytes so PACKAGE_MANIFEST.json remains verifiable.
+packages/** -text whitespace=-blank-at-eof,cr-at-eol
+dist/** -text
+*.zip binary

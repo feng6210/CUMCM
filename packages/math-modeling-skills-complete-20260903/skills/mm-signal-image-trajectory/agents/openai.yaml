@@ -1,0 +1,7 @@
+interface:
+  display_name: "数学建模：信号轨迹"
+  short_description: "处理频谱、图像视频、几何与轨迹事件。"
+  brand_color: "#2563EB"
+  default_prompt: "请使用 $mm-signal-image-trajectory 设计信号、图像或轨迹分析，并给出标定与交叉验证方案。"
+policy:
+  allow_implicit_invocation: true
