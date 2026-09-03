@@ -1,7 +1,7 @@
 interface:
   display_name: "数学建模：优化模型"
-  short_description: "构建线性、整数和多目标优化问题。"
+  short_description: "先跑最小基线，再按结构升级求解器并接受外部挑战。"
   brand_color: "#2563EB"
-  default_prompt: "请使用 $mm-optimization-models 帮我把问题写成目标函数和约束条件。"
+  default_prompt: "请使用 $mm-optimization-models 按已锁定的 PROBLEM_SEMANTICS 构建优化问题：先用正式目标/约束跑最小正确基线，再诊断瓶颈属于低维非凸、连续约束、离散组合、混合、昂贵黑箱或多目标，并只选择与瓶颈匹配的求解结构。搜索内核可近似，但最终候选必须回正式 evaluator 重算。多种子稳定只说明内部稳定；若有合法外部可行策略，必须映射进自己的 evaluator 做挑战，领先超过容差则降级“最佳”声明并继续搜索。"
 policy:
   allow_implicit_invocation: true
