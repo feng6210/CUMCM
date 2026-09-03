@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
-"""Validate FIGURE_INTENT / FIGURE_PLAN structure and artifact integrity.
+"""Validate CUMCM FIGURE_PLAN / FIGURE_INTENT artifacts.
 
-This checker is intentionally structural.  It does not decide whether a scientific
-claim is true and it does not impose a fixed number of figures per question.
+The planner is reader-task driven and deliberately imposes no fixed figure quota.
+The renderer side remains fail-closed: sources, hashes, renderer specs, runtime
+contracts, reopen checks, visual grammar, and native-backend audit evidence are
+validated before an output can be treated as final.
+
+This checker validates structure and artifact integrity, not scientific truth.
 """
 from __future__ import annotations
 
@@ -10,7 +14,6 @@ import argparse
 import hashlib
 import json
 import re
-import sys
 import zipfile
 from pathlib import Path
 from typing import Any
@@ -18,6 +21,7 @@ from typing import Any
 ROLE_SET = {"orientation", "mechanism", "evidence", "validation"}
 PLACEMENTS = {"body", "appendix"}
 REPRESENTATIONS = {"figure", "table", "text", "appendix", "not_applicable"}
+READER_TASKS = {"orientation", "mechanism", "main_result", "comparison", "validation", "robustness"}
 STYLE_PROFILES = {
     "cumcm-clean", "cumcm-highlight", "cumcm-data-dense", "cumcm-vivid", "cumcm-mechanism"
 }
@@ -25,9 +29,12 @@ LEGEND_STRATEGIES = {"top", "right", "inside", "direct", "none"}
 EXACT_VALUE_LOCATIONS = {
     "result_table", "machine_readable_table", "figure_annotation", "caption", "not_applicable"
 }
-READER_TASKS = {
-    "orientation", "mechanism", "main_result", "comparison", "validation", "robustness"
+VISUAL_GRAMMAR_FIELDS = {
+    "font_family", "base_font_pt", "palette", "line_width_pt", "style_profile",
+    "final_width_mm", "legend_strategy", "precision_policy", "decorative_effects",
 }
+PATH_KEYS = {"file", "path", "source", "source_file", "files", "paths", "source_files"}
+SINGULAR_PATH_KEYS = {"file", "path", "source", "source_file"}
 
 DATA_TYPES = {
     "line", "line_chart", "scatter", "scatter_plot", "bar", "bar_chart", "horizontal_bar",
@@ -52,13 +59,8 @@ REQUIRED_FIGURE_FIELDS = (
     "latex_output", "caption_zh", "narrative_role", "reader_takeaway", "exact_values_location",
     "visual_grammar_group", "visual_grammar", "placement",
 )
-VISUAL_GRAMMAR_FIELDS = {
-    "font_family", "base_font_pt", "palette", "line_width_pt", "style_profile",
-    "final_width_mm", "legend_strategy", "precision_policy", "decorative_effects",
-}
-PATH_KEYS = {"file", "path", "source", "source_file", "files", "paths", "source_files"}
-SINGULAR_PATH_KEYS = {"file", "path", "source", "source_file"}
 ZH_RE = re.compile(r"[\u3400-\u9fff]")
+HEX64_RE = re.compile(r"[0-9a-f]{64}")
 
 
 def load_document(path: Path) -> Any:
@@ -85,14 +87,15 @@ def collect_string_values(value: Any) -> list[str]:
     if isinstance(value, str):
         return [value]
     if isinstance(value, list):
-        result: list[str] = []
+        found: list[str] = []
         for child in value:
-            result.extend(collect_string_values(child))
-        return result
+            found.extend(collect_string_values(child))
+        return found
     return []
 
 
 def collect_paths(value: Any) -> list[str]:
+    """Collect only values under explicit path keys; never interpret hashes as paths."""
     found: list[str] = []
     if isinstance(value, dict):
         for key, child in value.items():
@@ -110,9 +113,9 @@ def collect_paths(value: Any) -> list[str]:
 def declared_hash_for_path(value: Any, source_path: str, total_paths: int) -> str:
     if isinstance(value, list):
         for child in value:
-            result = declared_hash_for_path(child, source_path, total_paths)
-            if result:
-                return result
+            declared = declared_hash_for_path(child, source_path, total_paths)
+            if declared:
+                return declared
         return ""
     if not isinstance(value, dict):
         return ""
@@ -134,9 +137,9 @@ def declared_hash_for_path(value: Any, source_path: str, total_paths: int) -> st
 
     for child in value.values():
         if isinstance(child, (dict, list)):
-            result = declared_hash_for_path(child, source_path, total_paths)
-            if result:
-                return result
+            declared = declared_hash_for_path(child, source_path, total_paths)
+            if declared:
+                return declared
     return ""
 
 
@@ -199,29 +202,306 @@ def basic_output_reopen_error(path: Path) -> str | None:
     return None
 
 
-def validate_visual_grammar(entry: dict[str, Any], prefix: str) -> list[str]:
+def validate_visual_grammar(entry: dict[str, Any], prefix: str, require_outputs: bool) -> list[str]:
     errors: list[str] = []
     grammar = entry.get("visual_grammar")
     if not isinstance(grammar, dict):
         return [f"{prefix}.visual_grammar: required and must be an object"]
-    missing = sorted(VISUAL_GRAMMAR_FIELDS - set(grammar))
+
+    missing = sorted(field for field in VISUAL_GRAMMAR_FIELDS if field not in grammar or grammar[field] in (None, "", {}))
     if missing:
         errors.append(f"{prefix}.visual_grammar: missing {', '.join(missing)}")
+
     profile = str(grammar.get("style_profile", "")).strip().lower()
     if profile and profile not in STYLE_PROFILES:
         errors.append(f"{prefix}.visual_grammar.style_profile: unknown '{profile}'")
     legend = str(grammar.get("legend_strategy", "")).strip().lower()
     if legend and legend not in LEGEND_STRATEGIES:
         errors.append(f"{prefix}.visual_grammar.legend_strategy: unknown '{legend}'")
-    min_font = grammar.get("base_font_pt")
-    if isinstance(min_font, (int, float)) and float(min_font) < 7:
-        errors.append(f"{prefix}.visual_grammar.base_font_pt: must be at least 7 pt")
+
+    font_pt = grammar.get("base_font_pt")
+    if not isinstance(font_pt, (int, float)) or float(font_pt) < 7:
+        errors.append(f"{prefix}.visual_grammar.base_font_pt: must be numeric and at least 7 pt")
     width = grammar.get("final_width_mm")
-    if isinstance(width, (int, float)) and float(width) <= 0:
-        errors.append(f"{prefix}.visual_grammar.final_width_mm: must be positive")
+    if not isinstance(width, (int, float)) or not 65 <= float(width) <= 180:
+        errors.append(f"{prefix}.visual_grammar.final_width_mm: must be between 65 and 180 mm")
+    line_width = grammar.get("line_width_pt")
+    if not isinstance(line_width, (int, float)) or float(line_width) <= 0:
+        errors.append(f"{prefix}.visual_grammar.line_width_pt: must be positive")
+    palette = grammar.get("palette")
+    if not isinstance(palette, list) or not palette:
+        errors.append(f"{prefix}.visual_grammar.palette: must be a non-empty list")
     effects = grammar.get("decorative_effects")
-    if effects is not None and not isinstance(effects, list):
+    if not isinstance(effects, list):
         errors.append(f"{prefix}.visual_grammar.decorative_effects: must be a list")
+        effects = []
+
+    active_effects = [
+        str(effect).strip().lower()
+        for effect in effects
+        if str(effect).strip() and str(effect).strip().lower() != "none"
+    ]
+    if active_effects:
+        semantics = str(entry.get("effect_semantics", "")).strip().lower()
+        if semantics not in {"nonsemantic", "encoded"}:
+            errors.append(f"{prefix}.effect_semantics: active effects require 'nonsemantic' or 'encoded'")
+        if semantics == "encoded" and not nonempty(entry.get("effect_encoding_variable")):
+            errors.append(f"{prefix}.effect_encoding_variable: required when an effect encodes data")
+        if require_outputs:
+            audit = entry.get("effect_audit")
+            required_checks = {
+                "occlusion_check", "grayscale_check", "final_size_check", "effect_removed_comparison"
+            }
+            if not isinstance(audit, dict):
+                errors.append(f"{prefix}.effect_audit: required for final outputs with decorative effects")
+            else:
+                for check in sorted(required_checks):
+                    if str(audit.get(check, "")).upper() != "PASSED":
+                        errors.append(f"{prefix}.effect_audit.{check}: must be PASSED")
+    return errors
+
+
+def report_output_hashes(report: Any) -> set[str]:
+    hashes: set[str] = set()
+    if not isinstance(report, dict):
+        return hashes
+    for key in ("opju_sha256", "vsdx_sha256", "pdf_sha256"):
+        value = report.get(key)
+        if isinstance(value, str) and re.fullmatch(r"[0-9a-fA-F]{64}", value):
+            hashes.add(value.lower())
+    outputs = report.get("outputs")
+    if isinstance(outputs, list):
+        for item in outputs:
+            if isinstance(item, dict):
+                value = item.get("sha256")
+                if isinstance(value, str) and re.fullmatch(r"[0-9a-fA-F]{64}", value):
+                    hashes.add(value.lower())
+    spec = report.get("spec")
+    if isinstance(spec, dict):
+        value = spec.get("sha256")
+        if isinstance(value, str) and re.fullmatch(r"[0-9a-fA-F]{64}", value):
+            hashes.add(value.lower())
+    return hashes
+
+
+def normalize_chart_type(value: Any) -> str:
+    chart = str(value or "").strip().lower().replace(" ", "_")
+    return {"line_chart": "line", "scatter_plot": "scatter", "boxplot": "box"}.get(chart, chart)
+
+
+def validate_backend_report(
+    entry: dict[str, Any], prefix: str, base_dir: Path,
+    editable_hash: str, latex_hash: str,
+) -> list[str]:
+    """Keep rendering/integrity checks strict even though figure-count checks are relaxed."""
+    errors: list[str] = []
+    report_value = entry.get("backend_report")
+    if not isinstance(report_value, str) or not report_value.strip():
+        return [f"{prefix}.backend_report: required in final output mode"]
+    report_path = Path(report_value)
+    if not report_path.is_absolute():
+        report_path = base_dir / report_path
+    if not report_path.is_file():
+        return [f"{prefix}.backend_report: missing file {report_path}"]
+
+    declared_report_hash = str(entry.get("backend_report_sha256", "")).strip().lower()
+    if not HEX64_RE.fullmatch(declared_report_hash):
+        errors.append(f"{prefix}.backend_report_sha256: required as 64 hexadecimal characters")
+    elif file_sha256(report_path) != declared_report_hash:
+        errors.append(f"{prefix}.backend_report_sha256: does not match {report_path}")
+
+    try:
+        report = json.loads(report_path.read_text(encoding="utf-8-sig"))
+    except Exception as exc:
+        errors.append(f"{prefix}.backend_report: unreadable JSON: {type(exc).__name__}: {exc}")
+        return errors
+
+    status = str(report.get("status", "")).upper()
+    if status not in {"PASSED", "RUNTIME_VERIFIED"}:
+        errors.append(f"{prefix}.backend_report.status: expected PASSED/RUNTIME_VERIFIED, got '{status}'")
+
+    hashes = report_output_hashes(report)
+    for label, output_hash in (("editable", editable_hash), ("latex", latex_hash)):
+        if output_hash and output_hash not in hashes:
+            errors.append(f"{prefix}.backend_report: {label} output hash is not recorded by the runtime report")
+
+    backend = str(entry.get("backend_preference", "")).strip().lower()
+    grammar = entry.get("visual_grammar") if isinstance(entry.get("visual_grammar"), dict) else {}
+    style = report.get("style") if isinstance(report.get("style"), dict) else report
+
+    declared_style = str(grammar.get("style_profile", "")).strip().lower()
+    reported_style = str(style.get("style_profile", "")).strip().lower()
+    if declared_style and reported_style != declared_style:
+        errors.append(
+            f"{prefix}.backend_report.style_profile: runtime '{reported_style}' does not match declared '{declared_style}'"
+        )
+
+    if backend in DATA_BACKENDS:
+        declared_palette = grammar.get("palette")
+        reported_palette = style.get("effective_palette")
+        if isinstance(reported_palette, str) and reported_palette.strip():
+            reported_palette = [reported_palette]
+        if not isinstance(reported_palette, list) or not reported_palette:
+            errors.append(f"{prefix}.backend_report.effective_palette: required for data backends")
+        elif isinstance(declared_palette, list):
+            lhs = [str(color).strip().upper() for color in declared_palette]
+            rhs = [str(color).strip().upper() for color in reported_palette]
+            if rhs[: len(lhs)] != lhs:
+                errors.append(f"{prefix}.backend_report.effective_palette: does not match visual_grammar.palette")
+
+        declared_effects = {
+            str(effect).strip().lower() for effect in grammar.get("decorative_effects", [])
+        }
+        reported_effects_value = style.get("decorative_effects")
+        reported_effects = {
+            str(effect).strip().lower() for effect in reported_effects_value
+        } if isinstance(reported_effects_value, list) else set()
+        if reported_effects != declared_effects:
+            errors.append(f"{prefix}.backend_report.decorative_effects: must match visual_grammar")
+
+    if backend in {"matlab", "python", "python/matplotlib", "matplotlib"}:
+        renderer_spec = entry.get("renderer_spec")
+        spec_paths = collect_paths(renderer_spec)
+        declared_spec_hash = ""
+        if not isinstance(renderer_spec, dict) or len(spec_paths) != 1:
+            errors.append(f"{prefix}.renderer_spec: exactly one hash-bound renderer spec is required")
+        else:
+            declared_spec_hash = declared_hash_for_path(renderer_spec, spec_paths[0], 1)
+            spec_path = Path(spec_paths[0])
+            if not spec_path.is_absolute():
+                spec_path = base_dir / spec_path
+            if not HEX64_RE.fullmatch(declared_spec_hash):
+                errors.append(f"{prefix}.renderer_spec.sha256: required as 64 hexadecimal characters")
+            elif not spec_path.is_file() or file_sha256(spec_path) != declared_spec_hash:
+                errors.append(f"{prefix}.renderer_spec.sha256: does not match renderer spec file")
+
+        report_spec = report.get("spec")
+        report_spec_hash = str(report_spec.get("sha256", "")).lower() if isinstance(report_spec, dict) else ""
+        if declared_spec_hash and report_spec_hash != declared_spec_hash:
+            errors.append(f"{prefix}.backend_report.spec.sha256: does not match renderer_spec.sha256")
+
+        contract = report.get("render_contract")
+        if not isinstance(contract, dict):
+            errors.append(f"{prefix}.backend_report.render_contract: required")
+        else:
+            if normalize_chart_type(entry.get("chart_or_diagram_type")) != normalize_chart_type(contract.get("chart_type")):
+                errors.append(f"{prefix}.backend_report.render_contract.chart_type: does not match intent")
+            declared_variables = [str(value) for value in entry.get("variables", [])]
+            contract_variables = [str(value) for value in contract.get("variables", [])] if isinstance(contract.get("variables"), list) else []
+            if declared_variables != contract_variables:
+                errors.append(f"{prefix}.backend_report.render_contract.variables: does not match intent")
+            declared_transform = json.dumps(entry.get("transformations"), ensure_ascii=False, sort_keys=True)
+            contract_transform = json.dumps(contract.get("transformations"), ensure_ascii=False, sort_keys=True)
+            if declared_transform != contract_transform:
+                errors.append(f"{prefix}.backend_report.render_contract.transformations: does not match intent")
+
+        for grammar_field, report_field, tolerance in (
+            ("final_width_mm", "final_width_mm", 0.05),
+            ("line_width_pt", "line_width_pt", 0.01),
+            ("base_font_pt", "base_font_pt", 0.01),
+        ):
+            declared_value = grammar.get(grammar_field)
+            reported_value = style.get(report_field)
+            if not isinstance(declared_value, (int, float)) or not isinstance(reported_value, (int, float)) or abs(float(declared_value) - float(reported_value)) > tolerance:
+                errors.append(f"{prefix}.backend_report.{report_field}: must match visual_grammar.{grammar_field}")
+
+        effective_font = style.get("effective_min_font_pt")
+        if not isinstance(effective_font, (int, float)) or float(effective_font) < 7:
+            errors.append(f"{prefix}.backend_report.effective_min_font_pt: must be at least 7 pt at final width")
+        declared_font = str(grammar.get("font_family", "")).strip().casefold()
+        reported_font = str(style.get("font_family", "")).strip().casefold()
+        if not reported_font or reported_font != declared_font:
+            errors.append(f"{prefix}.backend_report.font_family: runtime font must match visual_grammar.font_family")
+        if str(style.get("legend_strategy", "")).strip().lower() != str(grammar.get("legend_strategy", "")).strip().lower():
+            errors.append(f"{prefix}.backend_report.legend_strategy: must match visual_grammar")
+        reopen = report.get("reopen_check")
+        if not isinstance(reopen, dict) or not reopen or not all(value is True for value in reopen.values()):
+            errors.append(f"{prefix}.backend_report.reopen_check: every recorded output must be true")
+
+    elif backend == "origin":
+        for field in (
+            "project_saved", "pdf_exported", "project_reopened", "pdf_reopened",
+            "metadata_sanitized", "anonymous_check",
+        ):
+            if report.get(field) is not True:
+                errors.append(f"{prefix}.backend_report.{field}: must be true for Origin")
+        effective_font = report.get("effective_min_font_pt")
+        if not isinstance(effective_font, (int, float)) or float(effective_font) < 7:
+            errors.append(f"{prefix}.backend_report.effective_min_font_pt: must be at least 7 pt")
+        declared_width = grammar.get("final_width_mm")
+        reported_width = report.get("final_width_mm")
+        if not isinstance(declared_width, (int, float)) or not isinstance(reported_width, (int, float)) or abs(float(declared_width) - float(reported_width)) > 0.05:
+            errors.append(f"{prefix}.backend_report.final_width_mm: must match visual_grammar")
+
+    elif backend == "visio":
+        for field in (
+            "document_saved", "pdf_exported", "document_reopened", "pdf_reopened",
+            "metadata_sanitized", "anonymous_check",
+        ):
+            if report.get(field) is not True:
+                errors.append(f"{prefix}.backend_report.{field}: must be true for Visio")
+        if int(report.get("unsupported_groups", 0) or 0) != 0:
+            errors.append(f"{prefix}.backend_report.unsupported_groups: must be zero")
+        effective_font = report.get("effective_min_font_pt")
+        if not isinstance(effective_font, (int, float)) or float(effective_font) < 7:
+            errors.append(f"{prefix}.backend_report.effective_min_font_pt: must be at least 7 pt")
+        for grammar_field, report_field, tolerance in (
+            ("final_width_mm", "final_width_mm", 0.05),
+            ("base_font_pt", "base_font_pt", 0.05),
+            ("line_width_pt", "line_width_pt", 0.05),
+        ):
+            declared_value = grammar.get(grammar_field)
+            reported_value = report.get(report_field)
+            if not isinstance(declared_value, (int, float)) or not isinstance(reported_value, (int, float)) or abs(float(declared_value) - float(reported_value)) > tolerance:
+                errors.append(f"{prefix}.backend_report.{report_field}: must match visual_grammar.{grammar_field}")
+        if str(report.get("legend_strategy", "")).lower() != str(grammar.get("legend_strategy", "")).lower():
+            errors.append(f"{prefix}.backend_report.legend_strategy: must match visual_grammar")
+        declared_effects = {str(effect).strip().lower() for effect in grammar.get("decorative_effects", [])}
+        reported_effects = {str(effect).strip().lower() for effect in report.get("decorative_effects", [])} if isinstance(report.get("decorative_effects"), list) else set()
+        if reported_effects != declared_effects:
+            errors.append(f"{prefix}.backend_report.decorative_effects: must match visual_grammar")
+        declared_palette = {str(color).strip().upper() for color in grammar.get("palette", [])}
+        reported_palette = {str(color).strip().upper() for color in report.get("effective_palette", [])} if isinstance(report.get("effective_palette"), list) else set()
+        if not declared_palette.issubset(reported_palette):
+            errors.append(f"{prefix}.backend_report.effective_palette: must contain declared colors")
+        declared_font = re.sub(r"[^a-z0-9]", "", str(grammar.get("font_family", "")).lower())
+        pdf_fonts = [
+            re.sub(r"[^a-z0-9]", "", str(font).lower())
+            for font in report.get("pdf_fonts", [])
+        ] if isinstance(report.get("pdf_fonts"), list) else []
+        if not declared_font or not any(declared_font in font or font in declared_font for font in pdf_fonts if font):
+            errors.append(f"{prefix}.backend_report.pdf_fonts: declared font was not embedded")
+
+    else:
+        reopen = report.get("reopen_check")
+        if reopen is not True and not (isinstance(reopen, dict) and reopen and all(value is True for value in reopen.values())):
+            errors.append(f"{prefix}.backend_report.reopen_check: a passing reopen report is required")
+
+    source_data = entry.get("source_data")
+    source_paths = collect_paths(source_data)
+    source_hashes = {
+        declared_hash_for_path(source_data, source, len(source_paths))
+        for source in source_paths
+        if HEX64_RE.fullmatch(declared_hash_for_path(source_data, source, len(source_paths)))
+    }
+    report_source_hashes: set[str] = set()
+    value = report.get("input_sha256")
+    if isinstance(value, str) and HEX64_RE.fullmatch(value.lower()):
+        report_source_hashes.add(value.lower())
+    for key in ("source", "spec"):
+        value = report.get(key)
+        if isinstance(value, dict) and isinstance(value.get("sha256"), str):
+            report_source_hashes.add(str(value["sha256"]).lower())
+    sources = report.get("sources")
+    if isinstance(sources, list):
+        for item in sources:
+            if isinstance(item, dict) and isinstance(item.get("sha256"), str):
+                report_source_hashes.add(str(item["sha256"]).lower())
+    if source_hashes and not report_source_hashes:
+        errors.append(f"{prefix}.backend_report: runtime report records no source/input hash")
+    elif source_hashes and not source_hashes.issubset(report_source_hashes):
+        missing = sorted(source_hashes - report_source_hashes)
+        errors.append(f"{prefix}.backend_report: missing declared source hashes {', '.join(missing)}")
     return errors
 
 
@@ -256,7 +536,7 @@ def validate_entry(
     if not ZH_RE.search(str(entry.get("caption_zh", ""))):
         warnings.append(f"{prefix}.caption_zh: no Chinese characters detected")
 
-    chart = str(entry.get("chart_or_diagram_type", "")).strip().lower().replace(" ", "_")
+    chart = normalize_chart_type(entry.get("chart_or_diagram_type"))
     backend = str(entry.get("backend_preference", "")).strip().lower()
     if chart in DATA_TYPES and backend not in DATA_BACKENDS:
         errors.append(f"{prefix}: data chart '{chart}' incompatible with backend '{backend}'")
@@ -274,7 +554,9 @@ def validate_entry(
         errors.append(f"{prefix}.projection_or_exact_table: required for 3D figures")
 
     if bool(entry.get("internal_title", False)):
-        errors.append(f"{prefix}.internal_title: use LaTeX caption instead of a paper-style internal title")
+        errors.append(f"{prefix}.internal_title: use the LaTeX caption instead")
+    if bool(entry.get("categorical_gradient", False)) and not nonempty(entry.get("color_encoding_variable")):
+        errors.append(f"{prefix}.color_encoding_variable: categorical gradients require a real encoded variable")
     if bool(entry.get("significance_annotation", False)):
         for field in ("statistical_test", "comparison_family", "multiplicity_policy"):
             if not nonempty(entry.get(field)):
@@ -301,12 +583,16 @@ def validate_entry(
         errors.append(f"{prefix}: mechanism role should use a structural/geometry diagram, not a data chart")
     if role in {"evidence", "validation"} and chart in DIAGRAM_TYPES:
         errors.append(f"{prefix}: evidence/validation roles cannot use a structural diagram")
+
+    claim_ids = {claim.lower() for claim in normalized_claim_ids(entry.get("claim_id"))}
+    if role in {"evidence", "validation"} and (not claim_ids or "not_applicable" in claim_ids):
+        errors.append(f"{prefix}.claim_id: evidence/validation figures require real claim ids")
     if role == "validation":
         for field in ("validation_target", "validation_method"):
             if not nonempty(entry.get(field)):
                 errors.append(f"{prefix}.{field}: required for validation figures")
 
-    errors.extend(validate_visual_grammar(entry, prefix))
+    errors.extend(validate_visual_grammar(entry, prefix, require_outputs))
 
     editable = Path(str(entry.get("editable_output", "")))
     latex = Path(str(entry.get("latex_output", "")))
@@ -320,10 +606,19 @@ def validate_entry(
         errors.append(f"{prefix}.editable_output: Python source must use .py, .json or .ipynb")
     if backend == "matlab" and editable.suffix.lower() not in {".fig", ".m", ".json"}:
         errors.append(f"{prefix}.editable_output: MATLAB source must use .fig, .m or .json")
+    if backend == "mermaid" and editable.suffix.lower() not in {".mmd", ".md"}:
+        errors.append(f"{prefix}.editable_output: Mermaid source must use .mmd or .md")
     if latex.suffix.lower() not in {".pdf", ".png"}:
         errors.append(f"{prefix}.latex_output: expected .pdf or .png")
     elif latex.suffix.lower() == ".png" and chart != "map":
         warnings.append(f"{prefix}.latex_output: vector PDF is preferred")
+
+    variables = entry.get("variables")
+    units = entry.get("units")
+    if isinstance(variables, list) and isinstance(units, dict):
+        missing_units = [str(variable) for variable in variables if str(variable) not in units]
+        if missing_units:
+            warnings.append(f"{prefix}.units: no unit entry for {', '.join(missing_units)}")
 
     if require_sources:
         source_data = entry.get("source_data")
@@ -338,13 +633,13 @@ def validate_entry(
                 errors.append(f"{prefix}.source_data: missing {candidate}")
                 continue
             declared = declared_hash_for_path(source_data, source, len(source_paths))
-            if not re.fullmatch(r"[0-9a-f]{64}", declared):
+            if not HEX64_RE.fullmatch(declared):
                 errors.append(f"{prefix}.source_data.sha256: 64-char hash required for {source}")
             elif file_sha256(candidate) != declared:
                 errors.append(f"{prefix}.source_data.sha256: mismatch for {candidate}")
 
     if require_outputs:
-        output_hashes: set[str] = set()
+        resolved_hashes: dict[str, str] = {}
         for field, path_value, hash_field in (
             ("editable_output", editable, "editable_sha256"),
             ("latex_output", latex, "latex_sha256"),
@@ -354,37 +649,20 @@ def validate_entry(
                 errors.append(f"{prefix}.{field}: missing {candidate}")
                 continue
             declared = str(entry.get(hash_field, "")).strip().lower()
-            if not re.fullmatch(r"[0-9a-f]{64}", declared):
+            if not HEX64_RE.fullmatch(declared):
                 errors.append(f"{prefix}.{hash_field}: 64-char SHA-256 required")
             elif file_sha256(candidate) != declared:
                 errors.append(f"{prefix}.{hash_field}: mismatch for {candidate}")
             else:
-                output_hashes.add(declared)
+                resolved_hashes[field] = declared
             reopen_error = basic_output_reopen_error(candidate)
             if reopen_error:
                 errors.append(f"{prefix}.{field}: {reopen_error}: {candidate}")
-
-        report_value = entry.get("backend_report")
-        if not isinstance(report_value, str) or not report_value.strip():
-            errors.append(f"{prefix}.backend_report: required in final output mode")
-        else:
-            report_path = Path(report_value)
-            if not report_path.is_absolute():
-                report_path = base_dir / report_path
-            if not report_path.is_file():
-                errors.append(f"{prefix}.backend_report: missing {report_path}")
-            else:
-                declared = str(entry.get("backend_report_sha256", "")).strip().lower()
-                if not re.fullmatch(r"[0-9a-f]{64}", declared):
-                    errors.append(f"{prefix}.backend_report_sha256: 64-char SHA-256 required")
-                elif file_sha256(report_path) != declared:
-                    errors.append(f"{prefix}.backend_report_sha256: mismatch")
-                try:
-                    report = json.loads(report_path.read_text(encoding="utf-8-sig"))
-                    if str(report.get("status", "")).upper() not in {"PASSED", "RUNTIME_VERIFIED"}:
-                        errors.append(f"{prefix}.backend_report.status: expected PASSED/RUNTIME_VERIFIED")
-                except Exception as exc:
-                    errors.append(f"{prefix}.backend_report: unreadable JSON: {type(exc).__name__}: {exc}")
+        errors.extend(validate_backend_report(
+            entry, prefix, base_dir,
+            resolved_hashes.get("editable_output", ""),
+            resolved_hashes.get("latex_output", ""),
+        ))
 
     return errors, warnings
 
@@ -399,7 +677,7 @@ def value_at_dotted_field(payload: Any, field: str) -> Any:
 
 
 def normalize_task_block(question: dict[str, Any]) -> dict[str, dict[str, Any]]:
-    """Support new `tasks` schema and old `slots` schema during migration."""
+    """Support the new task schema and the previous slot schema during migration."""
     if isinstance(question.get("tasks"), dict):
         return question["tasks"]
     slots = question.get("slots")
@@ -421,21 +699,29 @@ def normalize_task_block(question: dict[str, Any]) -> dict[str, dict[str, Any]]:
         ids = slot.get("figure_ids", [])
         if isinstance(ids, list) and ids:
             converted[task_name] = {
-                "representation": "figure", "figure_ids": ids,
+                "representation": "figure",
+                "figure_ids": ids,
                 "reason": slot.get("reason") or "legacy slot migrated as figure",
             }
         else:
             converted[task_name] = {
-                "representation": "not_applicable", "figure_ids": [],
+                "representation": "not_applicable",
+                "figure_ids": [],
                 "reason": slot.get("omission_reason") or "legacy slot has no figure",
             }
     return converted
 
 
 def validate_coverage(document: Any, entries: list[dict[str, Any]], base_dir: Path) -> tuple[list[str], dict[str, Any]]:
+    """Validate reader-task coverage without any per-question figure-count requirement."""
     errors: list[str] = []
     warnings: list[str] = []
-    summary: dict[str, Any] = {"question_count": 0, "body_figure_count": 0, "questions": [], "warnings": warnings}
+    summary: dict[str, Any] = {
+        "question_count": 0,
+        "body_figure_count": 0,
+        "questions": [],
+        "warnings": warnings,
+    }
     if not isinstance(document, dict) or not isinstance(document.get("coverage_plan"), dict):
         return ["coverage_plan: required in coverage mode"], summary
 
@@ -448,6 +734,8 @@ def validate_coverage(document: Any, entries: list[dict[str, Any]], base_dir: Pa
     if not isinstance(expected_ids, list) or not expected_ids or not all(isinstance(item, str) and item.strip() for item in expected_ids):
         errors.append("coverage_plan.expected_question_ids: must list every expected question")
         expected_ids = []
+    elif len(set(expected_ids)) != len(expected_ids):
+        errors.append("coverage_plan.expected_question_ids: duplicate question id")
 
     expected_source = plan.get("expected_question_ids_source")
     if isinstance(expected_source, dict):
@@ -460,13 +748,15 @@ def validate_coverage(document: Any, entries: list[dict[str, Any]], base_dir: Pa
             declared = declared_hash_for_path(expected_source, paths[0], 1)
             if not source_path.is_file():
                 errors.append(f"coverage_plan.expected_question_ids_source.file: missing {source_path}")
-            elif not re.fullmatch(r"[0-9a-f]{64}", declared) or file_sha256(source_path) != declared:
+            elif not HEX64_RE.fullmatch(declared) or file_sha256(source_path) != declared:
                 errors.append("coverage_plan.expected_question_ids_source.sha256: missing or mismatched")
             else:
                 try:
                     payload = load_document(source_path)
                     source_ids = value_at_dotted_field(payload, field)
-                    if {str(item).strip() for item in source_ids} != {str(item).strip() for item in expected_ids}:
+                    if not isinstance(source_ids, list):
+                        errors.append("coverage_plan.expected_question_ids_source.field: must resolve to a list")
+                    elif {str(item).strip() for item in source_ids} != {str(item).strip() for item in expected_ids}:
                         errors.append("coverage_plan.expected_question_ids does not match decomposition source")
                 except Exception as exc:
                     errors.append(f"coverage_plan.expected_question_ids_source: {type(exc).__name__}: {exc}")
@@ -535,7 +825,10 @@ def validate_coverage(document: Any, entries: list[dict[str, Any]], base_dir: Pa
                 used_figures.add(figure_id)
                 q_figure_ids.append(figure_id)
 
-        body_ids = [fid for fid in q_figure_ids if str(by_id.get(fid, {}).get("placement", "")).lower() == "body"]
+        body_ids = [
+            fid for fid in q_figure_ids
+            if str(by_id.get(fid, {}).get("placement", "")).lower() == "body"
+        ]
         summary["body_figure_count"] += len(set(body_ids))
         summary["questions"].append({
             "question_id": qid,
@@ -552,7 +845,8 @@ def validate_coverage(document: Any, entries: list[dict[str, Any]], base_dir: Pa
 
     figure_qids = {
         str(entry.get("question_id", "")).strip()
-        for entry in entries if str(entry.get("question_id", "")).strip().lower() not in {"", "paper"}
+        for entry in entries
+        if str(entry.get("question_id", "")).strip().lower() not in {"", "paper"}
     }
     for qid in sorted(figure_qids - planned):
         errors.append(f"coverage_plan.questions: missing plan for figure question '{qid}'")
@@ -588,7 +882,7 @@ def validate_distinct_outputs(entries: list[dict[str, Any]]) -> list[str]:
         fid = str(entry.get("figure_id", ""))
         for field in ("latex_sha256", "editable_sha256", "backend_report_sha256"):
             value = str(entry.get(field, "")).strip().lower()
-            if not re.fullmatch(r"[0-9a-f]{64}", value):
+            if not HEX64_RE.fullmatch(value):
                 continue
             key = (field, value)
             if key in owner and owner[key] != fid:
@@ -599,7 +893,9 @@ def validate_distinct_outputs(entries: list[dict[str, Any]]) -> list[str]:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Validate CUMCM figure plans/intents without imposing figure quotas")
+    parser = argparse.ArgumentParser(
+        description="Validate reader-task figure plans while retaining strict rendering artifact checks"
+    )
     parser.add_argument("intent_file", type=Path)
     parser.add_argument("--base-dir", type=Path, default=None)
     group = parser.add_mutually_exclusive_group()
@@ -613,9 +909,11 @@ def main() -> int:
     args = parser.parse_args()
 
     report: dict[str, Any] = {
-        "checker": "figure-intent-and-reader-task-structure",
+        "checker": "figure-intent-reader-task-and-artifact-integrity",
         "semantic_claim_validation": False,
         "fixed_figure_quota": False,
+        "output_integrity_check": bool(args.require_outputs),
+        "coverage_check": bool(args.require_coverage),
         "input": str(args.intent_file.resolve()),
         "status": "FAILED",
         "figure_count": 0,
@@ -629,7 +927,9 @@ def main() -> int:
         seen: set[str] = set()
         base_dir = (args.base_dir or args.intent_file.parent).resolve()
         for index, entry in enumerate(entries):
-            errors, warnings = validate_entry(entry, index, base_dir, args.require_sources, args.require_outputs)
+            errors, warnings = validate_entry(
+                entry, index, base_dir, args.require_sources, args.require_outputs
+            )
             report["errors"].extend(errors)
             report["warnings"].extend(warnings)
             fid = str(entry.get("figure_id", ""))
@@ -640,8 +940,8 @@ def main() -> int:
         if args.require_outputs:
             report["errors"].extend(validate_distinct_outputs(entries))
         if args.require_coverage:
-            errors, summary = validate_coverage(document, entries, base_dir)
-            report["errors"].extend(errors)
+            coverage_errors, summary = validate_coverage(document, entries, base_dir)
+            report["errors"].extend(coverage_errors)
             report["coverage_summary"] = summary
             report["warnings"].extend(summary.get("warnings", []))
     except Exception as exc:
