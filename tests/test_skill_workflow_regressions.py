@@ -223,7 +223,7 @@ figures: []
                     "render_contract": {
                         "chart_type": "line",
                         "variables": variables,
-                        "transformations": [],
+                        "transformations": ["identity"],
                     },
                     "style": {
                         "style_profile": "cumcm-clean",
@@ -255,7 +255,7 @@ figures: []
                             "source_data": {"file": data.name, "sha256": data_sha},
                             "variables": ["x", "y"],
                             "units": {"x": "s", "y": "m"},
-                            "transformations": [],
+                            "transformations": ["identity"],
                             "chart_or_diagram_type": "line",
                             "backend_preference": "matplotlib",
                             "editable_output": spec.name,
