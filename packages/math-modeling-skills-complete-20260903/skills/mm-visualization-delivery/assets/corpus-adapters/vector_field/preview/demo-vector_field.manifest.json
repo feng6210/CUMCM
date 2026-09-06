@@ -1,0 +1,111 @@
+{
+  "renderer": "render_corpus_chart",
+  "family": "vector_field",
+  "schema_version": 1,
+  "status": "RUNTIME_VERIFIED",
+  "semantic_claim_validation": false,
+  "visual_review": "PENDING_REFERENCE_COMPARISON",
+  "data_status": "DEMO_ONLY_SYNTHETIC_NOT_EXPERIMENT_EVIDENCE",
+  "source": {
+    "path": "data.csv",
+    "sha256": "761581176d3ad49d64409e3de39d63a035fff7e5f9639067fb36831ebf440d7f",
+    "sha256_after": "761581176d3ad49d64409e3de39d63a035fff7e5f9639067fb36831ebf440d7f",
+    "rows": 9
+  },
+  "spec": {
+    "path": "spec.json",
+    "sha256": "788239b05665fac156916059c85af76873a48b5389ef35a125a97bad97a96152",
+    "sha256_after": "788239b05665fac156916059c85af76873a48b5389ef35a125a97bad97a96152"
+  },
+  "render_contract": {
+    "chart_type": "vector_field",
+    "variables": [
+      "x",
+      "y",
+      "u",
+      "v"
+    ],
+    "numeric_variables": [
+      "x",
+      "y",
+      "u",
+      "v"
+    ],
+    "units": {
+      "x": "m",
+      "y": "m",
+      "u": "m/s",
+      "v": "m/s"
+    },
+    "source_sha256": "761581176d3ad49d64409e3de39d63a035fff7e5f9639067fb36831ebf440d7f",
+    "spec_sha256": "788239b05665fac156916059c85af76873a48b5389ef35a125a97bad97a96152",
+    "transformations": "none",
+    "geometry_encoding": [
+      "explicit_vector_scale_no_normalization"
+    ],
+    "row_filter": "none",
+    "statistics_computed": false
+  },
+  "style": {
+    "style_profile": "cumcm-vivid",
+    "effective_palette": [
+      "#219C96",
+      "#EC7964",
+      "#DBAE4C",
+      "#577BB5",
+      "#986CB5",
+      "#CB6C99"
+    ],
+    "font_family": "Microsoft YaHei",
+    "base_font_pt": 9.0,
+    "effective_min_font_pt": 9.0,
+    "final_width_mm": 160,
+    "final_height_mm": 105.0,
+    "line_width_pt": 1.45,
+    "legend_strategy": "none",
+    "internal_title": false,
+    "decorative_effects": [],
+    "markers": [
+      "o",
+      "s",
+      "^",
+      "D",
+      "v",
+      "P"
+    ],
+    "line_styles": [
+      "-",
+      "--",
+      "-.",
+      ":"
+    ],
+    "view": null
+  },
+  "outputs": [
+    {
+      "path": "demo-vector_field.pdf",
+      "sha256": "f6319b26f939d32a54c2cd2a2230733e8c4ecaaeb134c8395babf6d82067e993",
+      "bytes": 10888
+    },
+    {
+      "path": "demo-vector_field.svg",
+      "sha256": "ec1984bc321c05d464bdbe00e7a400910da1a3e1002dfe1ec7d7fa38cb37aa54",
+      "bytes": 14523
+    },
+    {
+      "path": "demo-vector_field.png",
+      "sha256": "f1eb919b17b952cb31e487fbd17ddd7834db69ed4148fbd7227ef73daaba2aff",
+      "bytes": 87294
+    }
+  ],
+  "reopen_check": {
+    "pdf": true,
+    "svg": true,
+    "png": true
+  },
+  "pdf_reopen_level": "page_reopened_and_rasterized",
+  "warnings": [],
+  "environment": {
+    "matplotlib": "3.11.1"
+  }
+}

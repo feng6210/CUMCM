@@ -1,0 +1,85 @@
+{
+  "renderer": "matplotlib_plot_from_spec",
+  "semantic_claim_validation": false,
+  "status": "RUNTIME_VERIFIED",
+  "spec": {
+    "path": "paired-distribution.json",
+    "sha256": "05e002023d86d60f3ee7fadbf8b838d30b479c913d10b2d466ed35a053fd24a2"
+  },
+  "source": {
+    "path": "box-summary.csv",
+    "sha256": "93cbc46ecb6a489c35fab20b302645508c2d0a019583a236deff1aeaf66f004e",
+    "rows": 6
+  },
+  "render_contract": {
+    "chart_type": "box",
+    "variables": [
+      "条件",
+      "median"
+    ],
+    "transformations": "none",
+    "source_sha256": "93cbc46ecb6a489c35fab20b302645508c2d0a019583a236deff1aeaf66f004e",
+    "spec_sha256": "05e002023d86d60f3ee7fadbf8b838d30b479c913d10b2d466ed35a053fd24a2"
+  },
+  "outputs": [
+    {
+      "path": "paired-distribution.pdf",
+      "sha256": "5957615c41ea6e72b31bb2b906b794fda7903c4d6520a7dc1e56f2c61c33088a",
+      "bytes": 17326
+    },
+    {
+      "path": "paired-distribution.svg",
+      "sha256": "b9f0d6cf7a0c486384a05e781889672981acfee02a8ab94e5359f9454026c993",
+      "bytes": 16246
+    },
+    {
+      "path": "paired-distribution.png",
+      "sha256": "b97306840ad02e7929935ba0e0f6a9dd977844d1fb66341c06dbf5dae8afecd0",
+      "bytes": 46164
+    }
+  ],
+  "style": {
+    "style_profile": "cumcm-vivid",
+    "palette_profile": "cumcm-vivid",
+    "effective_palette": [
+      "#2A9D8F",
+      "#E76F51",
+      "#E9C46A",
+      "#457B9D",
+      "#9B5DE5",
+      "#F15BB5"
+    ],
+    "series_color_mapping": {
+      "低·甲": "#2A9D8F",
+      "低·乙": "#E76F51",
+      "中·甲": "#2A9D8F",
+      "中·乙": "#E76F51",
+      "高·甲": "#2A9D8F",
+      "高·乙": "#E76F51"
+    },
+    "size_profile": "full-width",
+    "base_font_pt": 9.0,
+    "effective_min_font_pt": 8.5,
+    "font_family": "Microsoft YaHei",
+    "final_width_mm": 160.02,
+    "line_width_pt": 1.1,
+    "decorative_effects": [
+      "transparent_fill"
+    ],
+    "legend_strategy": "none",
+    "internal_title": false
+  },
+  "environment": {
+    "matplotlib": "3.11.1",
+    "pandas": "3.0.5",
+    "font_family": "Microsoft YaHei"
+  },
+  "reopen_check": {
+    "pdf": true,
+    "svg": true,
+    "png": true
+  },
+  "warnings": [
+    "RUNTIME_VERIFIED is not EVIDENCE_ELIGIBLE; run claim, numeric, and visual audits."
+  ]
+}

@@ -106,7 +106,7 @@ def get_palette(spec: dict[str, Any]) -> list[str]:
         "cumcm-data-dense": "cumcm-cool",
         "cumcm-vivid": "cumcm-vivid",
     }
-    style_profile = str(spec.get("style_profile", "cumcm-clean"))
+    style_profile = str(spec.get("style_profile", "cumcm-vivid"))
     profile = str(spec.get("palette_profile", style_to_palette.get(style_profile, "cumcm-muted")))
     return PALETTES.get(profile, PALETTES["cumcm-muted"])
 

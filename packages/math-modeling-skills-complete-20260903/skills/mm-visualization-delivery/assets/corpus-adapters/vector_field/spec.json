@@ -1,0 +1,28 @@
+{
+  "family": "vector_field",
+  "figure_id": "demo-vector_field",
+  "source_csv": "data.csv",
+  "xlabel": "位置一 / m",
+  "ylabel": "位置二 / m",
+  "units": {
+    "t": "s",
+    "a": "m",
+    "b": "m",
+    "lower": "m",
+    "upper": "m",
+    "x": "m",
+    "y": "m",
+    "z": "m",
+    "u": "m/s",
+    "v": "m/s",
+    "size": "个",
+    "percent": "%"
+  },
+  "data_status": "DEMO_ONLY_SYNTHETIC_NOT_EXPERIMENT_EVIDENCE",
+  "x": "x",
+  "y": "y",
+  "u": "u",
+  "v": "v",
+  "vector_scale": 1,
+  "vector_scale_definition": "DEMO_ONLY一秒位移长度"
+}

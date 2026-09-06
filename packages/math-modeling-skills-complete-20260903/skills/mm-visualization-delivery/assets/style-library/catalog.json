@@ -1,0 +1,186 @@
+{
+  "version": 1,
+  "source_root_hint": "D:\\数模文件\\画图",
+  "runtime_source_dependency": false,
+  "scope": "6 representative cards, not all corpus images",
+  "cards": [
+    {
+      "card_id": "rose-heatmap",
+      "name_zh": "粉紫热力矩阵",
+      "source_relative": "194-Matlab绘图合集/进阶热力图/SCI原图.jpg",
+      "source_sha256": "d7383de0fb7850320243dc57751b83a132d5cd95fa7fa585fd2e431bf465dd8c",
+      "source_use": "local_view_only_not_redistributed",
+      "design": "米白到粉紫顺序色，细格线与独立色条",
+      "palette": [
+        "#FFF5E9",
+        "#F8C9CC",
+        "#DF7AA1",
+        "#9E477C",
+        "#43235D"
+      ],
+      "font_pt": 9.0,
+      "line_width_pt": 0.65,
+      "renderer": "scripts/render_reference_template.py",
+      "spec": "specs/rose-heatmap.json",
+      "spec_sha256": "af6e9a39d4377e8474fd859b84caa537bcb9dc2d397e7dc27f6f482c0b4c4db2",
+      "preview": "previews-v4/rose-heatmap/rose-heatmap.png",
+      "preview_sha256": "b79db3c80ca2233d0f6cbdcda0ab9ee9a26243b89a99193867828d124b65844a",
+      "preview_status": "DEMO_ONLY_SYNTHETIC_NOT_EXPERIMENT_EVIDENCE",
+      "invariants": [
+        "真实数据替换示例",
+        "同组固定颜色/尺度",
+        "不复制源图统计量",
+        "中文单位与最终尺寸可读"
+      ]
+    },
+    {
+      "card_id": "warm-surface-projection",
+      "name_zh": "暖色曲面与底投影",
+      "source_relative": "194-Matlab绘图合集/曲面映射图/曲面映射图2.jpg",
+      "source_sha256": "7e0a2f51521562fccbcc5d1776e8164d91c807095ebd3137f4f9139e54621189",
+      "source_use": "local_view_only_not_redistributed",
+      "design": "同色域曲面与底部投影，保留网格节点",
+      "palette": [
+        "#FFF1CB",
+        "#F6C36B",
+        "#EE875E",
+        "#CF5267",
+        "#713F72"
+      ],
+      "font_pt": 9.0,
+      "line_width_pt": 0.65,
+      "renderer": "scripts/render_reference_template.py",
+      "spec": "specs/warm-surface-projection.json",
+      "spec_sha256": "26338f538e6dfec91ef45eba35b71236d84c8b4168438885254870129541a5d8",
+      "preview": "previews-v4/warm-surface-projection/warm-surface-projection.png",
+      "preview_sha256": "ce2c10552b880614fcfa0a1ced4483d71e67947d9935599cc8824a775187f966",
+      "preview_status": "DEMO_ONLY_SYNTHETIC_NOT_EXPERIMENT_EVIDENCE",
+      "invariants": [
+        "真实数据替换示例",
+        "同组固定颜色/尺度",
+        "不复制源图统计量",
+        "中文单位与最终尺寸可读"
+      ]
+    },
+    {
+      "card_id": "teal-coral-inset",
+      "name_zh": "青绿珊瑚局部放大",
+      "source_relative": "194-Matlab绘图合集/小窗图：折线图+柱状图/出图2.jpg",
+      "source_sha256": "34e9316ba71170653c5a6817f3545f2300abfdb7dc1f98d78422be41af2f551d",
+      "source_use": "local_view_only_not_redistributed",
+      "design": "主图加放大窗，明显的局部范围标记",
+      "palette": [
+        "#239B96",
+        "#EC7760",
+        "#E3B74C",
+        "#5681B7",
+        "#916CB6",
+        "#CA6792"
+      ],
+      "font_pt": 9.0,
+      "line_width_pt": 1.4,
+      "renderer": "scripts/render_reference_template.py",
+      "spec": "specs/teal-coral-inset.json",
+      "spec_sha256": "00f3722be31e1dc025f18ee361245af0f9b1bf180ab9fa9a36fe1f2b9e7e3147",
+      "preview": "previews-v4/teal-coral-inset/teal-coral-inset.png",
+      "preview_sha256": "3774b47cc02c2c9f403bc4cadfd379e6c65c0687d9aaf4442cafd2fe47acf936",
+      "preview_status": "DEMO_ONLY_SYNTHETIC_NOT_EXPERIMENT_EVIDENCE",
+      "invariants": [
+        "真实数据替换示例",
+        "同组固定颜色/尺度",
+        "不复制源图统计量",
+        "中文单位与最终尺寸可读"
+      ]
+    },
+    {
+      "card_id": "interval-line",
+      "name_zh": "鲜明点线与误差区间",
+      "source_relative": "194-Matlab绘图合集/误差折线图/圆形折线图.jpg",
+      "source_sha256": "c43f208c2dc3f9607f4a0ca6442caf7acaf42719fde1730b72194cd8467c2eec",
+      "source_use": "local_view_only_not_redistributed",
+      "design": "协调点线色和清楚端帽，不继承无依据误差",
+      "palette": [
+        "#2A9D8F",
+        "#E76F51",
+        "#E9C46A",
+        "#457B9D",
+        "#9B5DE5",
+        "#F15BB5"
+      ],
+      "font_pt": 9.0,
+      "line_width_pt": 1.25,
+      "renderer": "scripts/matplotlib_plot_from_spec.py",
+      "spec": "specs/interval-line.json",
+      "spec_sha256": "f2d1de2685e5dd00260090a91d743fa0cb87144ac988b52dd295a7d6204447c7",
+      "preview": "previews-v4/interval-line/interval-line.png",
+      "preview_sha256": "831904a0166773b3732809ce5a7920cf77484e038a3462b1678d71ca1eeca440",
+      "preview_status": "DEMO_ONLY_SYNTHETIC_NOT_EXPERIMENT_EVIDENCE",
+      "invariants": [
+        "真实数据替换示例",
+        "同组固定颜色/尺度",
+        "不复制源图统计量",
+        "中文单位与最终尺寸可读"
+      ]
+    },
+    {
+      "card_id": "paired-distribution",
+      "name_zh": "多组分布对照",
+      "source_relative": "194-Matlab绘图合集/多组箱式图/result.png",
+      "source_sha256": "8bd60269ee023a07f88c6d7f28da74cd544a7a62787856171adc48631f9deab6",
+      "source_use": "local_view_only_not_redistributed",
+      "design": "稳定类别色与同尺度箱体，不继承示例星号",
+      "palette": [
+        "#2A9D8F",
+        "#E76F51",
+        "#E9C46A",
+        "#457B9D",
+        "#9B5DE5",
+        "#F15BB5"
+      ],
+      "font_pt": 9.0,
+      "line_width_pt": 1.1,
+      "renderer": "scripts/matplotlib_plot_from_spec.py",
+      "spec": "specs/paired-distribution.json",
+      "spec_sha256": "05e002023d86d60f3ee7fadbf8b838d30b479c913d10b2d466ed35a053fd24a2",
+      "preview": "previews-v4/paired-distribution/paired-distribution.png",
+      "preview_sha256": "b97306840ad02e7929935ba0e0f6a9dd977844d1fb66341c06dbf5dae8afecd0",
+      "preview_status": "DEMO_ONLY_SYNTHETIC_NOT_EXPERIMENT_EVIDENCE",
+      "invariants": [
+        "真实数据替换示例",
+        "同组固定颜色/尺度",
+        "不复制源图统计量",
+        "中文单位与最终尺寸可读"
+      ]
+    },
+    {
+      "card_id": "area-comparison",
+      "name_zh": "透明面积与趋势层级",
+      "source_relative": "194-Matlab绘图合集/面积填充图/Nature1.jpg",
+      "source_sha256": "bfcc20fef0b1205cdbc90e756bb912dbe5a1a22cf6122965062bc612049b936d",
+      "source_use": "local_view_only_not_redistributed",
+      "design": "主线清楚、填充轻盈，不将装饰说成置信带",
+      "palette": [
+        "#2A9D8F",
+        "#E76F51",
+        "#E9C46A",
+        "#457B9D",
+        "#9B5DE5",
+        "#F15BB5"
+      ],
+      "font_pt": 9.0,
+      "line_width_pt": 1.25,
+      "renderer": "scripts/matplotlib_plot_from_spec.py",
+      "spec": "specs/area-comparison.json",
+      "spec_sha256": "64049a11e61e81a7af050919b358a5b760421be5895f9e9aa26210b531c93baa",
+      "preview": "previews-v4/area-comparison/area-comparison.png",
+      "preview_sha256": "9ebb12aecc241c3477e54640d9868399f4d37e8c7a3a1417fe0f28386434a34b",
+      "preview_status": "DEMO_ONLY_SYNTHETIC_NOT_EXPERIMENT_EVIDENCE",
+      "invariants": [
+        "真实数据替换示例",
+        "同组固定颜色/尺度",
+        "不复制源图统计量",
+        "中文单位与最终尺寸可读"
+      ]
+    }
+  ]
+}

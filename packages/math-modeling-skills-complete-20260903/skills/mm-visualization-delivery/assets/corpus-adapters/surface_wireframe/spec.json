@@ -1,0 +1,40 @@
+{
+  "family": "surface_wireframe",
+  "figure_id": "demo-surface_wireframe",
+  "source_csv": "data.csv",
+  "xlabel": "参数一 / m",
+  "ylabel": "参数二 / m",
+  "units": {
+    "t": "s",
+    "a": "m",
+    "b": "m",
+    "lower": "m",
+    "upper": "m",
+    "x": "m",
+    "y": "m",
+    "z": "m",
+    "u": "m/s",
+    "v": "m/s",
+    "size": "个",
+    "percent": "%"
+  },
+  "data_status": "DEMO_ONLY_SYNTHETIC_NOT_EXPERIMENT_EVIDENCE",
+  "x": "x",
+  "y": "y",
+  "z": "z",
+  "levels": [
+    2,
+    2.5,
+    3,
+    3.5,
+    4,
+    4.5,
+    5,
+    5.5,
+    6
+  ],
+  "colorbar_label": "预给定响应 / m",
+  "zlabel": "响应 / m",
+  "spatial_explanation": "DEMO_ONLY三维真实坐标/多位置响应接口示范",
+  "companion": "source_csv"
+}

@@ -1,0 +1,99 @@
+{
+  "renderer": "render_reference_template",
+  "template_id": "teal-coral-inset",
+  "status": "RUNTIME_VERIFIED",
+  "semantic_claim_validation": false,
+  "source": {
+    "path": "teal-coral-inset.csv",
+    "sha256": "3c76fcf4d80a69a43c6cfb5088e8825eb060da45778e9da8515e068ef6d61421",
+    "sha256_after": "3c76fcf4d80a69a43c6cfb5088e8825eb060da45778e9da8515e068ef6d61421",
+    "rows": 13
+  },
+  "spec": {
+    "path": "teal-coral-inset.json",
+    "sha256": "00f3722be31e1dc025f18ee361245af0f9b1bf180ab9fa9a36fe1f2b9e7e3147",
+    "sha256_after": "00f3722be31e1dc025f18ee361245af0f9b1bf180ab9fa9a36fe1f2b9e7e3147"
+  },
+  "render_contract": {
+    "chart_type": "line",
+    "source_sha256": "3c76fcf4d80a69a43c6cfb5088e8825eb060da45778e9da8515e068ef6d61421",
+    "spec_sha256": "00f3722be31e1dc025f18ee361245af0f9b1bf180ab9fa9a36fe1f2b9e7e3147",
+    "transformations": "none",
+    "variables": [
+      "时间",
+      "方案甲",
+      "下界",
+      "上界",
+      "方案乙"
+    ],
+    "inset_bounds": [
+      4,
+      8,
+      1,
+      4
+    ],
+    "inset_data": "same supplied source; display zoom only"
+  },
+  "outputs": [
+    {
+      "path": "teal-coral-inset.pdf",
+      "sha256": "0b517fc1b923852bb5f8310196b00a452cf2c3f62d91777924d3fb0ba0df3058",
+      "bytes": 19050
+    },
+    {
+      "path": "teal-coral-inset.svg",
+      "sha256": "58fc6135e7ff98e4651c825279f4876ec2da9ca22c14affc27d9cb7c84163f7f",
+      "bytes": 28393
+    },
+    {
+      "path": "teal-coral-inset.png",
+      "sha256": "3774b47cc02c2c9f403bc4cadfd379e6c65c0687d9aaf4442cafd2fe47acf936",
+      "bytes": 129360
+    }
+  ],
+  "style": {
+    "style_profile": "cumcm-vivid",
+    "palette_profile": "teal-coral-inset",
+    "effective_palette": [
+      "#239B96",
+      "#EC7760",
+      "#E3B74C",
+      "#5681B7",
+      "#916CB6",
+      "#CA6792"
+    ],
+    "final_width_mm": 160,
+    "final_height_mm": 100,
+    "base_font_pt": 9.0,
+    "effective_min_font_pt": 8.5,
+    "font_family": "Microsoft YaHei",
+    "line_width_pt": 1.4,
+    "internal_title": false,
+    "decorative_effects": [
+      "same_data_zoom",
+      "markers_and_line_styles",
+      "precomputed_interval_fill"
+    ],
+    "legend_strategy": "top",
+    "size_profile": "full-width",
+    "series_color_mapping": {
+      "方案甲": "#239B96",
+      "方案乙": "#EC7760"
+    }
+  },
+  "environment": {
+    "matplotlib": "3.11.1",
+    "pandas": "3.0.5",
+    "font_family": "Microsoft YaHei"
+  },
+  "reopen_check": {
+    "pdf": true,
+    "svg": true,
+    "png": true
+  },
+  "pdf_reopen_level": "external_pypdfium2_page_reopened_and_rasterized",
+  "visual_review": "PENDING_REFERENCE_COMPARISON",
+  "warnings": [
+    "Render validity is not numerical or claim validation; review reference style at final size."
+  ]
+}

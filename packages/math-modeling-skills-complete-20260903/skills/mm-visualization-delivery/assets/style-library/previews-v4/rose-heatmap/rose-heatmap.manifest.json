@@ -1,0 +1,93 @@
+{
+  "renderer": "render_reference_template",
+  "template_id": "rose-heatmap",
+  "status": "RUNTIME_VERIFIED",
+  "semantic_claim_validation": false,
+  "source": {
+    "path": "rose-heatmap.csv",
+    "sha256": "7dd64a1f87ca2cdb1813571a3eb5b58423c203a52810a4098c8397176e7a2fb4",
+    "sha256_after": "7dd64a1f87ca2cdb1813571a3eb5b58423c203a52810a4098c8397176e7a2fb4",
+    "rows": 9
+  },
+  "spec": {
+    "path": "rose-heatmap.json",
+    "sha256": "af6e9a39d4377e8474fd859b84caa537bcb9dc2d397e7dc27f6f482c0b4c4db2",
+    "sha256_after": "af6e9a39d4377e8474fd859b84caa537bcb9dc2d397e7dc27f6f482c0b4c4db2"
+  },
+  "render_contract": {
+    "chart_type": "heatmap",
+    "source_sha256": "7dd64a1f87ca2cdb1813571a3eb5b58423c203a52810a4098c8397176e7a2fb4",
+    "spec_sha256": "af6e9a39d4377e8474fd859b84caa537bcb9dc2d397e7dc27f6f482c0b4c4db2",
+    "transformations": "none",
+    "variables": [
+      "因素",
+      "场景",
+      "响应"
+    ],
+    "matrix_shape": [
+      3,
+      3
+    ],
+    "fixed_color_range": [
+      0.0,
+      1.0
+    ]
+  },
+  "outputs": [
+    {
+      "path": "rose-heatmap.pdf",
+      "sha256": "105b651f752709bc172623322044ea30b41e703148bcccd0f0f41c5856b5e4dd",
+      "bytes": 18016
+    },
+    {
+      "path": "rose-heatmap.svg",
+      "sha256": "a3302130894dc04b2ea649c518202714d4762dfde32ba350d5411f0659e348e5",
+      "bytes": 15298
+    },
+    {
+      "path": "rose-heatmap.png",
+      "sha256": "b79db3c80ca2233d0f6cbdcda0ab9ee9a26243b89a99193867828d124b65844a",
+      "bytes": 76791
+    }
+  ],
+  "style": {
+    "style_profile": "cumcm-vivid",
+    "palette_profile": "rose-heatmap",
+    "effective_palette": [
+      "#FFF5E9",
+      "#F8C9CC",
+      "#DF7AA1",
+      "#9E477C",
+      "#43235D"
+    ],
+    "final_width_mm": 160,
+    "final_height_mm": 100,
+    "base_font_pt": 9.0,
+    "effective_min_font_pt": 8.5,
+    "font_family": "Microsoft YaHei",
+    "line_width_pt": 0.65,
+    "internal_title": false,
+    "decorative_effects": [
+      "continuous_color_encoding",
+      "cell_grid"
+    ],
+    "legend_strategy": "colorbar",
+    "size_profile": "full-width",
+    "series_color_mapping": {}
+  },
+  "environment": {
+    "matplotlib": "3.11.1",
+    "pandas": "3.0.5",
+    "font_family": "Microsoft YaHei"
+  },
+  "reopen_check": {
+    "pdf": true,
+    "svg": true,
+    "png": true
+  },
+  "pdf_reopen_level": "external_pypdfium2_page_reopened_and_rasterized",
+  "visual_review": "PENDING_REFERENCE_COMPARISON",
+  "warnings": [
+    "Render validity is not numerical or claim validation; review reference style at final size."
+  ]
+}

@@ -1,0 +1,116 @@
+{
+  "renderer": "render_corpus_chart",
+  "family": "area_3d",
+  "schema_version": 1,
+  "status": "RUNTIME_VERIFIED",
+  "semantic_claim_validation": false,
+  "visual_review": "PENDING_REFERENCE_COMPARISON",
+  "data_status": "DEMO_ONLY_SYNTHETIC_NOT_EXPERIMENT_EVIDENCE",
+  "source": {
+    "path": "data.csv",
+    "sha256": "def4d5d402d9b8e667fe87bf3a182969b57f6d183413eed590bd38891c61f5b4",
+    "sha256_after": "def4d5d402d9b8e667fe87bf3a182969b57f6d183413eed590bd38891c61f5b4",
+    "rows": 6
+  },
+  "spec": {
+    "path": "spec.json",
+    "sha256": "b6949ecde529440270cd05af737c934231603f4b2aec4ca42bbe789414e93936",
+    "sha256_after": "b6949ecde529440270cd05af737c934231603f4b2aec4ca42bbe789414e93936"
+  },
+  "render_contract": {
+    "chart_type": "area_3d",
+    "variables": [
+      "t",
+      "a",
+      "b"
+    ],
+    "numeric_variables": [
+      "t",
+      "a",
+      "b"
+    ],
+    "units": {
+      "t": "s",
+      "a": "m",
+      "b": "m"
+    },
+    "source_sha256": "def4d5d402d9b8e667fe87bf3a182969b57f6d183413eed590bd38891c61f5b4",
+    "spec_sha256": "b6949ecde529440270cd05af737c934231603f4b2aec4ca42bbe789414e93936",
+    "transformations": "none",
+    "geometry_encoding": [
+      "supplied_sequence_filled_to_explicit_baseline_at_true_positions"
+    ],
+    "row_filter": "none",
+    "statistics_computed": false
+  },
+  "style": {
+    "style_profile": "cumcm-vivid",
+    "effective_palette": [
+      "#219C96",
+      "#EC7964",
+      "#DBAE4C",
+      "#577BB5",
+      "#986CB5",
+      "#CB6C99"
+    ],
+    "font_family": "Microsoft YaHei",
+    "base_font_pt": 9.0,
+    "effective_min_font_pt": 9.0,
+    "final_width_mm": 160,
+    "final_height_mm": 112.0,
+    "line_width_pt": 1.45,
+    "legend_strategy": "top",
+    "internal_title": false,
+    "decorative_effects": [],
+    "markers": [
+      "o",
+      "s",
+      "^",
+      "D",
+      "v",
+      "P"
+    ],
+    "line_styles": [
+      "-",
+      "--",
+      "-.",
+      ":"
+    ],
+    "view": {
+      "elev": 26,
+      "azim": -58
+    }
+  },
+  "outputs": [
+    {
+      "path": "demo-area_3d.pdf",
+      "sha256": "b37dcd1b90f36463acf60acbd5b160da12af91ac8e6b8ef039224db41e8995b7",
+      "bytes": 15442
+    },
+    {
+      "path": "demo-area_3d.svg",
+      "sha256": "0823b5b18364a8345286b114fba067b3c2e81036632d398298dd1276d961567d",
+      "bytes": 17482
+    },
+    {
+      "path": "demo-area_3d.png",
+      "sha256": "240065b8211c7d2f6eab22fc418483537582f39a03aa48185463206462888788",
+      "bytes": 198171
+    },
+    {
+      "path": "source_values.csv",
+      "sha256": "def4d5d402d9b8e667fe87bf3a182969b57f6d183413eed590bd38891c61f5b4",
+      "bytes": 129
+    }
+  ],
+  "reopen_check": {
+    "pdf": true,
+    "svg": true,
+    "png": true
+  },
+  "pdf_reopen_level": "page_reopened_and_rasterized",
+  "warnings": [],
+  "environment": {
+    "matplotlib": "3.11.1"
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "family": "scatter_3d",
+  "figure_id": "demo-scatter_3d",
+  "source_csv": "data.csv",
+  "xlabel": "位置一 / m",
+  "ylabel": "位置二 / m",
+  "units": {
+    "t": "s",
+    "a": "m",
+    "b": "m",
+    "lower": "m",
+    "upper": "m",
+    "x": "m",
+    "y": "m",
+    "z": "m",
+    "u": "m/s",
+    "v": "m/s",
+    "size": "个",
+    "percent": "%"
+  },
+  "data_status": "DEMO_ONLY_SYNTHETIC_NOT_EXPERIMENT_EVIDENCE",
+  "x": "x",
+  "y": "y",
+  "z": "z",
+  "group": "group",
+  "zlabel": "响应 / m",
+  "spatial_explanation": "DEMO_ONLY三维真实坐标/多位置响应接口示范",
+  "companion": "source_csv"
+}

@@ -1,0 +1,80 @@
+{
+  "renderer": "matplotlib_plot_from_spec",
+  "semantic_claim_validation": false,
+  "status": "RUNTIME_VERIFIED",
+  "spec": {
+    "path": "interval-line.json",
+    "sha256": "f2d1de2685e5dd00260090a91d743fa0cb87144ac988b52dd295a7d6204447c7"
+  },
+  "source": {
+    "path": "series.csv",
+    "sha256": "a9191620d83b5e45af0d1a3e128bad2d677e99d4850444472a494aaea18f0dac",
+    "rows": 6
+  },
+  "render_contract": {
+    "chart_type": "errorbar",
+    "variables": [
+      "时间",
+      "方案甲"
+    ],
+    "transformations": "none",
+    "source_sha256": "a9191620d83b5e45af0d1a3e128bad2d677e99d4850444472a494aaea18f0dac",
+    "spec_sha256": "f2d1de2685e5dd00260090a91d743fa0cb87144ac988b52dd295a7d6204447c7"
+  },
+  "outputs": [
+    {
+      "path": "interval-line.pdf",
+      "sha256": "67a26ee5160c6ab1150ebac8f862bd703db89439baabb725318eec6714db8908",
+      "bytes": 14041
+    },
+    {
+      "path": "interval-line.svg",
+      "sha256": "d4f96d642d1c0684c47f99c3c605eb1c2ee55232f0f78c7f3f2340c5238b77f5",
+      "bytes": 12801
+    },
+    {
+      "path": "interval-line.png",
+      "sha256": "831904a0166773b3732809ce5a7920cf77484e038a3462b1678d71ca1eeca440",
+      "bytes": 67793
+    }
+  ],
+  "style": {
+    "style_profile": "cumcm-vivid",
+    "palette_profile": "cumcm-vivid",
+    "effective_palette": [
+      "#2A9D8F",
+      "#E76F51",
+      "#E9C46A",
+      "#457B9D",
+      "#9B5DE5",
+      "#F15BB5"
+    ],
+    "series_color_mapping": {
+      "方案甲": "#2A9D8F"
+    },
+    "size_profile": "full-width",
+    "base_font_pt": 9.0,
+    "effective_min_font_pt": 8.5,
+    "font_family": "Microsoft YaHei",
+    "final_width_mm": 160.02,
+    "line_width_pt": 1.25,
+    "decorative_effects": [
+      "none"
+    ],
+    "legend_strategy": "none",
+    "internal_title": false
+  },
+  "environment": {
+    "matplotlib": "3.11.1",
+    "pandas": "3.0.5",
+    "font_family": "Microsoft YaHei"
+  },
+  "reopen_check": {
+    "pdf": true,
+    "svg": true,
+    "png": true
+  },
+  "warnings": [
+    "RUNTIME_VERIFIED is not EVIDENCE_ELIGIBLE; run claim, numeric, and visual audits."
+  ]
+}

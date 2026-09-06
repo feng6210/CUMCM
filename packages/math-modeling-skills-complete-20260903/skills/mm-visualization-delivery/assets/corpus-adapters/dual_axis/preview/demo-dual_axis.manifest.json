@@ -1,0 +1,108 @@
+{
+  "renderer": "render_corpus_chart",
+  "family": "dual_axis",
+  "schema_version": 1,
+  "status": "RUNTIME_VERIFIED",
+  "semantic_claim_validation": false,
+  "visual_review": "PENDING_REFERENCE_COMPARISON",
+  "data_status": "DEMO_ONLY_SYNTHETIC_NOT_EXPERIMENT_EVIDENCE",
+  "source": {
+    "path": "data.csv",
+    "sha256": "def4d5d402d9b8e667fe87bf3a182969b57f6d183413eed590bd38891c61f5b4",
+    "sha256_after": "def4d5d402d9b8e667fe87bf3a182969b57f6d183413eed590bd38891c61f5b4",
+    "rows": 6
+  },
+  "spec": {
+    "path": "spec.json",
+    "sha256": "6f4c85f3eeb92f19c03f8bf819a3917bec32892ce23d0b73112d09d7f0d26f1e",
+    "sha256_after": "6f4c85f3eeb92f19c03f8bf819a3917bec32892ce23d0b73112d09d7f0d26f1e"
+  },
+  "render_contract": {
+    "chart_type": "dual_axis",
+    "variables": [
+      "t",
+      "a",
+      "b"
+    ],
+    "numeric_variables": [
+      "t",
+      "a",
+      "b"
+    ],
+    "units": {
+      "t": "s",
+      "a": "m",
+      "b": "J"
+    },
+    "source_sha256": "def4d5d402d9b8e667fe87bf3a182969b57f6d183413eed590bd38891c61f5b4",
+    "spec_sha256": "6f4c85f3eeb92f19c03f8bf819a3917bec32892ce23d0b73112d09d7f0d26f1e",
+    "transformations": "none",
+    "geometry_encoding": [
+      "two_explicitly_labeled_scales_not_trend_agreement"
+    ],
+    "row_filter": "none",
+    "statistics_computed": false
+  },
+  "style": {
+    "style_profile": "cumcm-vivid",
+    "effective_palette": [
+      "#219C96",
+      "#EC7964",
+      "#DBAE4C",
+      "#577BB5",
+      "#986CB5",
+      "#CB6C99"
+    ],
+    "font_family": "Microsoft YaHei",
+    "base_font_pt": 9.0,
+    "effective_min_font_pt": 9.0,
+    "final_width_mm": 160,
+    "final_height_mm": 105.0,
+    "line_width_pt": 1.45,
+    "legend_strategy": "top",
+    "internal_title": false,
+    "decorative_effects": [],
+    "markers": [
+      "o",
+      "s",
+      "^",
+      "D",
+      "v",
+      "P"
+    ],
+    "line_styles": [
+      "-",
+      "--",
+      "-.",
+      ":"
+    ],
+    "view": null
+  },
+  "outputs": [
+    {
+      "path": "demo-dual_axis.pdf",
+      "sha256": "d3737343572deaa49470d02d78a0556d71917f53aef668ac6526170f586e25f2",
+      "bytes": 15202
+    },
+    {
+      "path": "demo-dual_axis.svg",
+      "sha256": "5be163900c85f19d5e50aec21af1e574e13e66cf3044d0d6c6f9cda00adad102",
+      "bytes": 20537
+    },
+    {
+      "path": "demo-dual_axis.png",
+      "sha256": "b95ca251e546835aff14b2d46f015e824680ba9bde26deaddd8a770caea13c8f",
+      "bytes": 108653
+    }
+  ],
+  "reopen_check": {
+    "pdf": true,
+    "svg": true,
+    "png": true
+  },
+  "pdf_reopen_level": "page_reopened_and_rasterized",
+  "warnings": [],
+  "environment": {
+    "matplotlib": "3.11.1"
+  }
+}

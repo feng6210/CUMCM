@@ -1,0 +1,37 @@
+{
+  "family": "parallel_coordinates",
+  "figure_id": "demo-parallel_coordinates",
+  "source_csv": "data.csv",
+  "xlabel": "评价指标",
+  "ylabel": "同尺度演示分值",
+  "units": {
+    "t": "s",
+    "a": "无量纲",
+    "b": "无量纲",
+    "lower": "m",
+    "upper": "m",
+    "x": "m",
+    "y": "m",
+    "z": "m",
+    "u": "m/s",
+    "v": "m/s",
+    "size": "个",
+    "percent": "%"
+  },
+  "data_status": "DEMO_ONLY_SYNTHETIC_NOT_EXPERIMENT_EVIDENCE",
+  "x": "metric",
+  "series": [
+    {
+      "column": "a",
+      "label": "方案甲"
+    },
+    {
+      "column": "b",
+      "label": "方案乙"
+    }
+  ],
+  "vmin": 0,
+  "vmax": 7,
+  "normalization_definition": "DEMO_ONLY人工同尺度示例，非实际评价",
+  "positive_direction": true
+}

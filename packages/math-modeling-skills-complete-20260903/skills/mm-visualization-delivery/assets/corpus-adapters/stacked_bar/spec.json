@@ -1,0 +1,34 @@
+{
+  "family": "stacked_bar",
+  "figure_id": "demo-stacked_bar",
+  "source_csv": "data.csv",
+  "xlabel": "评价指标",
+  "ylabel": "原始量 / m",
+  "units": {
+    "t": "s",
+    "a": "m",
+    "b": "m",
+    "lower": "m",
+    "upper": "m",
+    "x": "m",
+    "y": "m",
+    "z": "m",
+    "u": "m/s",
+    "v": "m/s",
+    "size": "个",
+    "percent": "%"
+  },
+  "data_status": "DEMO_ONLY_SYNTHETIC_NOT_EXPERIMENT_EVIDENCE",
+  "x": "metric",
+  "series": [
+    {
+      "column": "a",
+      "label": "构件甲"
+    },
+    {
+      "column": "b",
+      "label": "构件乙"
+    }
+  ],
+  "additive_semantics": "DEMO_ONLY：两个可相加部件长度组成总长度"
+}

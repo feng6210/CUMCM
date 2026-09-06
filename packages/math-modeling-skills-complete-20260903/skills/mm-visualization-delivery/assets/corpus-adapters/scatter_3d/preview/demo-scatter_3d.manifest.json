@@ -1,0 +1,115 @@
+{
+  "renderer": "render_corpus_chart",
+  "family": "scatter_3d",
+  "schema_version": 1,
+  "status": "RUNTIME_VERIFIED",
+  "semantic_claim_validation": false,
+  "visual_review": "PENDING_REFERENCE_COMPARISON",
+  "data_status": "DEMO_ONLY_SYNTHETIC_NOT_EXPERIMENT_EVIDENCE",
+  "source": {
+    "path": "data.csv",
+    "sha256": "19f15b9156214162a51033e6e5054d647b2f42c7952385d83d174680e89be300",
+    "sha256_after": "19f15b9156214162a51033e6e5054d647b2f42c7952385d83d174680e89be300",
+    "rows": 6
+  },
+  "spec": {
+    "path": "spec.json",
+    "sha256": "f9451c8b3e9345ac80940d0cbfe6f9e23eddfa9f3f7a4aa77c2cd72addf516ca",
+    "sha256_after": "f9451c8b3e9345ac80940d0cbfe6f9e23eddfa9f3f7a4aa77c2cd72addf516ca"
+  },
+  "render_contract": {
+    "chart_type": "scatter_3d",
+    "variables": [
+      "x",
+      "y",
+      "z",
+      "group"
+    ],
+    "numeric_variables": [
+      "x",
+      "y",
+      "z"
+    ],
+    "units": {
+      "x": "m",
+      "y": "m",
+      "z": "m"
+    },
+    "source_sha256": "19f15b9156214162a51033e6e5054d647b2f42c7952385d83d174680e89be300",
+    "spec_sha256": "f9451c8b3e9345ac80940d0cbfe6f9e23eddfa9f3f7a4aa77c2cd72addf516ca",
+    "transformations": "none",
+    "geometry_encoding": [],
+    "row_filter": "none",
+    "statistics_computed": false
+  },
+  "style": {
+    "style_profile": "cumcm-vivid",
+    "effective_palette": [
+      "#219C96",
+      "#EC7964",
+      "#DBAE4C",
+      "#577BB5",
+      "#986CB5",
+      "#CB6C99"
+    ],
+    "font_family": "Microsoft YaHei",
+    "base_font_pt": 9.0,
+    "effective_min_font_pt": 9.0,
+    "final_width_mm": 160,
+    "final_height_mm": 112.0,
+    "line_width_pt": 1.45,
+    "legend_strategy": "top",
+    "internal_title": false,
+    "decorative_effects": [],
+    "markers": [
+      "o",
+      "s",
+      "^",
+      "D",
+      "v",
+      "P"
+    ],
+    "line_styles": [
+      "-",
+      "--",
+      "-.",
+      ":"
+    ],
+    "view": {
+      "elev": 26,
+      "azim": -58
+    }
+  },
+  "outputs": [
+    {
+      "path": "demo-scatter_3d.pdf",
+      "sha256": "b36b13bac9bf4c8af05d6b4f22494baca05a3d4771bc75c6646793ca86af480e",
+      "bytes": 14898
+    },
+    {
+      "path": "demo-scatter_3d.svg",
+      "sha256": "b1e382a90c14fdc7cd9dceb0873710d48f673334c22ed3c819b0ae4961b41e1d",
+      "bytes": 18333
+    },
+    {
+      "path": "demo-scatter_3d.png",
+      "sha256": "1c8c162fcfd435513f9ba9827a84677024aec8f6aa672777ba9d4bcda1e5ccd3",
+      "bytes": 218619
+    },
+    {
+      "path": "source_values.csv",
+      "sha256": "19f15b9156214162a51033e6e5054d647b2f42c7952385d83d174680e89be300",
+      "bytes": 138
+    }
+  ],
+  "reopen_check": {
+    "pdf": true,
+    "svg": true,
+    "png": true
+  },
+  "pdf_reopen_level": "page_reopened_and_rasterized",
+  "warnings": [],
+  "environment": {
+    "matplotlib": "3.11.1"
+  }
+}

@@ -1,0 +1,106 @@
+{
+  "renderer": "render_corpus_chart",
+  "family": "parallel_coordinates",
+  "schema_version": 1,
+  "status": "RUNTIME_VERIFIED",
+  "semantic_claim_validation": false,
+  "visual_review": "PENDING_REFERENCE_COMPARISON",
+  "data_status": "DEMO_ONLY_SYNTHETIC_NOT_EXPERIMENT_EVIDENCE",
+  "source": {
+    "path": "data.csv",
+    "sha256": "d0070e15e091cee4300fe6add54fd6c786d853b5bdb387bee97e8370c0045497",
+    "sha256_after": "d0070e15e091cee4300fe6add54fd6c786d853b5bdb387bee97e8370c0045497",
+    "rows": 6
+  },
+  "spec": {
+    "path": "spec.json",
+    "sha256": "e1dc601e89ab0c813456b0a643125b7dc0c43d3e540b263d5905f70f6cef5b03",
+    "sha256_after": "e1dc601e89ab0c813456b0a643125b7dc0c43d3e540b263d5905f70f6cef5b03"
+  },
+  "render_contract": {
+    "chart_type": "parallel_coordinates",
+    "variables": [
+      "metric",
+      "a",
+      "b"
+    ],
+    "numeric_variables": [
+      "a",
+      "b"
+    ],
+    "units": {
+      "a": "无量纲",
+      "b": "无量纲"
+    },
+    "source_sha256": "d0070e15e091cee4300fe6add54fd6c786d853b5bdb387bee97e8370c0045497",
+    "spec_sha256": "e1dc601e89ab0c813456b0a643125b7dc0c43d3e540b263d5905f70f6cef5b03",
+    "transformations": "none",
+    "geometry_encoding": [
+      "pre_normalized_values_no_renderer_normalization"
+    ],
+    "row_filter": "none",
+    "statistics_computed": false
+  },
+  "style": {
+    "style_profile": "cumcm-vivid",
+    "effective_palette": [
+      "#219C96",
+      "#EC7964",
+      "#DBAE4C",
+      "#577BB5",
+      "#986CB5",
+      "#CB6C99"
+    ],
+    "font_family": "Microsoft YaHei",
+    "base_font_pt": 9.0,
+    "effective_min_font_pt": 9.0,
+    "final_width_mm": 160,
+    "final_height_mm": 105.0,
+    "line_width_pt": 1.45,
+    "legend_strategy": "top",
+    "internal_title": false,
+    "decorative_effects": [],
+    "markers": [
+      "o",
+      "s",
+      "^",
+      "D",
+      "v",
+      "P"
+    ],
+    "line_styles": [
+      "-",
+      "--",
+      "-.",
+      ":"
+    ],
+    "view": null
+  },
+  "outputs": [
+    {
+      "path": "demo-parallel_coordinates.pdf",
+      "sha256": "ca0319a63b0af05b2562d3007589c3c668a063c04b26854432efbaeeb940dd30",
+      "bytes": 17249
+    },
+    {
+      "path": "demo-parallel_coordinates.svg",
+      "sha256": "01e27cd0b3c952a2ef53775717a407f95aef80e475aaa23e5a6c52e118bd52a0",
+      "bytes": 16486
+    },
+    {
+      "path": "demo-parallel_coordinates.png",
+      "sha256": "55ad1d30e57ba704c1577c2da25d3ebcabc9eea3888d3d3799bb819b63d6dd75",
+      "bytes": 95745
+    }
+  ],
+  "reopen_check": {
+    "pdf": true,
+    "svg": true,
+    "png": true
+  },
+  "pdf_reopen_level": "page_reopened_and_rasterized",
+  "warnings": [],
+  "environment": {
+    "matplotlib": "3.11.1"
+  }
+}

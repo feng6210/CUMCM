@@ -1,0 +1,25 @@
+{
+  "template_id": "rose-heatmap",
+  "row": "因素",
+  "column": "场景",
+  "value": "响应",
+  "row_order": [
+    "因素甲",
+    "因素乙",
+    "因素丙"
+  ],
+  "column_order": [
+    "场景一",
+    "场景二",
+    "场景三"
+  ],
+  "vmin": 0,
+  "vmax": 1,
+  "annotate_cells": true,
+  "xlabel": "场景",
+  "ylabel": "扰动因素",
+  "colorbar_label": "归一化响应",
+  "source_csv": "../demo-data/rose-heatmap.csv",
+  "figure_id": "rose-heatmap",
+  "fixture_notice": "SYNTHETIC_TEST_ONLY_NOT_EXPERIMENT_EVIDENCE"
+}

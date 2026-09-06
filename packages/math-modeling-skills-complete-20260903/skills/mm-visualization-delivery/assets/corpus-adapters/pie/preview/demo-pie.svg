@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="453.543307pt" height="297.637795pt" viewBox="0 0 453.543307 297.637795" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:date>2026-09-06T15:20:24.424085</dc:date>
+    <dc:format>image/svg+xml</dc:format>
+    <dc:creator>
+     <cc:Agent>
+      <dc:title>mm-visualization-delivery clean-room corpus renderer</dc:title>
+     </cc:Agent>
+    </dc:creator>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 297.637795 
+L 453.543307 297.637795 
+L 453.543307 0 
+L 0 0 
+z
+" style="fill: #ffffff"/>
+  </g>
+  <g id="axes_1">
+   <g id="patch_2">
+    <path d="M 315.295218 215.412097 
+C 327.575379 198.509905 334.944221 178.535784 336.583409 157.70793 
+C 338.222596 136.880076 334.069118 115.999129 324.584231 97.38399 
+C 315.099344 78.768852 300.647657 63.135104 282.834078 52.21893 
+C 265.0205 41.302755 244.5298 35.52378 223.637542 35.52378 
+L 223.637542 148.818898 
+z
+" style="fill: #219c96; stroke: #ffffff; stroke-width: 1.1; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_3">
+    <path d="M 141.048955 226.374743 
+C 152.46486 238.531447 166.425334 248.018975 181.930827 254.158034 
+C 197.43632 260.297093 214.107727 262.937585 230.751401 261.890454 
+C 247.395075 260.843323 263.604082 256.134171 278.217881 248.100166 
+C 292.83168 240.066162 305.492969 228.903735 315.295218 215.412097 
+L 223.637542 148.818898 
+z
+" style="fill: #ec7964; stroke: #ffffff; stroke-width: 1.1; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_4">
+    <path d="M 131.979866 82.225698 
+C 116.486906 103.549927 108.910941 129.626572 110.565986 155.932757 
+C 112.22103 182.238942 123.005528 207.160444 141.048955 226.374743 
+L 223.637542 148.818898 
+z
+" style="fill: #dbae4c; stroke: #ffffff; stroke-width: 1.1; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_5">
+    <path d="M 223.637542 35.52378 
+C 205.759265 35.52378 188.132296 39.75564 172.202634 47.872208 
+C 156.272973 55.988776 142.488453 67.761868 131.979866 82.225698 
+L 223.637542 148.818898 
+z
+" style="fill: #577bb5; stroke: #ffffff; stroke-width: 1.1; stroke-linejoin: miter"/>
+   </g>
+   <g id="matplotlib.axis_1"/>
+   <g id="matplotlib.axis_2"/>
+   <g id="legend_1">
+    <g id="patch_6">
+     <path d="M 367.691683 130.041593 
+L 385.691683 130.041593 
+L 385.691683 123.741593 
+L 367.691683 123.741593 
+z
+" style="fill: #219c96; stroke: #ffffff; stroke-width: 1.1; stroke-linejoin: miter"/>
+    </g>
+    <g id="text_1">
+     <text style="font-size: 9px; font-family: 'Microsoft YaHei', sans-serif; text-anchor: start" x="392.891683" y="130.041593" transform="rotate(-0 392.891683 130.041593)">构件甲  35%</text>
+    </g>
+    <g id="patch_7">
+     <path d="M 367.691683 144.288136 
+L 385.691683 144.288136 
+L 385.691683 137.988136 
+L 367.691683 137.988136 
+z
+" style="fill: #ec7964; stroke: #ffffff; stroke-width: 1.1; stroke-linejoin: miter"/>
+    </g>
+    <g id="text_2">
+     <text style="font-size: 9px; font-family: 'Microsoft YaHei', sans-serif; text-anchor: start" x="392.891683" y="144.288136" transform="rotate(-0 392.891683 144.288136)">构件乙  28%</text>
+    </g>
+    <g id="patch_8">
+     <path d="M 367.691683 158.534679 
+L 385.691683 158.534679 
+L 385.691683 152.234679 
+L 367.691683 152.234679 
+z
+" style="fill: #dbae4c; stroke: #ffffff; stroke-width: 1.1; stroke-linejoin: miter"/>
+    </g>
+    <g id="text_3">
+     <text style="font-size: 9px; font-family: 'Microsoft YaHei', sans-serif; text-anchor: start" x="392.891683" y="158.534679" transform="rotate(-0 392.891683 158.534679)">构件丙  22%</text>
+    </g>
+    <g id="patch_9">
+     <path d="M 367.691683 172.781222 
+L 385.691683 172.781222 
+L 385.691683 166.481222 
+L 367.691683 166.481222 
+z
+" style="fill: #577bb5; stroke: #ffffff; stroke-width: 1.1; stroke-linejoin: miter"/>
+    </g>
+    <g id="text_4">
+     <text style="font-size: 9px; font-family: 'Microsoft YaHei', sans-serif; text-anchor: start" x="392.891683" y="172.781222" transform="rotate(-0 392.891683 172.781222)">构件丁  15%</text>
+    </g>
+   </g>
+  </g>
+ </g>
+</svg>
