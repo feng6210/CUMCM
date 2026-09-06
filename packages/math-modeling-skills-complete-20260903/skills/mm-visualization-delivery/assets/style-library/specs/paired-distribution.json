@@ -1,0 +1,16 @@
+{
+  "figure_id": "paired-distribution",
+  "chart_type": "box",
+  "source_csv": "../demo-data/box-summary.csv",
+  "x": "条件",
+  "y": [
+    "median"
+  ],
+  "style_profile": "cumcm-vivid",
+  "xlabel": "扰动水平与方案",
+  "ylabel": "示例响应 / 无量纲",
+  "fixture_notice": "DEMO_ONLY_SYNTHETIC_NOT_EXPERIMENT_EVIDENCE",
+  "precomputed_box": true,
+  "box_color_cycle": 2,
+  "summary_definition": "合成测试五数摘要；须在分析阶段预计算真实箱统计，非实验数据"
+}

@@ -1,7 +1,7 @@
 interface:
   display_name: "数学建模：可视化规划与交付"
-  short_description: "先判断该画什么，再生成可追溯的 CUMCM 中文图表。"
+  short_description: "参考本地优秀样图，生成鲜明精致、数值可追溯的中文图表与科研流程图。"
   brand_color: "#2563EB"
-  default_prompt: "请使用 $mm-visualization-delivery 先做 figure planning：逐问识别读者真正会卡住的物理场景、几何/机制、case、协同结构、时间区间、结果关系或关键验证，再决定用 figure、table、text、appendix 或 not_applicable 承担；不设置每问固定图数，不为图量凑图。复杂几何和机理优先二维解释图，结构变化时补协同/区间图，算法流程图只在算法本身成为理解障碍时使用。确定需要作图后再进入 rendering，绑定真实机器结果、选择 Origin/MATLAB/Matplotlib/Visio/FigureSpec、保留可编辑源与 XeLaTeX PDF，并做最终尺寸、字体、灰度、裁切和数值一致性检查。competition_compact 正文只保留模型解释、核心结果和真正关键验证，完整收敛、多种子、微小误差、后端审计和版本谱系默认移入附录/支撑材料。"
+  default_prompt: "请使用 $mm-visualization-delivery 参考本地样式卡把模型讲充分：用真实结果生成鲜明精致的中文数据图、适用的三维投影与敏感性热图，科研流程图调用可用的原生图像生成工具，保留可修改源文件并完成参考对照、独立视觉和数值审查。"
 policy:
   allow_implicit_invocation: true

@@ -1,0 +1,40 @@
+{
+  "family": "area_3d",
+  "figure_id": "demo-area_3d",
+  "source_csv": "data.csv",
+  "xlabel": "时间 / s",
+  "ylabel": "位置 / m",
+  "units": {
+    "t": "s",
+    "a": "m",
+    "b": "m",
+    "lower": "m",
+    "upper": "m",
+    "x": "m",
+    "y": "m",
+    "z": "m",
+    "u": "m/s",
+    "v": "m/s",
+    "size": "个",
+    "percent": "%"
+  },
+  "data_status": "DEMO_ONLY_SYNTHETIC_NOT_EXPERIMENT_EVIDENCE",
+  "x": "t",
+  "series": [
+    {
+      "column": "a",
+      "label": "方案甲",
+      "position": 1
+    },
+    {
+      "column": "b",
+      "label": "方案乙",
+      "position": 2
+    }
+  ],
+  "zlabel": "响应 / m",
+  "spatial_explanation": "DEMO_ONLY三维真实坐标/多位置响应接口示范",
+  "companion": "source_csv",
+  "z_baseline": 0,
+  "position_unit": "m"
+}

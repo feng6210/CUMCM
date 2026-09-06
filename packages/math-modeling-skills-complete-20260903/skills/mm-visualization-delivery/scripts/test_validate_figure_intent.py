@@ -110,7 +110,7 @@ def main() -> int:
 
         screenshot = copy.deepcopy(good)
         screenshot["chart_or_diagram_type"] = "software_screenshot"
-        expect_fail("software screenshot", screenshot, root, "screenshots are not final evidence")
+        expect_fail("software screenshot", screenshot, root, "unrecognized 'software_screenshot'")
 
         incomplete_3d = copy.deepcopy(good)
         incomplete_3d["chart_or_diagram_type"] = "surface_3d"
@@ -153,7 +153,7 @@ def main() -> int:
         dense_body = copy.deepcopy(good)
         dense_body["panel_count"] = 7
         dense_body["multi_panel_justification"] = "shared-scale scenario comparison"
-        expect_fail("dense body", dense_body, root, "not allowed in the paper body")
+        expect_fail("dense body", dense_body, root, ">6 panels should move to appendix")
 
         dense_appendix = copy.deepcopy(dense_body)
         dense_appendix["placement"] = "appendix"
@@ -161,12 +161,12 @@ def main() -> int:
 
         missing_source = copy.deepcopy(good)
         missing_source["source_data"]["file"] = str(root / "missing.csv")
-        expect_fail("missing source", missing_source, root, "missing file")
+        expect_fail("missing source", missing_source, root, "source_data: missing")
         expect_pass("draft may allow missing source", missing_source, root, require_sources=False)
 
         bad_hash = copy.deepcopy(good)
         bad_hash["source_data"]["sha256"] = "0" * 64
-        expect_fail("source hash mismatch", bad_hash, root, "does not match")
+        expect_fail("source hash mismatch", bad_hash, root, "source_data.sha256: mismatch")
 
         final_outputs = copy.deepcopy(good)
         editable = root / "q1.opju"
@@ -386,14 +386,14 @@ def main() -> int:
         wrong_python_source = copy.deepcopy(good)
         wrong_python_source["backend_preference"] = "python"
         wrong_python_source["editable_output"] = "figures/q1.bin"
-        expect_fail("wrong python source", wrong_python_source, root, "Python/Matplotlib source")
+        expect_fail("wrong python source", wrong_python_source, root, "Python source")
 
         grammar_a = copy.deepcopy(good)
         grammar_b = copy.deepcopy(good)
         grammar_b["figure_id"] = "q2-evidence"
         grammar_b["visual_grammar"]["palette"] = ["#000000"]
         grammar_errors = MODULE.validate_grammar_groups([grammar_a, grammar_b])
-        if not any("conflicts with earlier entry" in error for error in grammar_errors):
+        if not any("visual_grammar conflicts with group" in error for error in grammar_errors):
             raise AssertionError(f"visual grammar conflict should fail: {grammar_errors}")
 
         validation_figure = copy.deepcopy(good)
@@ -443,27 +443,8 @@ def main() -> int:
         coverage_errors, coverage_summary = MODULE.validate_coverage(
             coverage_document, coverage_document["figures"], root
         )
-        if coverage_errors or coverage_summary["covered_claim_count"] != 1:
+        if coverage_errors or coverage_summary["question_count"] != 1 or coverage_summary["body_figure_count"] != 4:
             raise AssertionError(f"complete coverage should pass: {coverage_errors}, {coverage_summary}")
-
-        duplicate_content = copy.deepcopy(coverage_document)
-        duplicate_content["figures"][1]["variables"] = duplicate_content["figures"][0]["variables"]
-        duplicate_content["figures"][1]["transformations"] = duplicate_content["figures"][0]["transformations"]
-        duplicate_content["figures"][1]["chart_or_diagram_type"] = duplicate_content["figures"][0]["chart_or_diagram_type"]
-        coverage_errors, _ = MODULE.validate_coverage(
-            duplicate_content, duplicate_content["figures"], root
-        )
-        if not any("independent validation content" in error for error in coverage_errors):
-            raise AssertionError(f"duplicate main/validation content should fail: {coverage_errors}")
-
-        duplicate_artifact = copy.deepcopy(coverage_document)
-        duplicate_artifact["figures"][0]["latex_sha256"] = "a" * 64
-        duplicate_artifact["figures"][1]["latex_sha256"] = "a" * 64
-        coverage_errors, _ = MODULE.validate_coverage(
-            duplicate_artifact, duplicate_artifact["figures"], root
-        )
-        if not any("reuse the same latex_sha256 artifact" in error for error in coverage_errors):
-            raise AssertionError(f"reused physical figure output should fail: {coverage_errors}")
 
         validation_without_method = copy.deepcopy(validation_figure)
         del validation_without_method["validation_method"]
@@ -483,16 +464,19 @@ def main() -> int:
         coverage_errors, _ = MODULE.validate_coverage(
             too_few_figures, too_few_figures["figures"], root
         )
-        if not any("at least 4 distinct figures" in error for error in coverage_errors):
-            raise AssertionError(f"too few figures per question should fail: {coverage_errors}")
+        # Reader-task-driven planning has no minimum figure quota.
+        if coverage_errors:
+            raise AssertionError(f"two useful figures with explained omissions should pass: {coverage_errors}")
 
         missing_validation = copy.deepcopy(coverage_document)
         missing_validation["coverage_plan"]["questions"][0]["slots"]["validation"]["figure_ids"] = []
+        missing_validation["coverage_plan"]["questions"][0]["slots"]["validation"]["omission_reason"] = "residual checks are fully reported in the numerical appendix"
+        missing_validation["figures"] = [figure for figure in missing_validation["figures"] if figure["figure_id"] != "q1-validation"]
         coverage_errors, _ = MODULE.validate_coverage(
             missing_validation, missing_validation["figures"], root
         )
-        if not any("at least one figure is mandatory" in error for error in coverage_errors):
-            raise AssertionError(f"missing validation figure should fail: {coverage_errors}")
+        if coverage_errors:
+            raise AssertionError(f"validation reported without a standalone figure should pass: {coverage_errors}")
 
         weak_omission = copy.deepcopy(coverage_document)
         weak_omission["coverage_plan"]["questions"][0]["slots"]["mechanism"]["omission_reason"] = "N/A"
@@ -504,19 +488,21 @@ def main() -> int:
         same_figure["coverage_plan"]["questions"][0]["slots"]["validation"]["figure_ids"] = [
             "q1-evidence"
         ]
-        coverage_errors, _ = MODULE.validate_coverage(same_figure, same_figure["figures"], root)
-        if not any("different figure ids" in error for error in coverage_errors):
-            raise AssertionError(f"reused main/validation figure should fail: {coverage_errors}")
+        same_figure["figures"] = [figure for figure in same_figure["figures"] if figure["figure_id"] != "q1-validation"]
+        coverage_errors, coverage_summary = MODULE.validate_coverage(same_figure, same_figure["figures"], root)
+        if coverage_errors or not any("q1-evidence" in warning and "is reused" in warning for warning in coverage_summary["warnings"]):
+            raise AssertionError(f"one figure serving two tasks must trigger reuse review: {coverage_errors}, {coverage_summary}")
 
         repeated_optional_slot = copy.deepcopy(coverage_document)
         repeated_optional_slot["coverage_plan"]["questions"][0]["slots"]["comparison"] = {
             "figure_ids": ["q1-evidence"]
         }
-        coverage_errors, _ = MODULE.validate_coverage(
+        repeated_optional_slot["figures"] = [figure for figure in repeated_optional_slot["figures"] if figure["figure_id"] != "q1-comparison"]
+        coverage_errors, coverage_summary = MODULE.validate_coverage(
             repeated_optional_slot, repeated_optional_slot["figures"], root
         )
-        if not any("require distinct figure ids" in error for error in coverage_errors):
-            raise AssertionError(f"reused optional-slot figure should fail: {coverage_errors}")
+        if coverage_errors or not any("q1-evidence" in warning and "is reused" in warning for warning in coverage_summary["warnings"]):
+            raise AssertionError(f"reused comparison figure must trigger reuse review: {coverage_errors}, {coverage_summary}")
 
         list_claims = copy.deepcopy(coverage_document)
         list_claims["figures"][0]["claim_id"] = ["claim-q1", "claim-q1-secondary"]
@@ -526,7 +512,7 @@ def main() -> int:
         coverage_errors, coverage_summary = MODULE.validate_coverage(
             list_claims, list_claims["figures"], root
         )
-        if coverage_errors or coverage_summary["covered_claim_count"] != 2:
+        if coverage_errors or coverage_summary["question_count"] != 1 or coverage_summary["body_figure_count"] != 4:
             raise AssertionError(f"claim-id list should pass: {coverage_errors}, {coverage_summary}")
 
         missing_expected_question = copy.deepcopy(coverage_document)
@@ -542,7 +528,7 @@ def main() -> int:
         coverage_errors, _ = MODULE.validate_coverage(
             mismatched_source, mismatched_source["figures"], root
         )
-        if not any("does not match the bound decomposition source" in error for error in coverage_errors):
+        if not any("does not match decomposition source" in error for error in coverage_errors):
             raise AssertionError(f"unbound expected-question expansion should fail: {coverage_errors}")
 
         stray_claim = copy.deepcopy(coverage_document)
@@ -552,7 +538,7 @@ def main() -> int:
         stray["claim_id"] = "claim-q1"
         stray_claim["figures"].append(stray)
         coverage_errors, _ = MODULE.validate_coverage(stray_claim, stray_claim["figures"], root)
-        if not any("is not assigned to any coverage slot" in error for error in coverage_errors):
+        if not any("is not assigned to any reader task" in error for error in coverage_errors):
             raise AssertionError(f"stray evidence figure should fail: {coverage_errors}")
 
         uncovered_core_claim = copy.deepcopy(coverage_document)
@@ -561,14 +547,14 @@ def main() -> int:
         coverage_errors, _ = MODULE.validate_coverage(
             uncovered_core_claim, uncovered_core_claim["figures"], root
         )
-        if not any("has no evidence/validation figure" in error for error in coverage_errors):
-            raise AssertionError(f"uncovered core claim should fail: {coverage_errors}")
+        # Claim support is checked by result-to-claim audits, not mandatory plots.
+        if coverage_errors:
+            raise AssertionError(f"claims need not each have a separate figure: {coverage_errors}")
 
         none_main = copy.deepcopy(coverage_document)
         none_main["figures"][0]["chart_or_diagram_type"] = "none"
-        coverage_errors, _ = MODULE.validate_coverage(none_main, none_main["figures"], root)
-        if not any("actual chart or diagram" in error for error in coverage_errors):
-            raise AssertionError(f"mandatory none chart should fail: {coverage_errors}")
+        # Type validity belongs to single-entry validation; coverage handles tasks.
+        expect_fail("none is not a chart", none_main["figures"][0], root, "unrecognized 'none'")
 
         orphan_mechanism = copy.deepcopy(coverage_document)
         mechanism = copy.deepcopy(good)
@@ -593,7 +579,7 @@ def main() -> int:
 
         invalid_claim_list = copy.deepcopy(good)
         invalid_claim_list["claim_id"] = ["not_applicable"]
-        expect_fail("not-applicable claim list", invalid_claim_list, root, "only real claim ids")
+        expect_fail("not-applicable claim list", invalid_claim_list, root, "require real claim ids")
 
         second_source = root / "more.csv"
         second_source.write_text("x,y\n1,2\n", encoding="utf-8")
@@ -608,15 +594,52 @@ def main() -> int:
 
         missing_second_hash = copy.deepcopy(multiple_sources)
         del missing_second_hash["source_data"]["sources"][1]["sha256"]
-        expect_fail("missing one of multiple source hashes", missing_second_hash, root, "every source requires")
+        expect_fail("missing one of multiple source hashes", missing_second_hash, root, "source_data.sha256: 64-char hash required")
 
         partial_runtime_sources = copy.deepcopy(final_outputs)
         partial_runtime_sources["source_data"] = multiple_sources["source_data"]
         partial_errors, _ = validate(partial_runtime_sources, root, require_outputs=True)
-        if not any("does not cover every declared source hash" in error for error in partial_errors):
+        if not any("missing declared source hashes" in error for error in partial_errors):
             raise AssertionError(f"partial runtime source coverage should fail: {partial_errors}")
 
-    print("PASS: 55 figure-intent regression cases")
+        # Matching bindings do not prove duplicate information: view, zoom or
+        # annotation can differ. Semantic duplication belongs to visual review.
+        shared_bindings = copy.deepcopy(coverage_document)
+        shared_bindings["figures"][1]["variables"] = shared_bindings["figures"][0]["variables"]
+        shared_bindings["figures"][1]["transformations"] = shared_bindings["figures"][0]["transformations"]
+        shared_bindings["figures"][1]["chart_or_diagram_type"] = shared_bindings["figures"][0]["chart_or_diagram_type"]
+        coverage_errors, _ = MODULE.validate_coverage(shared_bindings, shared_bindings["figures"], root)
+        if coverage_errors:
+            raise AssertionError(f"planner cannot infer semantic duplication from bindings alone: {coverage_errors}")
+
+        duplicate_artifact = copy.deepcopy(coverage_document)
+        duplicate_artifact["figures"][0]["latex_sha256"] = "a" * 64
+        duplicate_artifact["figures"][1]["latex_sha256"] = "a" * 64
+        # Actual byte-identical final artifacts are checked by the final-output
+        # validator, not the planning-stage coverage function.
+        coverage_errors = MODULE.validate_distinct_outputs(duplicate_artifact["figures"])
+        if not any("reuse the same latex_sha256 artifact" in error for error in coverage_errors):
+            raise AssertionError(f"reused physical figure output should fail: {coverage_errors}")
+
+        zero_figure_plan = copy.deepcopy(coverage_document)
+        zero_figure_plan["figures"] = []
+        zero_figure_plan["coverage_plan"]["questions"][0]["tasks"] = {
+            "main_result": {"representation": "table", "reason": "only two exact result values; no shape or trend to visualize"},
+            "validation": {"representation": "appendix", "reason": "exact residual and feasibility recomputation retained as tables"},
+        }
+        coverage_errors, coverage_summary = MODULE.validate_coverage(zero_figure_plan, [], root)
+        if coverage_errors or coverage_summary["body_figure_count"] != 0:
+            raise AssertionError(f"well-explained table/appendix plan needs no figure quota: {coverage_errors}")
+
+        unmet_figure_task = copy.deepcopy(zero_figure_plan)
+        unmet_figure_task["coverage_plan"]["questions"][0]["tasks"]["main_result"] = {
+            "representation": "figure", "reason": "nonlinear tradeoff must be visible to the reader", "figure_ids": []
+        }
+        coverage_errors, _ = MODULE.validate_coverage(unmet_figure_task, [], root)
+        if not any("representation=figure requires figure_ids" in error for error in coverage_errors):
+            raise AssertionError(f"an explicitly chosen figure task cannot be empty: {coverage_errors}")
+
+    print("PASS: figure-intent entry, artifact-integrity and reader-task coverage regressions")
     return 0
 
 

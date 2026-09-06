@@ -3,7 +3,7 @@ function style = cumcm_plot_style(profile)
 % No source code, image, or data from the user's reference corpus is copied.
 
 if nargin < 1 || strlength(string(profile)) == 0
-    profile = "cumcm-clean";
+    profile = "cumcm-vivid";
 end
 profile = string(profile);
 

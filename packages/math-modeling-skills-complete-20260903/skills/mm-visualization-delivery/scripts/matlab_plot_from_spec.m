@@ -31,7 +31,7 @@ yNames = string(spec.y);
 if isscalar(yNames), yNames = yNames(:); end
 requireColumns(T, [xName; yNames(:)]);
 
-profile = getField(spec, "style_profile", "cumcm-clean");
+profile = getField(spec, "style_profile", "cumcm-vivid");
 allowedProfiles = ["cumcm-clean","cumcm-highlight","cumcm-data-dense","cumcm-vivid"];
 if ~ismember(string(profile), allowedProfiles)
     error("Unknown style_profile: %s", string(profile));

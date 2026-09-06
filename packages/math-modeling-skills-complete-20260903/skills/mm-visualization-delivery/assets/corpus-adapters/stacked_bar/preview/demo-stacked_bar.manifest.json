@@ -1,0 +1,106 @@
+{
+  "renderer": "render_corpus_chart",
+  "family": "stacked_bar",
+  "schema_version": 1,
+  "status": "RUNTIME_VERIFIED",
+  "semantic_claim_validation": false,
+  "visual_review": "PENDING_REFERENCE_COMPARISON",
+  "data_status": "DEMO_ONLY_SYNTHETIC_NOT_EXPERIMENT_EVIDENCE",
+  "source": {
+    "path": "data.csv",
+    "sha256": "d0070e15e091cee4300fe6add54fd6c786d853b5bdb387bee97e8370c0045497",
+    "sha256_after": "d0070e15e091cee4300fe6add54fd6c786d853b5bdb387bee97e8370c0045497",
+    "rows": 6
+  },
+  "spec": {
+    "path": "spec.json",
+    "sha256": "acb8216eec61ce04e1faf1a167d11255966b1416f45507b678af0a554a7fdef0",
+    "sha256_after": "acb8216eec61ce04e1faf1a167d11255966b1416f45507b678af0a554a7fdef0"
+  },
+  "render_contract": {
+    "chart_type": "stacked_bar",
+    "variables": [
+      "metric",
+      "a",
+      "b"
+    ],
+    "numeric_variables": [
+      "a",
+      "b"
+    ],
+    "units": {
+      "a": "m",
+      "b": "m"
+    },
+    "source_sha256": "d0070e15e091cee4300fe6add54fd6c786d853b5bdb387bee97e8370c0045497",
+    "spec_sha256": "acb8216eec61ce04e1faf1a167d11255966b1416f45507b678af0a554a7fdef0",
+    "transformations": "none",
+    "geometry_encoding": [
+      "additive_component_offsets; no totals reported as new results"
+    ],
+    "row_filter": "none",
+    "statistics_computed": false
+  },
+  "style": {
+    "style_profile": "cumcm-vivid",
+    "effective_palette": [
+      "#219C96",
+      "#EC7964",
+      "#DBAE4C",
+      "#577BB5",
+      "#986CB5",
+      "#CB6C99"
+    ],
+    "font_family": "Microsoft YaHei",
+    "base_font_pt": 9.0,
+    "effective_min_font_pt": 9.0,
+    "final_width_mm": 160,
+    "final_height_mm": 105.0,
+    "line_width_pt": 1.45,
+    "legend_strategy": "top",
+    "internal_title": false,
+    "decorative_effects": [],
+    "markers": [
+      "o",
+      "s",
+      "^",
+      "D",
+      "v",
+      "P"
+    ],
+    "line_styles": [
+      "-",
+      "--",
+      "-.",
+      ":"
+    ],
+    "view": null
+  },
+  "outputs": [
+    {
+      "path": "demo-stacked_bar.pdf",
+      "sha256": "a9a5c96552386fa8d46babe8e54ea1b6de8a6d238edb5f1c771b0b0dd6e01ecf",
+      "bytes": 16031
+    },
+    {
+      "path": "demo-stacked_bar.svg",
+      "sha256": "cfa023dcb9637ef04f2cdbafb06f1929cc6c3c963034bb12167fce5a8a74efe3",
+      "bytes": 14582
+    },
+    {
+      "path": "demo-stacked_bar.png",
+      "sha256": "d360c702f48aec0cf0aca1d724df9d39e9f3adf18fd4420ddf04b445da858e1a",
+      "bytes": 63355
+    }
+  ],
+  "reopen_check": {
+    "pdf": true,
+    "svg": true,
+    "png": true
+  },
+  "pdf_reopen_level": "page_reopened_and_rasterized",
+  "warnings": [],
+  "environment": {
+    "matplotlib": "3.11.1"
+  }
+}

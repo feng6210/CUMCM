@@ -1,0 +1,80 @@
+{
+  "renderer": "matplotlib_plot_from_spec",
+  "semantic_claim_validation": false,
+  "status": "RUNTIME_VERIFIED",
+  "spec": {
+    "path": "area-comparison.json",
+    "sha256": "64049a11e61e81a7af050919b358a5b760421be5895f9e9aa26210b531c93baa"
+  },
+  "source": {
+    "path": "series.csv",
+    "sha256": "a9191620d83b5e45af0d1a3e128bad2d677e99d4850444472a494aaea18f0dac",
+    "rows": 6
+  },
+  "render_contract": {
+    "chart_type": "area",
+    "variables": [
+      "时间",
+      "方案甲"
+    ],
+    "transformations": "none",
+    "source_sha256": "a9191620d83b5e45af0d1a3e128bad2d677e99d4850444472a494aaea18f0dac",
+    "spec_sha256": "64049a11e61e81a7af050919b358a5b760421be5895f9e9aa26210b531c93baa"
+  },
+  "outputs": [
+    {
+      "path": "area-comparison.pdf",
+      "sha256": "393b03c937cc96498868c0b578fee759465ea8ca093eea89a68abe2cd66b30c3",
+      "bytes": 12864
+    },
+    {
+      "path": "area-comparison.svg",
+      "sha256": "c72fd82aefa26727d98811606b78480268b38a711d7966cc3cf3714fbcf38903",
+      "bytes": 9781
+    },
+    {
+      "path": "area-comparison.png",
+      "sha256": "9ebb12aecc241c3477e54640d9868399f4d37e8c7a3a1417fe0f28386434a34b",
+      "bytes": 49082
+    }
+  ],
+  "style": {
+    "style_profile": "cumcm-vivid",
+    "palette_profile": "cumcm-vivid",
+    "effective_palette": [
+      "#2A9D8F",
+      "#E76F51",
+      "#E9C46A",
+      "#457B9D",
+      "#9B5DE5",
+      "#F15BB5"
+    ],
+    "series_color_mapping": {
+      "累计量": "#2A9D8F"
+    },
+    "size_profile": "full-width",
+    "base_font_pt": 9.0,
+    "effective_min_font_pt": 8.5,
+    "font_family": "Microsoft YaHei",
+    "final_width_mm": 160.02,
+    "line_width_pt": 1.25,
+    "decorative_effects": [
+      "transparent_fill"
+    ],
+    "legend_strategy": "none",
+    "internal_title": false
+  },
+  "environment": {
+    "matplotlib": "3.11.1",
+    "pandas": "3.0.5",
+    "font_family": "Microsoft YaHei"
+  },
+  "reopen_check": {
+    "pdf": true,
+    "svg": true,
+    "png": true
+  },
+  "warnings": [
+    "RUNTIME_VERIFIED is not EVIDENCE_ELIGIBLE; run claim, numeric, and visual audits."
+  ]
+}

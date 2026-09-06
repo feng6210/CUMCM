@@ -1,0 +1,108 @@
+{
+  "renderer": "render_corpus_chart",
+  "family": "log_x",
+  "schema_version": 1,
+  "status": "RUNTIME_VERIFIED",
+  "semantic_claim_validation": false,
+  "visual_review": "PENDING_REFERENCE_COMPARISON",
+  "data_status": "DEMO_ONLY_SYNTHETIC_NOT_EXPERIMENT_EVIDENCE",
+  "source": {
+    "path": "data.csv",
+    "sha256": "def4d5d402d9b8e667fe87bf3a182969b57f6d183413eed590bd38891c61f5b4",
+    "sha256_after": "def4d5d402d9b8e667fe87bf3a182969b57f6d183413eed590bd38891c61f5b4",
+    "rows": 6
+  },
+  "spec": {
+    "path": "spec.json",
+    "sha256": "8acd696c582ecd89ff094440acfcb4f13032a4446826be8e3056515280ffc203",
+    "sha256_after": "8acd696c582ecd89ff094440acfcb4f13032a4446826be8e3056515280ffc203"
+  },
+  "render_contract": {
+    "chart_type": "log_x",
+    "variables": [
+      "t",
+      "a",
+      "b"
+    ],
+    "numeric_variables": [
+      "t",
+      "a",
+      "b"
+    ],
+    "units": {
+      "t": "s",
+      "a": "m",
+      "b": "m"
+    },
+    "source_sha256": "def4d5d402d9b8e667fe87bf3a182969b57f6d183413eed590bd38891c61f5b4",
+    "spec_sha256": "8acd696c582ecd89ff094440acfcb4f13032a4446826be8e3056515280ffc203",
+    "transformations": "none",
+    "geometry_encoding": [
+      "logarithmic_display_x"
+    ],
+    "row_filter": "none",
+    "statistics_computed": false
+  },
+  "style": {
+    "style_profile": "cumcm-vivid",
+    "effective_palette": [
+      "#219C96",
+      "#EC7964",
+      "#DBAE4C",
+      "#577BB5",
+      "#986CB5",
+      "#CB6C99"
+    ],
+    "font_family": "Microsoft YaHei",
+    "base_font_pt": 9.0,
+    "effective_min_font_pt": 9.0,
+    "final_width_mm": 160,
+    "final_height_mm": 105.0,
+    "line_width_pt": 1.45,
+    "legend_strategy": "top",
+    "internal_title": false,
+    "decorative_effects": [],
+    "markers": [
+      "o",
+      "s",
+      "^",
+      "D",
+      "v",
+      "P"
+    ],
+    "line_styles": [
+      "-",
+      "--",
+      "-.",
+      ":"
+    ],
+    "view": null
+  },
+  "outputs": [
+    {
+      "path": "demo-log_x.pdf",
+      "sha256": "99f4a6a6e002335fe464e3b9828a9f85642e0f7ccfdf286cdb817065aae01ad9",
+      "bytes": 13530
+    },
+    {
+      "path": "demo-log_x.svg",
+      "sha256": "2b82df1301888635242544fb2f7c2f89c03fcbcde34c70caf3562ce24cce6d77",
+      "bytes": 15180
+    },
+    {
+      "path": "demo-log_x.png",
+      "sha256": "6f7478ce531326f9f373b256d180f859c07ac164d1091007cc3cdc5cac5cc93a",
+      "bytes": 89618
+    }
+  ],
+  "reopen_check": {
+    "pdf": true,
+    "svg": true,
+    "png": true
+  },
+  "pdf_reopen_level": "page_reopened_and_rasterized",
+  "warnings": [],
+  "environment": {
+    "matplotlib": "3.11.1"
+  }
+}

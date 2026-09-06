@@ -7,7 +7,8 @@
 - 解压版：[`packages/math-modeling-skills-complete-20260903`](packages/math-modeling-skills-complete-20260903)
 - ZIP：[`dist/math-modeling-skills-complete-20260903.zip`](dist/math-modeling-skills-complete-20260903.zip)
 - Skill 数量：22
-- ZIP SHA-256：`f3b8d94c7f0558736f74eecbd476c7c054aa575413cc9a0d90cffabd65ad77e6`
+- 绘图 Skill：全量本地样式索引（145 文件 / 68 张图片 / 50 个教程槽位）与 22 类基础适配器已同步；
+- ZIP SHA-256：`5d7547644d3ee0294178b79fadc0e4725ed101d5643f85d24f032577b1120ec1`
 
 ## 快速安装
 

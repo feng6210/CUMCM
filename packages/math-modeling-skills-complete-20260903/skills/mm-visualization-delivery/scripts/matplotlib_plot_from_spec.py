@@ -198,7 +198,23 @@ def main() -> int:
             ax.hist(frame[ycol].dropna(), bins=int(spec.get("bins", 20)), alpha=0.48,
                     color=palette[index % len(palette)], label=series_labels[index], edgecolor="white", linewidth=0.4)
     elif chart == "box":
-        boxes = ax.boxplot([frame[ycol].dropna() for ycol in ys], tick_labels=series_labels,
+        if spec.get("precomputed_box"):
+            summary_fields = ["q1", "median", "q3", "whislo", "whishi"]
+            require_columns(frame, summary_fields + [x])
+            values = frame[summary_fields].to_numpy(dtype=float)
+            if not np.isfinite(values).all():
+                raise ValueError("precomputed box summaries must be finite")
+            if not ((frame.whislo <= frame.q1) & (frame.q1 <= frame["median"]) &
+                    (frame["median"] <= frame.q3) & (frame.q3 <= frame.whishi)).all():
+                raise ValueError("invalid precomputed quartile/whisker order")
+            if not spec.get("summary_definition"):
+                raise ValueError("precomputed_box requires upstream summary_definition")
+            summaries = [{**{k:float(row[k]) for k in summary_fields},
+                          "med":float(row["median"]), "label":str(row[x]),"fliers":[]} for _,row in frame.iterrows()]
+            boxes = ax.bxp(summaries, showfliers=False, patch_artist=True,
+                           medianprops={"color":"#20272C","linewidth":1.1})
+        else:
+            boxes = ax.boxplot([frame[ycol].dropna() for ycol in ys], tick_labels=series_labels,
                            showmeans=True, patch_artist=True,
                            medianprops={"color": "#20272C", "linewidth": 1.1},
                            meanprops={"marker": "D", "markerfacecolor": "white",
@@ -206,7 +222,10 @@ def main() -> int:
                            flierprops={"marker": "o", "markerfacecolor": "#5F6B73",
                                       "markeredgecolor": "none", "markersize": 2.5, "alpha": 0.55})
         for index, patch in enumerate(boxes["boxes"]):
-            patch.set_facecolor(palette[index % len(palette)])
+            cycle = int(spec.get("box_color_cycle", len(palette)))
+            if cycle < 1 or cycle > len(palette):
+                raise ValueError("box_color_cycle outside palette")
+            patch.set_facecolor(palette[index % cycle])
             patch.set_alpha(0.72)
             patch.set_edgecolor("#39434A")
     elif chart == "violin":
@@ -247,8 +266,15 @@ def main() -> int:
                     value = float(matrix.iloc[row, column])
                     ax.text(column, row, f"{value:.{decimals}f}", ha="center", va="center", fontsize=base_font_pt - 1)
     elif chart == "area":
-        ax.stackplot(frame[x], *[frame[ycol] for ycol in ys], labels=series_labels,
-                     colors=palette[:len(ys)], alpha=0.72, linewidth=0.35)
+        if spec.get("area_mode") == "single_outline":
+            if len(ys) != 1:
+                raise ValueError("single_outline area requires exactly one supplied series")
+            ax.fill_between(frame[x], 0, frame[ys[0]], color=palette[0], alpha=0.22)
+            ax.plot(frame[x], frame[ys[0]], color=palette[0], linewidth=line_width,
+                    label=series_labels[0])
+        else:
+            ax.stackplot(frame[x], *[frame[ycol] for ycol in ys], labels=series_labels,
+                         colors=palette[:len(ys)], alpha=0.72, linewidth=0.35)
     else:
         raise ValueError(f"unsupported chart_type: {chart}")
 
@@ -304,7 +330,7 @@ def main() -> int:
         "cumcm-data-dense": "cumcm-cool",
         "cumcm-vivid": "cumcm-vivid",
     }
-    style_profile = str(spec.get("style_profile", "cumcm-clean"))
+    style_profile = str(spec.get("style_profile", "cumcm-vivid"))
     palette_profile = str(spec.get("palette_profile", style_to_palette.get(style_profile, "cumcm-muted")))
     effective_line_width = {
         "line": line_width, "line_chart": line_width, "errorbar": line_width,
@@ -313,9 +339,17 @@ def main() -> int:
         "slope": 1.4, "histogram": 0.4, "box": 1.1, "boxplot": 1.1,
         "violin": 1.0, "heatmap": 0.8, "area": 0.35,
     }.get(chart, line_width)
+    if chart == "area" and spec.get("area_mode") == "single_outline":
+        effective_line_width = line_width
     actual_effects = ["transparent_fill"] if chart in {
         "scatter", "histogram", "box", "boxplot", "violin", "area"
     } else ["none"]
+    series_color_mapping = {str(label): palette[index % len(palette)]
+                            for index, label in enumerate(series_labels)}
+    if chart == "box" and spec.get("precomputed_box"):
+        series_color_mapping = {
+            str(label): palette[index % int(spec.get("box_color_cycle", len(palette)))]
+            for index, label in enumerate(frame[x])}
     manifest = {
         "renderer": "matplotlib_plot_from_spec",
         "semantic_claim_validation": False,
@@ -334,9 +368,7 @@ def main() -> int:
             "style_profile": style_profile,
             "palette_profile": palette_profile,
             "effective_palette": used_palette,
-            "series_color_mapping": {} if chart == "heatmap" else {
-                str(label): palette[index % len(palette)] for index, label in enumerate(series_labels)
-            },
+            "series_color_mapping": {} if chart == "heatmap" else series_color_mapping,
             "size_profile": str(spec.get("size_profile", "full-width")),
             "base_font_pt": base_font_pt,
             "effective_min_font_pt": base_font_pt - (1.0 if chart == "heatmap" else 0.5),

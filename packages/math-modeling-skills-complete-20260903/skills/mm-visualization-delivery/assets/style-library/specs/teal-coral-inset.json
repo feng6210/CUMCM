@@ -1,0 +1,29 @@
+{
+  "template_id": "teal-coral-inset",
+  "x": "时间",
+  "series": [
+    {
+      "column": "方案甲",
+      "label": "方案甲",
+      "lower": "下界",
+      "upper": "上界"
+    },
+    {
+      "column": "方案乙",
+      "label": "方案乙"
+    }
+  ],
+  "inset_bounds": [
+    4,
+    8,
+    1,
+    4
+  ],
+  "uncertainty_type": "预先计算的上下界",
+  "uncertainty_source": "../demo-data/teal-coral-inset.csv（仅合成样例）",
+  "xlabel": "时间 / 秒",
+  "ylabel": "响应 / 无量纲",
+  "source_csv": "../demo-data/teal-coral-inset.csv",
+  "figure_id": "teal-coral-inset",
+  "fixture_notice": "SYNTHETIC_TEST_ONLY_NOT_EXPERIMENT_EVIDENCE"
+}

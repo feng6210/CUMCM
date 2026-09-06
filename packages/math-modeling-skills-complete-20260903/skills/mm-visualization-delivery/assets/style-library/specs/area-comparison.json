@@ -1,0 +1,17 @@
+{
+  "figure_id": "area-comparison",
+  "chart_type": "area",
+  "source_csv": "../demo-data/series.csv",
+  "x": "时间",
+  "y": [
+    "方案甲"
+  ],
+  "style_profile": "cumcm-vivid",
+  "xlabel": "时间 / 秒",
+  "ylabel": "累计量 / 无量纲",
+  "fixture_notice": "DEMO_ONLY_SYNTHETIC_NOT_EXPERIMENT_EVIDENCE",
+  "series_labels": [
+    "累计量"
+  ],
+  "area_mode": "single_outline"
+}

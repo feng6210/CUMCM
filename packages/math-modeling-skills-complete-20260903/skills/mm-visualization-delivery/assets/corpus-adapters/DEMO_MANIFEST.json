@@ -1,0 +1,203 @@
+{
+  "data_status": "DEMO_ONLY_SYNTHETIC_NOT_EXPERIMENT_EVIDENCE",
+  "families": [
+    {
+      "family": "scatter_2d",
+      "status": "RUNTIME_VERIFIED",
+      "spec": "scatter_2d\\spec.json",
+      "preview": "scatter_2d/preview/demo-scatter_2d.png",
+      "preview_sha256": "3a831c633f72e00ad8f974212a5231e2a2c33a76f0a4ef31867fe67f538e82d4",
+      "visual_review": "PENDING_REFERENCE_COMPARISON",
+      "warnings": []
+    },
+    {
+      "family": "scatter_3d",
+      "status": "RUNTIME_VERIFIED",
+      "spec": "scatter_3d\\spec.json",
+      "preview": "scatter_3d/preview/demo-scatter_3d.png",
+      "preview_sha256": "1c8c162fcfd435513f9ba9827a84677024aec8f6aa672777ba9d4bcda1e5ccd3",
+      "visual_review": "PENDING_REFERENCE_COMPARISON",
+      "warnings": []
+    },
+    {
+      "family": "line",
+      "status": "RUNTIME_VERIFIED",
+      "spec": "line\\spec.json",
+      "preview": "line/preview/demo-line.png",
+      "preview_sha256": "460a41483cb3b078a9079bacd8b243a5c66bcb6e8d12b942f391c733ffcee056",
+      "visual_review": "PENDING_REFERENCE_COMPARISON",
+      "warnings": []
+    },
+    {
+      "family": "log_x",
+      "status": "RUNTIME_VERIFIED",
+      "spec": "log_x\\spec.json",
+      "preview": "log_x/preview/demo-log_x.png",
+      "preview_sha256": "6f7478ce531326f9f373b256d180f859c07ac164d1091007cc3cdc5cac5cc93a",
+      "visual_review": "PENDING_REFERENCE_COMPARISON",
+      "warnings": []
+    },
+    {
+      "family": "log_y",
+      "status": "RUNTIME_VERIFIED",
+      "spec": "log_y\\spec.json",
+      "preview": "log_y/preview/demo-log_y.png",
+      "preview_sha256": "2f2ca98320d02539b5e3247b7760059971e3ccb62727aed24ed9d662155fb27a",
+      "visual_review": "PENDING_REFERENCE_COMPARISON",
+      "warnings": []
+    },
+    {
+      "family": "log_xy",
+      "status": "RUNTIME_VERIFIED",
+      "spec": "log_xy\\spec.json",
+      "preview": "log_xy/preview/demo-log_xy.png",
+      "preview_sha256": "9cde6ce24fdcc3ea405228bb73d9a8ea7fb00c48ef1b04f8c0b54aa0e9c2882f",
+      "visual_review": "PENDING_REFERENCE_COMPARISON",
+      "warnings": []
+    },
+    {
+      "family": "bar",
+      "status": "RUNTIME_VERIFIED",
+      "spec": "bar\\spec.json",
+      "preview": "bar/preview/demo-bar.png",
+      "preview_sha256": "88d0173c48bbace7d162fbfc8f573474c85f8149d791d776ed381b39b48cded3",
+      "visual_review": "PENDING_REFERENCE_COMPARISON",
+      "warnings": []
+    },
+    {
+      "family": "grouped_bar",
+      "status": "RUNTIME_VERIFIED",
+      "spec": "grouped_bar\\spec.json",
+      "preview": "grouped_bar/preview/demo-grouped_bar.png",
+      "preview_sha256": "e03bc3df46bc6ab90f10f9c901d585cc58d85895df870cdda2c4b91530556aaf",
+      "visual_review": "PENDING_REFERENCE_COMPARISON",
+      "warnings": []
+    },
+    {
+      "family": "stacked_bar",
+      "status": "RUNTIME_VERIFIED",
+      "spec": "stacked_bar\\spec.json",
+      "preview": "stacked_bar/preview/demo-stacked_bar.png",
+      "preview_sha256": "d360c702f48aec0cf0aca1d724df9d39e9f3adf18fd4420ddf04b445da858e1a",
+      "visual_review": "PENDING_REFERENCE_COMPARISON",
+      "warnings": []
+    },
+    {
+      "family": "dual_axis",
+      "status": "RUNTIME_VERIFIED",
+      "spec": "dual_axis\\spec.json",
+      "preview": "dual_axis/preview/demo-dual_axis.png",
+      "preview_sha256": "b95ca251e546835aff14b2d46f015e824680ba9bde26deaddd8a770caea13c8f",
+      "visual_review": "PENDING_REFERENCE_COMPARISON",
+      "warnings": []
+    },
+    {
+      "family": "line_interval",
+      "status": "RUNTIME_VERIFIED",
+      "spec": "line_interval\\spec.json",
+      "preview": "line_interval/preview/demo-line_interval.png",
+      "preview_sha256": "5313bf0a26e283d844eb3a3dd0ef2b8a51839bb9fd1b5d2b49bbdf7ee2a23b15",
+      "visual_review": "PENDING_REFERENCE_COMPARISON",
+      "warnings": []
+    },
+    {
+      "family": "contour",
+      "status": "RUNTIME_VERIFIED",
+      "spec": "contour\\spec.json",
+      "preview": "contour/preview/demo-contour.png",
+      "preview_sha256": "c219d1b8c58ecd931dc136d8128c98b900deabd04c35632e0a96ce0b50aeeb92",
+      "visual_review": "PENDING_REFERENCE_COMPARISON",
+      "warnings": []
+    },
+    {
+      "family": "surface_wireframe",
+      "status": "RUNTIME_VERIFIED",
+      "spec": "surface_wireframe\\spec.json",
+      "preview": "surface_wireframe/preview/demo-surface_wireframe.png",
+      "preview_sha256": "700abb27e471d213c82e55755951ca23f102d3d6ebae7e48abd226fa297eddf3",
+      "visual_review": "PENDING_REFERENCE_COMPARISON",
+      "warnings": []
+    },
+    {
+      "family": "area_3d",
+      "status": "RUNTIME_VERIFIED",
+      "spec": "area_3d\\spec.json",
+      "preview": "area_3d/preview/demo-area_3d.png",
+      "preview_sha256": "240065b8211c7d2f6eab22fc418483537582f39a03aa48185463206462888788",
+      "visual_review": "PENDING_REFERENCE_COMPARISON",
+      "warnings": []
+    },
+    {
+      "family": "pie",
+      "status": "RUNTIME_VERIFIED",
+      "spec": "pie\\spec.json",
+      "preview": "pie/preview/demo-pie.png",
+      "preview_sha256": "cad6e0a98eef50d9dd8695b03d62ab71e645d43ea854054c2a98f12391214326",
+      "visual_review": "PENDING_REFERENCE_COMPARISON",
+      "warnings": []
+    },
+    {
+      "family": "donut",
+      "status": "RUNTIME_VERIFIED",
+      "spec": "donut\\spec.json",
+      "preview": "donut/preview/demo-donut.png",
+      "preview_sha256": "1b77a05bf32f9aa0762dc544fd420bd4242daffe282b2e023ee144895ac52d29",
+      "visual_review": "PENDING_REFERENCE_COMPARISON",
+      "warnings": []
+    },
+    {
+      "family": "radar",
+      "status": "RUNTIME_VERIFIED",
+      "spec": "radar\\spec.json",
+      "preview": "radar/preview/demo-radar.png",
+      "preview_sha256": "243f388d93172ecdc21c9b0204c755bd143388715a85250ab82b95ed40cdafa1",
+      "visual_review": "PENDING_REFERENCE_COMPARISON",
+      "warnings": []
+    },
+    {
+      "family": "vector_field",
+      "status": "RUNTIME_VERIFIED",
+      "spec": "vector_field\\spec.json",
+      "preview": "vector_field/preview/demo-vector_field.png",
+      "preview_sha256": "f1eb919b17b952cb31e487fbd17ddd7834db69ed4148fbd7227ef73daaba2aff",
+      "visual_review": "PENDING_REFERENCE_COMPARISON",
+      "warnings": []
+    },
+    {
+      "family": "step",
+      "status": "RUNTIME_VERIFIED",
+      "spec": "step\\spec.json",
+      "preview": "step/preview/demo-step.png",
+      "preview_sha256": "a51bf6fa0d03e241009b117161d5845a5b82f3562090727f0b1709c6d800ffc2",
+      "visual_review": "PENDING_REFERENCE_COMPARISON",
+      "warnings": []
+    },
+    {
+      "family": "stem",
+      "status": "RUNTIME_VERIFIED",
+      "spec": "stem\\spec.json",
+      "preview": "stem/preview/demo-stem.png",
+      "preview_sha256": "0fe4410f73f0d2ea11fe32cb686c1a3e347e662d450351eb36c779951148e431",
+      "visual_review": "PENDING_REFERENCE_COMPARISON",
+      "warnings": []
+    },
+    {
+      "family": "bubble",
+      "status": "RUNTIME_VERIFIED",
+      "spec": "bubble\\spec.json",
+      "preview": "bubble/preview/demo-bubble.png",
+      "preview_sha256": "af0bf1e2ee5b3bcd837f2202fc6bf3b646eb7397ecc2837515c69317adf61e41",
+      "visual_review": "PENDING_REFERENCE_COMPARISON",
+      "warnings": []
+    },
+    {
+      "family": "parallel_coordinates",
+      "status": "RUNTIME_VERIFIED",
+      "spec": "parallel_coordinates\\spec.json",
+      "preview": "parallel_coordinates/preview/demo-parallel_coordinates.png",
+      "preview_sha256": "55ad1d30e57ba704c1577c2da25d3ebcabc9eea3888d3d3799bb819b63d6dd75",
+      "visual_review": "PENDING_REFERENCE_COMPARISON",
+      "warnings": []
+    }
+  ]
+}

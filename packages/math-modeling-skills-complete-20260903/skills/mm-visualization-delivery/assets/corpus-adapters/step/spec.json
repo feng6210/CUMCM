@@ -1,0 +1,34 @@
+{
+  "family": "step",
+  "figure_id": "demo-step",
+  "source_csv": "data.csv",
+  "xlabel": "时间 / s",
+  "ylabel": "响应 / m",
+  "units": {
+    "t": "s",
+    "a": "m",
+    "b": "m",
+    "lower": "m",
+    "upper": "m",
+    "x": "m",
+    "y": "m",
+    "z": "m",
+    "u": "m/s",
+    "v": "m/s",
+    "size": "个",
+    "percent": "%"
+  },
+  "data_status": "DEMO_ONLY_SYNTHETIC_NOT_EXPERIMENT_EVIDENCE",
+  "x": "t",
+  "series": [
+    {
+      "column": "a",
+      "label": "方案甲"
+    },
+    {
+      "column": "b",
+      "label": "方案乙"
+    }
+  ],
+  "step_where": "post"
+}

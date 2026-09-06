@@ -1,0 +1,38 @@
+{
+  "family": "dual_axis",
+  "figure_id": "demo-dual_axis",
+  "source_csv": "data.csv",
+  "xlabel": "时间 / s",
+  "ylabel": "响应 / m",
+  "units": {
+    "t": "s",
+    "a": "m",
+    "b": "J",
+    "lower": "m",
+    "upper": "m",
+    "x": "m",
+    "y": "m",
+    "z": "m",
+    "u": "m/s",
+    "v": "m/s",
+    "size": "个",
+    "percent": "%"
+  },
+  "data_status": "DEMO_ONLY_SYNTHETIC_NOT_EXPERIMENT_EVIDENCE",
+  "x": "t",
+  "series": [
+    {
+      "column": "a",
+      "label": "方案甲",
+      "axis": "left"
+    },
+    {
+      "column": "b",
+      "label": "方案乙",
+      "axis": "right"
+    }
+  ],
+  "ylabel_right": "能耗 / J",
+  "relationship": "DEMO_ONLY共同时间轴上的两种给定测量",
+  "aligned_alternative_check": "真实使用须与上下对齐子图核对；演示仅展示双轴能力"
+}

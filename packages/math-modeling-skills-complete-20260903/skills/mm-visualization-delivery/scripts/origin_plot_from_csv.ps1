@@ -16,7 +16,7 @@ param(
   [string]$YLabel = '',
   [string[]]$SeriesLabel = @(),
   [switch]$ShowDataLabels,
-  [ValidateSet('cumcm-clean','cumcm-highlight','cumcm-vivid','legacy')][string]$StyleProfile = 'cumcm-clean',
+  [ValidateSet('cumcm-clean','cumcm-highlight','cumcm-vivid','legacy')][string]$StyleProfile = 'cumcm-vivid',
   [ValidateRange(65,180)][double]$FinalWidthMm = 160,
   [string]$PythonExe = '',
   [switch]$PublicationTheme,

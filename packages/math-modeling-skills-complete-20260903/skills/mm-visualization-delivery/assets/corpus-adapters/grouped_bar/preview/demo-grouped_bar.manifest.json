@@ -1,0 +1,104 @@
+{
+  "renderer": "render_corpus_chart",
+  "family": "grouped_bar",
+  "schema_version": 1,
+  "status": "RUNTIME_VERIFIED",
+  "semantic_claim_validation": false,
+  "visual_review": "PENDING_REFERENCE_COMPARISON",
+  "data_status": "DEMO_ONLY_SYNTHETIC_NOT_EXPERIMENT_EVIDENCE",
+  "source": {
+    "path": "data.csv",
+    "sha256": "d0070e15e091cee4300fe6add54fd6c786d853b5bdb387bee97e8370c0045497",
+    "sha256_after": "d0070e15e091cee4300fe6add54fd6c786d853b5bdb387bee97e8370c0045497",
+    "rows": 6
+  },
+  "spec": {
+    "path": "spec.json",
+    "sha256": "b7e5e5b766af53cafff6221c84f2f84f0e6f547b269a413153c97600d7224dc1",
+    "sha256_after": "b7e5e5b766af53cafff6221c84f2f84f0e6f547b269a413153c97600d7224dc1"
+  },
+  "render_contract": {
+    "chart_type": "grouped_bar",
+    "variables": [
+      "metric",
+      "a",
+      "b"
+    ],
+    "numeric_variables": [
+      "a",
+      "b"
+    ],
+    "units": {
+      "a": "m",
+      "b": "m"
+    },
+    "source_sha256": "d0070e15e091cee4300fe6add54fd6c786d853b5bdb387bee97e8370c0045497",
+    "spec_sha256": "b7e5e5b766af53cafff6221c84f2f84f0e6f547b269a413153c97600d7224dc1",
+    "transformations": "none",
+    "geometry_encoding": [],
+    "row_filter": "none",
+    "statistics_computed": false
+  },
+  "style": {
+    "style_profile": "cumcm-vivid",
+    "effective_palette": [
+      "#219C96",
+      "#EC7964",
+      "#DBAE4C",
+      "#577BB5",
+      "#986CB5",
+      "#CB6C99"
+    ],
+    "font_family": "Microsoft YaHei",
+    "base_font_pt": 9.0,
+    "effective_min_font_pt": 9.0,
+    "final_width_mm": 160,
+    "final_height_mm": 105.0,
+    "line_width_pt": 1.45,
+    "legend_strategy": "top",
+    "internal_title": false,
+    "decorative_effects": [],
+    "markers": [
+      "o",
+      "s",
+      "^",
+      "D",
+      "v",
+      "P"
+    ],
+    "line_styles": [
+      "-",
+      "--",
+      "-.",
+      ":"
+    ],
+    "view": null
+  },
+  "outputs": [
+    {
+      "path": "demo-grouped_bar.pdf",
+      "sha256": "6fec02bbc660180aedac8de4b326d10430c6f0cb6a7b69ba49411ae9889e1715",
+      "bytes": 16134
+    },
+    {
+      "path": "demo-grouped_bar.svg",
+      "sha256": "aefebb133040fcf8e40fd0e33e1b070be7dd2defc046ca14a1a8e56f663428a0",
+      "bytes": 15259
+    },
+    {
+      "path": "demo-grouped_bar.png",
+      "sha256": "e03bc3df46bc6ab90f10f9c901d585cc58d85895df870cdda2c4b91530556aaf",
+      "bytes": 70584
+    }
+  ],
+  "reopen_check": {
+    "pdf": true,
+    "svg": true,
+    "png": true
+  },
+  "pdf_reopen_level": "page_reopened_and_rasterized",
+  "warnings": [],
+  "environment": {
+    "matplotlib": "3.11.1"
+  }
+}

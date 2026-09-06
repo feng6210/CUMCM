@@ -25,7 +25,7 @@ READER_TASKS = {"orientation", "mechanism", "main_result", "comparison", "valida
 STYLE_PROFILES = {
     "cumcm-clean", "cumcm-highlight", "cumcm-data-dense", "cumcm-vivid", "cumcm-mechanism"
 }
-LEGEND_STRATEGIES = {"top", "right", "inside", "direct", "none"}
+LEGEND_STRATEGIES = {"top", "right", "inside", "direct", "none", "colorbar"}
 EXACT_VALUE_LOCATIONS = {
     "result_table", "machine_readable_table", "figure_annotation", "caption", "not_applicable"
 }
@@ -42,7 +42,8 @@ DATA_TYPES = {
     "heatmap", "trajectory", "map", "contour", "errorbar", "area", "scatter_matrix",
     "vector_field", "pareto", "dumbbell", "slope", "interval_band", "interval_timeline",
     "sensitivity", "convergence", "data_plot", "surface_3d", "bar_3d", "radar", "pie",
-    "donut", "dual_axis",
+    "donut", "dual_axis", "scatter_2d", "scatter_3d", "log_x", "log_y", "log_xy",
+    "line_interval", "surface_wireframe", "area_3d", "step", "stem", "bubble", "parallel_coordinates",
 }
 DIAGRAM_TYPES = {
     "flowchart", "workflow", "architecture", "structural", "state_machine", "sequence",
@@ -50,8 +51,9 @@ DIAGRAM_TYPES = {
     "coordinate_system", "free_body_diagram",
 }
 DATA_BACKENDS = {"origin", "matlab", "python", "python/matplotlib", "matplotlib"}
-DIAGRAM_BACKENDS = {"visio", "figurespec", "figurespec/svg", "svg", "mermaid"}
-RESTRICTED_TYPES = {"radar", "pie", "donut", "dual_axis", "surface_3d", "bar_3d"}
+GENERATIVE_BACKENDS = {"image2", "imagegen"}
+DIAGRAM_BACKENDS = {"visio", "figurespec", "figurespec/svg", "svg", "mermaid"} | GENERATIVE_BACKENDS
+RESTRICTED_TYPES = {"radar", "pie", "donut", "dual_axis", "surface_3d", "bar_3d", "scatter_3d", "surface_wireframe", "area_3d", "parallel_coordinates"}
 
 REQUIRED_FIGURE_FIELDS = (
     "figure_id", "question_id", "purpose", "source_data", "variables", "units",
@@ -250,8 +252,10 @@ def validate_visual_grammar(entry: dict[str, Any], prefix: str, require_outputs:
         if require_outputs:
             audit = entry.get("effect_audit")
             required_checks = {
-                "occlusion_check", "grayscale_check", "final_size_check", "effect_removed_comparison"
+                "occlusion_check", "grayscale_check", "final_size_check"
             }
+            if semantics == "encoded":
+                required_checks.add("effect_removed_comparison")
             if not isinstance(audit, dict):
                 errors.append(f"{prefix}.effect_audit: required for final outputs with decorative effects")
             else:
@@ -472,6 +476,100 @@ def validate_backend_report(
         if not declared_font or not any(declared_font in font or font in declared_font for font in pdf_fonts if font):
             errors.append(f"{prefix}.backend_report.pdf_fonts: declared font was not embedded")
 
+    elif backend in GENERATIVE_BACKENDS:
+        from visual_review_contract import bound_file
+        from scientific_illustration import choose_backend, validate_brief
+        if report.get("actual_backend") != backend:
+            errors.append(f"{prefix}.backend_report.actual_backend: renderer mismatch")
+        if report.get("editability") != "prompt_and_spec_only":
+            errors.append(f"{prefix}.backend_report.editability: raster is not an editable vector")
+        try:
+            receipt_path = bound_file(report.get("receipt"), report_path.parent, "generation receipt")
+            receipt = load_document(receipt_path)
+            request_path = bound_file(receipt.get("request"), receipt_path.parent, "generation request")
+            request = load_document(request_path)
+            prompt_path = bound_file(receipt.get("prompt"), receipt_path.parent, "generation prompt")
+            record_path = bound_file(receipt.get("tool_record"), receipt_path.parent, "native tool record")
+            record = load_document(record_path)
+            generation_brief_path = bound_file(report.get("generation_brief"), report_path.parent,
+                                               "original generation brief")
+            generation_brief = load_document(generation_brief_path)
+            if not all(isinstance(item, dict) for item in (receipt, request, record, generation_brief)):
+                raise ValueError("receipt, request, tool record, and generation brief must be objects")
+            tool = receipt.get("tool_name", "")
+            names = request.get("tool_names")
+            if not isinstance(names, list) or not all(isinstance(name, str) for name in names):
+                raise ValueError("request.tool_names must list the actual discovered tools")
+            valid_generator = tool in {"image_gen__imagegen", "image_gen.imagegen"} if backend == "imagegen" else (
+                isinstance(tool, str) and "codex" in tool and "image2" in tool and
+                (tool.endswith("__generate") or tool.endswith("__generate_start")))
+            if not valid_generator or tool not in names:
+                raise ValueError("receipt.tool_name must identify the requested generator, not a companion/status tool")
+            choose_backend(backend, names)
+            if request.get("actual_backend") != backend or request.get("status") != "READY_TO_CALL_NOT_GENERATED":
+                raise ValueError("request backend/status does not match the generation contract")
+            if request.get("prompt_sha256") != file_sha256(prompt_path):
+                raise ValueError("request prompt binding is stale")
+            original_hash = file_sha256(generation_brief_path)
+            if request.get("brief_sha256") != original_hash or report.get("generation_brief_sha256") != original_hash:
+                raise ValueError("request/report original brief binding is stale")
+            if request.get("source_files") != generation_brief.get("source_files"):
+                raise ValueError("request source bindings differ from original generation brief")
+            editable_path = Path(entry["editable_output"])
+            editable_path = editable_path if editable_path.is_absolute() else base_dir / editable_path
+            editable_brief = load_document(editable_path)
+            validate_brief(editable_brief, editable_path.parent)
+            original_content = {key: value for key, value in generation_brief.items() if key != "source_files"}
+            editable_content = {key: value for key, value in editable_brief.items() if key != "source_files"}
+            if original_content != editable_content:
+                raise ValueError("editable brief differs from the brief used for generation")
+            original_sources = generation_brief.get("source_files", [])
+            current_sources = editable_brief.get("source_files", [])
+            if [source["sha256"] for source in original_sources] != [source["sha256"] for source in current_sources]:
+                raise ValueError("editable brief source content differs from generation sources")
+            if current_sources != report.get("sources"):
+                raise ValueError("runtime source bindings differ from editable brief")
+            if editable_brief.get("figure_id") != entry.get("figure_id"):
+                raise ValueError("generation brief figure_id differs from intent")
+            if editable_brief.get("narrative_role", "mechanism") != entry.get("narrative_role"):
+                raise ValueError("generation brief role differs from intent")
+            if record.get("tool_name") != tool or record.get("request_sha256") != file_sha256(request_path):
+                raise ValueError("tool record tool/request binding is stale")
+            if record.get("output_sha256") != latex_hash:
+                raise ValueError("tool record output binding is stale")
+            response = record.get("response")
+            if not isinstance(response, (dict, list)) or not response:
+                raise ValueError("actual tool response must be retained")
+            def has_tool_failure(value):
+                if isinstance(value, list):
+                    return any(has_tool_failure(child) for child in value)
+                if not isinstance(value, dict):
+                    return False
+                if value.get("isError") or value.get("error") or str(value.get("status", "")).casefold() in {
+                    "failed", "error", "cancelled", "canceled", "blocked", "rejected"
+                }:
+                    return True
+                return any(has_tool_failure(child) for child in value.values() if isinstance(child, (dict, list)))
+            if has_tool_failure(response):
+                raise ValueError("failed tool response cannot substantiate native generation")
+            if receipt.get("actual_backend") != backend or receipt.get("status") != "completed" or receipt.get("native_generation") is not True:
+                errors.append(f"{prefix}: native generation receipt is not successful")
+            if receipt.get("output_sha256") != latex_hash:
+                errors.append(f"{prefix}: native receipt output hash mismatch")
+            from PIL import Image
+            image_path = Path(entry["latex_output"])
+            image_path = image_path if image_path.is_absolute() else base_dir / image_path
+            with Image.open(image_path) as native_image:
+                native_image.load()
+                if native_image.format != "PNG" or min(native_image.size) < 256:
+                    raise ValueError("native output must be a real PNG of at least 256 pixels on each axis")
+                if list(native_image.size) != report.get("pixel_size"):
+                    raise ValueError("runtime pixel size differs from reopened native output")
+        except (OSError, ValueError, KeyError, TypeError, AttributeError) as exc:
+            errors.append(f"{prefix}: invalid native generation receipt: {exc}")
+        reopen = report.get("reopen_check")
+        if not isinstance(reopen, dict) or reopen.get("png") is not True or reopen.get("brief") is not True:
+            errors.append(f"{prefix}: native output/brief reopen check required")
     else:
         reopen = report.get("reopen_check")
         if reopen is not True and not (isinstance(reopen, dict) and reopen and all(value is True for value in reopen.values())):
@@ -507,7 +605,7 @@ def validate_backend_report(
 
 def validate_entry(
     entry: dict[str, Any], index: int, base_dir: Path,
-    require_sources: bool, require_outputs: bool,
+    require_sources: bool, require_outputs: bool, require_visual_review: bool = False,
 ) -> tuple[list[str], list[str]]:
     prefix = f"figures[{index}]"
     errors: list[str] = []
@@ -549,8 +647,8 @@ def validate_entry(
         if not specific_reason(entry.get("restricted_chart_justification")):
             errors.append(f"{prefix}.restricted_chart_justification: required for '{chart}'")
         if not specific_reason(entry.get("alternative_2d_check")):
-            errors.append(f"{prefix}.alternative_2d_check: explain why a 2D alternative is insufficient")
-    if chart in {"surface_3d", "bar_3d"} and not nonempty(entry.get("projection_or_exact_table")):
+            errors.append(f"{prefix}.alternative_2d_check: explain the 2D/3D tradeoff or companion view")
+    if chart in {"surface_3d", "bar_3d", "scatter_3d", "surface_wireframe", "area_3d"} and not nonempty(entry.get("projection_or_exact_table")):
         errors.append(f"{prefix}.projection_or_exact_table: required for 3D figures")
 
     if bool(entry.get("internal_title", False)):
@@ -565,6 +663,10 @@ def validate_entry(
         for field in ("uncertainty_type", "uncertainty_level", "sample_size_source"):
             if not nonempty(entry.get(field)):
                 errors.append(f"{prefix}.{field}: required for error bars")
+    if chart == "line_interval":
+        for field in ("uncertainty_definition", "uncertainty_source"):
+            if not nonempty(entry.get(field)):
+                errors.append(f"{prefix}.{field}: required for precomputed interval bands")
 
     panel_count = entry.get("panel_count")
     if panel_count is not None:
@@ -608,9 +710,18 @@ def validate_entry(
         errors.append(f"{prefix}.editable_output: MATLAB source must use .fig, .m or .json")
     if backend == "mermaid" and editable.suffix.lower() not in {".mmd", ".md"}:
         errors.append(f"{prefix}.editable_output: Mermaid source must use .mmd or .md")
+    if backend in GENERATIVE_BACKENDS:
+        if editable.suffix.lower() != ".json" or entry.get("editability") != "prompt_and_spec_only":
+            errors.append(f"{prefix}.editable_output: native raster requires JSON brief and prompt_and_spec_only")
+        if latex.suffix.lower() != ".png":
+            errors.append(f"{prefix}.latex_output: native image must remain a real PNG")
+        if role not in {"orientation", "mechanism"}:
+            errors.append(f"{prefix}: native image generation cannot render quantitative evidence")
+        if chart in {"geometry", "coordinate_system", "free_body_diagram"} or entry.get("exact_geometry_required"):
+            errors.append(f"{prefix}: exact geometry requires deterministic rendering")
     if latex.suffix.lower() not in {".pdf", ".png"}:
         errors.append(f"{prefix}.latex_output: expected .pdf or .png")
-    elif latex.suffix.lower() == ".png" and chart != "map":
+    elif latex.suffix.lower() == ".png" and chart != "map" and backend not in GENERATIVE_BACKENDS:
         warnings.append(f"{prefix}.latex_output: vector PDF is preferred")
 
     variables = entry.get("variables")
@@ -663,6 +774,9 @@ def validate_entry(
             resolved_hashes.get("editable_output", ""),
             resolved_hashes.get("latex_output", ""),
         ))
+        if require_visual_review or entry.get("style_reference") or backend in GENERATIVE_BACKENDS:
+            from visual_review_contract import validate_review
+            errors.extend(f"{prefix}: {err}" for err in validate_review(entry, base_dir))
 
     return errors, warnings
 
@@ -903,10 +1017,14 @@ def main() -> int:
     group.add_argument("--allow-missing-sources", dest="require_sources", action="store_false")
     parser.set_defaults(require_sources=True)
     parser.add_argument("--require-outputs", action="store_true")
+    parser.add_argument("--require-visual-review", action="store_true",
+                        help="Require hash-bound independent reference-based visual reviews for final figures")
     parser.add_argument("--require-coverage", action="store_true")
     parser.add_argument("--strict", action="store_true")
     parser.add_argument("--output", type=Path, default=None)
     args = parser.parse_args()
+    if args.require_visual_review and not args.require_outputs:
+        parser.error("--require-visual-review needs --require-outputs (final artifact mode)")
 
     report: dict[str, Any] = {
         "checker": "figure-intent-reader-task-and-artifact-integrity",
@@ -928,7 +1046,7 @@ def main() -> int:
         base_dir = (args.base_dir or args.intent_file.parent).resolve()
         for index, entry in enumerate(entries):
             errors, warnings = validate_entry(
-                entry, index, base_dir, args.require_sources, args.require_outputs
+                entry, index, base_dir, args.require_sources, args.require_outputs, args.require_visual_review
             )
             report["errors"].extend(errors)
             report["warnings"].extend(warnings)

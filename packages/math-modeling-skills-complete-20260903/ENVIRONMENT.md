@@ -6,7 +6,7 @@
 
     py -m pip install -r requirements.txt
 
-其中 `PyYAML` 用于 YAML 计划与配置，`numpy`、`pandas`、`scipy`、`scikit-learn`、`networkx` 用于模型和验证脚本，`matplotlib` 用于可复现绘图，`openpyxl` 用于 Excel 数据读写。
+其中 `PyYAML` 用于 YAML 计划与配置，`numpy`、`pandas`、`scipy`、`scikit-learn`、`networkx` 用于模型和验证脚本，`matplotlib` 与 `Pillow` 用于可复现绘图和栅格重开检查，`openpyxl` 用于 Excel 数据读写。
 
 安装后可运行：
 
@@ -32,4 +32,3 @@ Origin 和 Microsoft Visio 是可选的、需要单独许可的桌面软件，�
 ## 离线边界
 
 Skills、模板、脚本和回退绘图链均包含在包内。运行不要求访问远端仓库，也不要求 SSH、GPU、实验跟踪服务或会议论文模板。
-

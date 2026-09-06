@@ -1,0 +1,15 @@
+{
+  "template_id": "warm-surface-projection",
+  "x": "参数甲",
+  "y": "参数乙",
+  "z": "响应",
+  "vmin": 0,
+  "vmax": 10,
+  "xlabel": "参数甲 / 无量纲",
+  "ylabel": "参数乙 / 无量纲",
+  "zlabel": "响应 / 无量纲",
+  "colorbar_label": "响应 / 无量纲",
+  "source_csv": "../demo-data/warm-surface-projection.csv",
+  "figure_id": "warm-surface-projection",
+  "fixture_notice": "SYNTHETIC_TEST_ONLY_NOT_EXPERIMENT_EVIDENCE"
+}

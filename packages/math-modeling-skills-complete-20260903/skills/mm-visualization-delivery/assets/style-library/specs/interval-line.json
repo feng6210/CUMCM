@@ -1,0 +1,17 @@
+{
+  "figure_id": "interval-line",
+  "chart_type": "errorbar",
+  "source_csv": "../demo-data/series.csv",
+  "x": "时间",
+  "y": [
+    "方案甲"
+  ],
+  "style_profile": "cumcm-vivid",
+  "xlabel": "时间 / 秒",
+  "ylabel": "示例响应 / 无量纲",
+  "fixture_notice": "DEMO_ONLY_SYNTHETIC_NOT_EXPERIMENT_EVIDENCE",
+  "yerr": "误差",
+  "uncertainty_type": "合成测试半宽",
+  "uncertainty_level": "仅测试",
+  "sample_size_source": "仅测试不是估计区间"
+}

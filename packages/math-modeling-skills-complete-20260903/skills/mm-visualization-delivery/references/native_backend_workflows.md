@@ -20,7 +20,7 @@ powershell -ExecutionPolicy Bypass -File scripts/origin_plot_from_csv.ps1 `
   -XLabel '时间/s' -YLabel '响应值'
 ```
 
-脚本默认采用 `cumcm-clean`：不写图内标题、不硬编码轴范围、使用白底并按最终插图宽度反推标签字号。需要突出经验证主方案时使用 `-StyleProfile cumcm-highlight`；用户偏好鲜明观感且最终尺寸仍清楚时可试用 `-StyleProfile cumcm-vivid`。Origin 的 LabTalk 样式请求不能直接当作生效证据：脚本会从最终 PDF 回读实际填色、页面尺寸和有效最小字号，报告的 `effective_palette` 才是最终真值；若它与 `FIGURE_INTENT.visual_grammar.palette` 不一致，最终门失败并应转 MATLAB/Matplotlib。旧参数 `-PublicationTheme` 仅作为 `cumcm-clean` 兼容别名。
+脚本默认采用 `cumcm-vivid`（用户可显式选择 `cumcm-clean`）：不写图内标题、不硬编码轴范围、使用白底并按最终插图宽度反推标签字号。需要突出经验证主方案时使用 `-StyleProfile cumcm-highlight`；本地样式卡优先指导鲜明配色与最终构图。Origin 的 LabTalk 样式请求不能直接当作生效证据：脚本会从最终 PDF 回读实际填色、页面尺寸和有效最小字号，报告的 `effective_palette` 才是最终真值；若它与 `FIGURE_INTENT.visual_grammar.palette` 不一致，最终门失败并应转 MATLAB/Matplotlib。旧参数 `-PublicationTheme` 仅作为 `cumcm-clean` 兼容别名。
 
 成功产物：
 
@@ -88,4 +88,4 @@ py -3.12 scripts/render_and_reopen_check.py figures/model_flow.svg figures/model
 - PDF 导出失败但原生文件成功：交付状态仍为未完成，因为默认 LaTeX 链需要 PDF。
 - 原生应用计算出的任何新数值不能凭图读取后写入论文；必须导出数值并进入结果验证。
 - 最终 `FIGURE_INTENT` 必须登记 `backend_report` 与 `backend_report_sha256`。原生后端报告需证明保存、导出、清理后哈希和原生重开；FigureSpec/SVG/Mermaid 回退使用 `render_and_reopen_check.py --source <规范文件> --output <报告>` 生成来源哈希、输出哈希与重开报告。多个来源重复传入 `--source`，报告必须覆盖每个声明来源。
-- GitHub、ARIS、云端图片模型、网络字体和远程 shim 都不是运行条件。
+- 离线数值图和确定性矢量分支不依赖远端仓库、云端图片模型、网络字体或 shim。科研生成式插图是可选分支，须按 scientific_illustration_workflow.md 发现并调用实际可用的原生工具；不能称离线已完成原生图像生成。

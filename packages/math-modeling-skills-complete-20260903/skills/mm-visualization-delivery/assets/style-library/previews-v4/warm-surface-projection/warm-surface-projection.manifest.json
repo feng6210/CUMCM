@@ -1,0 +1,96 @@
+{
+  "renderer": "render_reference_template",
+  "template_id": "warm-surface-projection",
+  "status": "RUNTIME_VERIFIED",
+  "semantic_claim_validation": false,
+  "source": {
+    "path": "warm-surface-projection.csv",
+    "sha256": "f5ca91fc981fb39f467940fe23225afcbfa67b0c333c675b1825ff7ccc3e5782",
+    "sha256_after": "f5ca91fc981fb39f467940fe23225afcbfa67b0c333c675b1825ff7ccc3e5782",
+    "rows": 30
+  },
+  "spec": {
+    "path": "warm-surface-projection.json",
+    "sha256": "26338f538e6dfec91ef45eba35b71236d84c8b4168438885254870129541a5d8",
+    "sha256_after": "26338f538e6dfec91ef45eba35b71236d84c8b4168438885254870129541a5d8"
+  },
+  "render_contract": {
+    "chart_type": "surface_3d",
+    "source_sha256": "f5ca91fc981fb39f467940fe23225afcbfa67b0c333c675b1825ff7ccc3e5782",
+    "spec_sha256": "26338f538e6dfec91ef45eba35b71236d84c8b4168438885254870129541a5d8",
+    "transformations": "none",
+    "variables": [
+      "参数甲",
+      "参数乙",
+      "响应"
+    ],
+    "matrix_shape": [
+      6,
+      5
+    ],
+    "fixed_color_range": [
+      0.0,
+      10.0
+    ],
+    "projection_z": -1.8000000000000003,
+    "surface_semantics": "faces connect supplied rectangular grid nodes; no fitted or newly sampled values"
+  },
+  "outputs": [
+    {
+      "path": "warm-surface-projection.pdf",
+      "sha256": "44ac0e9a99acd9830d438fff7d19e2eed2e713a206df9ed8ff81edb8b66b011c",
+      "bytes": 20857
+    },
+    {
+      "path": "warm-surface-projection.svg",
+      "sha256": "5f815def0c9df4b537762b27089218c5a626a1f9cf82d6e3925589ea1c7bf62f",
+      "bytes": 35013
+    },
+    {
+      "path": "warm-surface-projection.png",
+      "sha256": "ce2c10552b880614fcfa0a1ced4483d71e67947d9935599cc8824a775187f966",
+      "bytes": 270848
+    }
+  ],
+  "style": {
+    "style_profile": "cumcm-vivid",
+    "palette_profile": "warm-surface-projection",
+    "effective_palette": [
+      "#FFF1CB",
+      "#F6C36B",
+      "#EE875E",
+      "#CF5267",
+      "#713F72"
+    ],
+    "final_width_mm": 160,
+    "final_height_mm": 112,
+    "base_font_pt": 9.0,
+    "effective_min_font_pt": 8.5,
+    "font_family": "Microsoft YaHei",
+    "line_width_pt": 0.65,
+    "internal_title": false,
+    "decorative_effects": [
+      "surface_grid_connections_not_fit",
+      "same_values_base_projection",
+      "measured_points"
+    ],
+    "legend_strategy": "colorbar",
+    "size_profile": "full-width",
+    "series_color_mapping": {}
+  },
+  "environment": {
+    "matplotlib": "3.11.1",
+    "pandas": "3.0.5",
+    "font_family": "Microsoft YaHei"
+  },
+  "reopen_check": {
+    "pdf": true,
+    "svg": true,
+    "png": true
+  },
+  "pdf_reopen_level": "external_pypdfium2_page_reopened_and_rasterized",
+  "visual_review": "PENDING_REFERENCE_COMPARISON",
+  "warnings": [
+    "Render validity is not numerical or claim validation; review reference style at final size."
+  ]
+}

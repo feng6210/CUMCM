@@ -7,7 +7,7 @@ description: Plan and render traceable CUMCM figures, diagrams, tables, Excel wo
 
 ## Purpose
 
-把已验证结果转成**少而有效、能解释模型、能支撑结论、可追溯且适合 CUMCM 正文**的图、表、Excel 和论文证据映射。
+把已验证结果转成**讲解充分、视觉精致、数值准确、可追溯且适合 CUMCM 中文论文**的图表。当前用户偏好本地素材中的鲜明配色、组合构图和适用的三维表现；不默认压少图量，也不把朴素等同于科研质量。其他用户明确指定的审美或正式模板优先。
 
 本 Skill 明确分成两个阶段：
 
@@ -26,7 +26,7 @@ description: Plan and render traceable CUMCM figures, diagrams, tables, Excel wo
 
 ## When not to use
 
-- 结果尚未验证或数据来源不明。
+- 定量图的结果尚未验证或数据来源不明；这不阻止根据已批准的模型说明规划机制图。
 - 用户希望通过改坐标轴、删点或视觉效果夸大差异。
 - 只是因为“每问应该有图”而没有真实读者任务。
 - 一个三线表或一句量化文字已经比图更清楚。
@@ -45,6 +45,7 @@ description: Plan and render traceable CUMCM figures, diagrams, tables, Excel wo
 ### Phase A — Figure planning
 
 1. 读取 [figure_coverage_planning.md](references/figure_coverage_planning.md)、[local_chart_code_distillation.md](references/local_chart_code_distillation.md)、[local_plot_style_distillation.md](references/local_plot_style_distillation.md) 和总控的 [国奖与优秀论文叙事—图表蒸馏](../math-modeling-orchestrator/references/local_corpus/award_paper_narrative_figure_distillation.md)。
+   样式设计先读 [全量样式库](references/full_corpus_style_library.md)，用 `scripts/corpus_style_library.py search` 检索 `assets/full-corpus/catalog.json` 的全部图片变体、教程图型和技巧；不得默认只在六张代表卡里选。每个变体保留配色、构图、标记与视角，复合面板不按文件夹名简化。基础实现再读 [样式卡与可运行模板](references/style_reference_library.md) 或 `render_corpus_chart.py --schema`。打开本地来源图（可访问且hash匹配时）或随包原创预览，记录实际 `style_reference`；这些参考只提供风格，不提供本题数据。全量入库与逐张复刻/运行验证分开记录。本 Skill 的用户风格选择优先于历史蒸馏中的“低装饰/二维优先”经验。
 2. 逐问做“读者障碍审查”，而不是图量审查：
    - 不知道对象怎么运动/交互 → `orientation/mechanism`；
    - 看不懂几何、受力、case、状态或约束 → `mechanism`；
@@ -54,21 +55,24 @@ description: Plan and render traceable CUMCM figures, diagrams, tables, Excel wo
    - 只是工程审计或微小数值差 → 默认附录/支撑材料。
 3. 对每个读者任务选择 `figure | table | text | appendix | not_applicable`。**不设置每问最少图数，也不要求每个核心结论必须有图。** 精确值通常由表格承担。
 4. 优先设计模型解释链。复杂机理/几何题通常先考虑：物理场景 → 关键几何/状态 → case/投影 → 数学判据。模型结构从单主体变成多主体、多烟幕、多阶段时，如果理解结构发生变化，可以重新画协同/区间关系。
-5. 能用二维示意、截面、投影、时间轴说明时，不为了“高级感”强行 3D。3D 仅在第三维真实承载空间部署或响应结构时使用。
+5. 有真实空间坐标、双参数响应或三维轨迹时，主动考虑三维图与投影/热图组合；二维和三维按解释效果选择，不要求先证明二维完全不能用。不把类别柱形挤成立体块制造差异。
 6. 算法流程图只在算法本身成为理解障碍时使用，必须包含真实输入、关键分支/迭代、停止条件和输出；不画章节目录式“输入→建模→求解→结果”。
 7. 生成 `FIGURE_PLAN.yaml` / `coverage_plan`，但允许某问没有正文图。每个保留图必须写 `reader_takeaway` 和“如果删除会损失什么理解”。
+   逐问检查场景、方法、结果、对照和敏感性是否讲充分；已有双参数扰动结果时优先考虑敏感性热力矩阵。缺数据则登记所需实验，不用生成图片补造数值。新模型或新实验范围仍回到用户批准阶段。
 
 ### Phase B — Figure rendering
 
 8. 只有 `representation: figure` 的条目才建立完整 `FIGURE_INTENT.yaml`：`figure_id`、`question_id`、`narrative_role`、`reader_takeaway`、`claim_id`（如承担声明）、源数据、变量、单位、变换、后端、图型、最终宽度、placement 和中文 caption。
 9. 数据图依据数据结构选型：趋势用折线，长类别比较用水平点图/条形，两状态优先哑铃/坡度，分布用原始点+箱线/小提琴，连续关系用散点，二维标量场用固定色域热图/等高线，多目标用 Pareto，区间/遮蔽/调度优先时间轴或区间条。
-10. 机制、流程和结构图先列实体、关系、分组、主流向与反馈，再选择 Visio 或确定性 FigureSpec；符号、坐标和边界必须与方程一致。
-11. 后端选择：常规数据图可用 Origin、MATLAB 或 Matplotlib；复杂机制/结构图优先 Visio/FigureSpec。后端选择由图型和可编辑需求决定，不由“炫酷程度”决定。
+10. 机制、流程和结构图先列实体、关系、分组、主流向与反馈。科研总览/方法插图按 [科研插图调用协议](references/scientific_illustration_workflow.md) 调用可用的原生图像生成能力；精确几何、复杂算法分支或要求逐节点编辑时采用 Visio/FigureSpec。
+11. 定量图用 Origin、MATLAB、Matplotlib；不能交给图像模型生成曲线、热力矩阵或结果数字。科研插图区分 `image2` 专用桥接与 `imagegen` 内置工具，发现、调用、回执、重开后才标记已运行；不得虚构工具或把一种后端冒充另一种。
 12. 所有渲染只消费已有机器可读结果。相关系数、拟合、平滑、区间、显著性、排名和新统计量必须在分析/验证代码中先计算并回写结果；渲染器不偷偷生成新结论。
 13. 原生文件与导出文件同时保存：Origin `.opju + PDF`，Visio `.vsdx + PDF`，FigureSpec `JSON/SVG + PDF`，Matplotlib/MATLAB 保存脚本/spec 与 PDF。PDF 优先用于 XeLaTeX；PNG 仅用于真实栅格或明确回退。
+    原生生成的科研插图保留 PNG、中文 brief、prompt、调用回执和审查记录。`editable_output` 此时只能指向可修改的 JSON brief，且 `editability: prompt_and_spec_only`；不承诺像素图有逐节点编辑能力，不伪装 `.vsdx`、矢量 SVG 或矢量 PDF。
 14. 在论文最终尺寸重开，检查裁切、遮挡、字体、线宽、图例、单位、视觉重心、灰度/色盲可辨。多面板常规优先 2--4 个；超过 4 个要有不可拆分理由，超过 6 个优先附录。
 15. `competition_compact` 正文优先保留：关键场景/机制、核心策略/结果、真正影响结论的验证。完整收敛、多种子、微小误差、后端 audit、版本谱系、参数全扫描默认进附录/支撑材料。`research_audit` 可完整保留。
-16. 最终运行 `scripts/validate_figure_intent.py` 检查结构、来源、输出和叙事角色。coverage 检查验证的是**读者任务有合理载体**，不是固定图数。
+16. 按 [参考对照与独立视觉审查](references/reference_visual_review.md) 将样图与最终尺寸成图并列检查；数值检查与审美审查分别记录。由未参与该图生成的子 agent 做视觉审查（可用且允许时），如不可用则如实标记非独立，不能自称独立通过。
+    最终运行 `scripts/validate_figure_intent.py --require-sources --require-outputs --require-visual-review --require-coverage`（另传 intent 路径）。检查的是哈希绑定的证据与审查记录，不是脚本替人判断“好看”。结果/图/brief 改变后旧审查失效。
 17. 对 Origin/Visio/PDF 做匿名和元数据检查，生成交付清单与哈希。
 
 ## Output format
@@ -96,8 +100,9 @@ description: Plan and render traceable CUMCM figures, diagrams, tables, Excel wo
 - `orientation` 不承担数值结论；`mechanism` 像推导的一部分；`evidence/validation` 必须绑定真实来源。
 - 证据与验证不是强制成对放正文。验证如果只用于工程审计，可进入附录。
 - 图内默认不放论文式标题；中文解释写入 LaTeX `\caption{}`。
-- 默认风格为 `cumcm-clean`；方案择优可用 `cumcm-highlight`，高密度数据用 `cumcm-data-dense`，机制图用 `cumcm-mechanism`。鲜明效果只有在增强语义层级时才使用。
-- 类别编码不能只依赖红绿颜色；误差棒、星号、区间、渐变必须绑定真实统计/变量语义。
+- 默认从本地样式卡选型，常规数据图采用 `cumcm-vivid`；`cumcm-clean` 保留为用户选择或黑白优先场景，不自动覆盖鲜明风格。可用渐变、透明填充、纹理、阴影与层次构图，不能遮挡数据或让装饰冒充新变量。
+- 全量样式库不删掉相同图型的配色、构图或视角变体。基础适配器成功不代表原图中的所有复合面板均已复刻；未适配部分保留检索与定制路线，不虚报全量运行闭环。原目录移动或不可用时，核心绘图仍用随包原创模板运行。
+- 类别编码不能只依赖红绿颜色；误差棒、星号、区间必须绑定真实统计。渐变若编码变量要记录色域，纯装饰则声明非语义并检查不误导。
 - 两状态对比先评估哑铃/坡度；长标签优先横向图；完整精确值进入表格。
 - 三维图必须有真实第三维必要性，并提供投影、切片、关键点或精确表之一。
 - 不用软件 GUI、代码截图、章节目录式流程图作为正式证据图。
