@@ -2,6 +2,8 @@
 
 ## 路由与技能调用
 
+先区分“代码/软件绘制示意图”与“生成式科研插图”。数模比赛中的几何、光路、受力、边界条件与坐标图默认读取 geometry_diagram_workflow.md，实际绘制可编辑矢量图。用户明确要求画出来时，本文件的原生图像生成分支不适用。
+
 1. 定量曲线、热力矩阵、数值响应面交给 MATLAB/Origin/Matplotlib。image2/imagegen 仅生成 orientation/mechanism，不生成统计证据。
 2. 精确坐标/受力、严格拓扑或逐节点编辑需求优先 Visio/FigureSpec；科研方法总览、机制插图可用原生生成，不能把栅格假称可编辑矢量。
 3. 发现当前真实工具列表。默认 auto：有内置 image_gen 则读取并调用 imagegen Skill；内置不可用但专用 codex-image2 桥可调用时读取 paper-illustration-image2 Skill 再走桥接。明确指定 image2 则只尝试该桥，缺失先如实报告，不暗换。

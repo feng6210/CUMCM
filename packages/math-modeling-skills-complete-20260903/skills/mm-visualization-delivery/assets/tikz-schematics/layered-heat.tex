@@ -1,0 +1,55 @@
+% Original schematic: 1D steady conduction, perfect thermal contact,
+% no volumetric source, constant area; hot ambient on left, cold on right.
+% Thicknesses are illustrative, not proportional to measured values.
+\documentclass[tikz,border=7pt]{standalone}
+\usepackage[UTF8,fontset=windows]{ctex}
+\usepackage{amsmath}
+\usetikzlibrary{arrows.meta,calc,patterns}
+\definecolor{ink}{HTML}{27394B}
+\definecolor{hot}{HTML}{C65F36}
+\definecolor{cold}{HTML}{24678D}
+\definecolor{sand}{HTML}{F2D6B3}
+\definecolor{foam}{HTML}{D9E7E2}
+\definecolor{skin}{HTML}{C8D9EA}
+\begin{document}
+\begin{tikzpicture}[x=1.13cm,y=1.13cm,font=\small,
+ line cap=round,line join=round,>=Latex,
+ dim/.style={<->,line width=.45pt,ink!75},
+ aux/.style={densely dashed,line width=.4pt,ink!40},
+ every node/.style={text=ink,inner sep=2pt}]
+% A slight extrusion clarifies the specimen, but x is the only model dimension.
+\foreach \xa/\xb/\col in {0/1.4/sand,1.4/4.4/foam,4.4/5.8/skin}{
+ \filldraw[fill=\col!65,draw=ink!60,line width=.5pt] (\xa,3)--(\xb,3)--++(.4,.4)--($(\xa,3)+(.4,.4)$)--cycle;
+ \filldraw[fill=\col,draw=ink!75,line width=.65pt] (\xa,0) rectangle (\xb,3);
+}
+\filldraw[fill=skin!80!ink,draw=ink!70,line width=.5pt] (5.8,0)--(6.2,.4)--(6.2,3.4)--(5.8,3)--cycle;
+\node at (.7,2.55) {表层};
+\node at (2.9,2.55) {隔热层};
+\node at (5.1,2.55) {内层};
+\node at (.7,.65) {$k_1$};
+\node at (2.9,.65) {$k_2$};
+\node at (5.1,.65) {$k_3$};
+% A single flux arrow encodes steady 1D conservation; not a temperature profile.
+\draw[-{Latex[length=2.8mm,width=1.8mm]},hot,line width=1.1pt] (-.65,1.55)--(6.6,1.55);
+\node[above=6pt,text=hot,fill=foam,inner sep=2pt] at (2.9,1.55) {$q''=-k_i\,\dfrac{\mathrm dT_i}{\mathrm dx}$};
+\node[text=hot,align=center] at (-1.35,2.5) {高温环境\\[4pt]$T_{\infty,h}$};
+\node[text=cold,align=center] at (7.12,2.5) {低温环境\\[4pt]$T_{\infty,c}$};
+\node[text=hot,align=center] at (-1.32,.65) {对流换热\\[4pt]$h_h$};
+\node[text=cold,align=center] at (7.12,.65) {对流换热\\[4pt]$h_c$};
+% Layer dimensions and the model's x-axis are kept separate.
+\foreach \xx/\lab in {0/0,1.4/x_1,4.4/x_2,5.8/L}{
+ \draw[aux] (\xx,0)--(\xx,-1.0);
+ \node[below=3pt] at (\xx,-1.0) {$\lab$};
+}
+\draw[-{Latex[length=2mm]},ink,line width=.65pt] (-.4,-1)--(6.7,-1) node[right] {$x$};
+\foreach \xa/\xb/\lab in {0/1.4/d_1,1.4/4.4/d_2,4.4/5.8/d_3}{
+ \draw[dim] (\xa,-.43)--(\xb,-.43) node[midway,above=2pt] {$\lab$};
+}
+% One annotation for both interfaces, linked without crossing labels or flux.
+\draw[ink!55,line width=.45pt] (1.4,3.05)--(1.4,4.05)--(4.4,4.05)--(4.4,3.05);
+\node[align=center,fill=white,inner sep=5pt] at (2.9,4.05)
+ {理想接触界面\\[4pt]$T_i=T_{i+1},\qquad q_i''=q_{i+1}''$};
+\node[text=ink!65,font=\footnotesize] at (2.9,-1.72)
+ {一维稳态 · 无内热源 · 厚度不按比例};
+\end{tikzpicture}
+\end{document}

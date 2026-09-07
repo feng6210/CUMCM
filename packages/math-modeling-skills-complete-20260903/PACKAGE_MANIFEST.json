@@ -1,20 +1,15 @@
 {
   "schema_version": "2.0",
   "package": "math-modeling-skills-complete-20260903",
-  "generated_date": "2026-09-06",
+  "generated_date": "2026-09-07",
   "skill_count": 22,
-  "file_count": 351,
-  "total_bytes": 5153470,
+  "file_count": 365,
+  "total_bytes": 5464861,
   "hash_algorithm": "SHA-256",
   "manifest_excludes": [
     "PACKAGE_MANIFEST.json",
     "SHA256SUMS.txt"
   ],
-  "visualization_update": {
-    "source_inventory": "145 files / 68 image variants / 37 source files / 50 tutorial slots",
-    "runtime_adapters": 22,
-    "runtime_data": "DEMO_ONLY_SYNTHETIC_NOT_EXPERIMENT_EVIDENCE"
-  },
   "files": [
     {
       "path": "check_environment.ps1",
@@ -23,8 +18,8 @@
     },
     {
       "path": "ENVIRONMENT.md",
-      "bytes": 1516,
-      "sha256": "61ddee8d3b679fc1c47ca0b03573e609857247bec429b3f18d837aac5c86811e"
+      "bytes": 1947,
+      "sha256": "02e4a5d9460a7367985f03d7c4ee0ae505d4301b697501997ce3ba53536b638e"
     },
     {
       "path": "install.ps1",
@@ -33,8 +28,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 2321,
-      "sha256": "c6a42345c61ca8a438b8ad42c0474f98ead85183fbcd820315f2a4d283b4060d"
+      "bytes": 2701,
+      "sha256": "ce2c5ae759d78b1599765b7620eec53b7173f545521bf8a617842b8a64c13fae"
     },
     {
       "path": "requirements.txt",
@@ -713,8 +708,8 @@
     },
     {
       "path": "skills/mm-visualization-delivery/agents/openai.yaml",
-      "bytes": 590,
-      "sha256": "74835e9e77da770b295d779557a2fbc5210b4d0d19b65a578d7bb7ee1f14dc95"
+      "bytes": 592,
+      "sha256": "20d5ac6fb5f5f6301f5a41ad468ef746f52c749141926e419f84c3fdc93ba8b9"
     },
     {
       "path": "skills/mm-visualization-delivery/assets/corpus-adapters/area_3d/data.csv",
@@ -1592,6 +1587,51 @@
       "sha256": "26338f538e6dfec91ef45eba35b71236d84c8b4168438885254870129541a5d8"
     },
     {
+      "path": "skills/mm-visualization-delivery/assets/tikz-schematics/force-balance.pdf",
+      "bytes": 16001,
+      "sha256": "db855d1034206ee422419befc8d8a160a1a451bd4f9fa96fb9806aab7ba73d0c"
+    },
+    {
+      "path": "skills/mm-visualization-delivery/assets/tikz-schematics/force-balance.png",
+      "bytes": 94443,
+      "sha256": "0faf1d53c46bebc69414634f4415a6b84c298b40d36faabf41597b20a21bb0f8"
+    },
+    {
+      "path": "skills/mm-visualization-delivery/assets/tikz-schematics/force-balance.tex",
+      "bytes": 3103,
+      "sha256": "c472bfa4c587f30f4f1ef88e1ec8154474dfcbed6454ad7a93166a3683db1767"
+    },
+    {
+      "path": "skills/mm-visualization-delivery/assets/tikz-schematics/layered-heat.pdf",
+      "bytes": 22572,
+      "sha256": "7a6c52858ef7560d33b30e9ae989f9d3bca500cd0accf0425a4f68d940309d1a"
+    },
+    {
+      "path": "skills/mm-visualization-delivery/assets/tikz-schematics/layered-heat.png",
+      "bytes": 107704,
+      "sha256": "524e6416ee00f6d31b26ddb90dff720681be549a7cba7b1330b38170cf7420c5"
+    },
+    {
+      "path": "skills/mm-visualization-delivery/assets/tikz-schematics/layered-heat.tex",
+      "bytes": 2836,
+      "sha256": "49358cee5a8350dc72d6cf1ddd071b8f49cf8389ce850eb807f89b33cb088033"
+    },
+    {
+      "path": "skills/mm-visualization-delivery/assets/tikz-schematics/REVIEW.json",
+      "bytes": 4244,
+      "sha256": "d41fade4425c9122078aa277d1fe77ee0471a858d3cfa50f07a65917114e6ef0"
+    },
+    {
+      "path": "skills/mm-visualization-delivery/references/approved_tikz_schematics.md",
+      "bytes": 5804,
+      "sha256": "32b3b38c7b9e9561f322c419e6b70e389f808bde38e8a677f38a86a521c9ba5c"
+    },
+    {
+      "path": "skills/mm-visualization-delivery/references/award_mechanism_distillation.md",
+      "bytes": 4007,
+      "sha256": "cdb439d4db4c6957b107dc67904766a7206ff12743c21338e88b10ef5b4867e7"
+    },
+    {
       "path": "skills/mm-visualization-delivery/references/delivery_checklist.md",
       "bytes": 5930,
       "sha256": "091dd2f7ccd30466ea1d324086c72b5f06eaea15736269406d301c1f5d2ada1c"
@@ -1605,6 +1645,11 @@
       "path": "skills/mm-visualization-delivery/references/full_corpus_style_library.md",
       "bytes": 6390,
       "sha256": "e19f1cc52e54128b1739e1ba9b3d6bdcaa2872b70dfb7051cae1a1bcf3d156df"
+    },
+    {
+      "path": "skills/mm-visualization-delivery/references/geometry_diagram_workflow.md",
+      "bytes": 4624,
+      "sha256": "5c52863e9d02a04bd59cf6b16938f49a1d4d4f613168c638051d054d8cf7a480"
     },
     {
       "path": "skills/mm-visualization-delivery/references/github_derivation_notice.md",
@@ -1627,6 +1672,11 @@
       "sha256": "2dc167028fb51caa30fdeb84377ee96f4c6319ec6c1901b1328da9c0a953e55a"
     },
     {
+      "path": "skills/mm-visualization-delivery/references/mechanism_source_inventory.json",
+      "bytes": 18922,
+      "sha256": "b3c6f42b5dac0cc125ed9bcc338eb7ca653d76c40617767058be2678f78154c8"
+    },
+    {
       "path": "skills/mm-visualization-delivery/references/native_backend_workflows.md",
       "bytes": 7122,
       "sha256": "52c2268978a44fe0030d4faac8b5f10afb57dfecabdd4e7df3a68a65339329c1"
@@ -1638,8 +1688,8 @@
     },
     {
       "path": "skills/mm-visualization-delivery/references/scientific_illustration_workflow.md",
-      "bytes": 4952,
-      "sha256": "db107bf3b750951964d4450e16ccd5153592f413d216aa51ead87516a78be0ab"
+      "bytes": 5257,
+      "sha256": "e94bc0419002d7a842c3105760ef94d75cca0e050fdc8612b60736879d0686e9"
     },
     {
       "path": "skills/mm-visualization-delivery/references/style_reference_library.md",
@@ -1662,9 +1712,19 @@
       "sha256": "eeadd8bdefe603897ac2e40fcbd95debbff80948d8a0b3bb143d2aafe2bf45cf"
     },
     {
+      "path": "skills/mm-visualization-delivery/scripts/draw_mechanism_examples.py",
+      "bytes": 6807,
+      "sha256": "5a4b73855468ead31648ab9f65f1410700facccf376364e29c264feb6e292f7d"
+    },
+    {
       "path": "skills/mm-visualization-delivery/scripts/figure_renderer.py",
       "bytes": 30192,
       "sha256": "05b3314f6fd81ec0395308606a279c465e6cfff1af3adac95e8a3516f2de35af"
+    },
+    {
+      "path": "skills/mm-visualization-delivery/scripts/geometry_diagram_from_spec.py",
+      "bytes": 10680,
+      "sha256": "b2becc5b3c885fff8ba36f102b4df6acc5d24e5c7bf09d8fc8dfebcbeedce342"
     },
     {
       "path": "skills/mm-visualization-delivery/scripts/matlab_plot_from_spec.m",
@@ -1722,6 +1782,11 @@
       "sha256": "4a447ab2191951ea75b46809c7432d51f8c1b060cc88760c6a7601125c5f6bfb"
     },
     {
+      "path": "skills/mm-visualization-delivery/scripts/test_geometry_primitives.py",
+      "bytes": 1048,
+      "sha256": "396b821b2423b100740902ef454ea7da7747a6043f7b4c081f60aca9fb766e08"
+    },
+    {
       "path": "skills/mm-visualization-delivery/scripts/test_reference_templates.py",
       "bytes": 6533,
       "sha256": "e6edea11b147d0fe8918c055a1360b2ee2355f651daeca5eecb9a030b6626128"
@@ -1763,13 +1828,13 @@
     },
     {
       "path": "skills/mm-visualization-delivery/SKILL.md",
-      "bytes": 11162,
-      "sha256": "e0bf330f9ff021ffa85a9c56284dec347e810485600439b508ce6e44e3f50bb7"
+      "bytes": 12629,
+      "sha256": "5bcb0c5775e9cf3c65cebb1b13e1956c70183983ce2c7a6140f4150617982b80"
     },
     {
       "path": "VALIDATION_REPORT.json",
-      "bytes": 5252,
-      "sha256": "8d32c51d5e04fc5f4471ea2218ea714b266b5fbf2ffa40ef2299d8fc75444aed"
+      "bytes": 11263,
+      "sha256": "0972227dcf80921981a39a2c8cfb1b5539d3f2666a1d7309b4286d517f66c76b"
     }
   ]
 }

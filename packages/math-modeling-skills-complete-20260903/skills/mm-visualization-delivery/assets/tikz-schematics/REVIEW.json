@@ -1,0 +1,63 @@
+{
+  "review_date": "2026-09-07",
+  "reviewer": "two_tikz_review",
+  "source": "same-family-fresh",
+  "scope": "仅两张TikZ演示图的渲染视觉、源码语义、页面尺寸及文件哈希核对；不是模型求解、语料库全量审核或第三方认证。",
+  "overall_status": "PASS_DEMO_WITH_NOTES",
+  "inspection": {
+    "opened_pngs": ["force-balance.png", "layered-heat.png"],
+    "read_sources": ["force-balance.tex", "layered-heat.tex"],
+    "reference_pages_opened": ["../schematic-corpus-full-20260907/pages/doc-067-p6.png", "../schematic-corpus-full-20260907/pages/doc-118-p6.png"],
+    "pdf_measurement": "pdfinfo; PDFs each have one page",
+    "comparison": "参考页采用论文内嵌的紧凑线条图、数学符号和必要尺寸。当前两图沿用这种信息结构，新增低饱和配色与少量体积暗示；未复制参考页的具体模型。"
+  },
+  "figures": [
+    {
+      "name": "force-balance",
+      "status": "PASS_DEMO_WITH_NOTES",
+      "pdf_page_pt": [324.07, 278.13],
+      "pdf_page_mm_approx": [114.32, 98.12],
+      "semantic_checks": {
+        "pin_support_at_A": "PASS",
+        "F_at_B_points_left": "PASS",
+        "G_at_midpoint_C_points_down": "PASS",
+        "Ax_right_Ay_up": "PASS",
+        "theta_matches_atan2_3_5_5_2": "PASS",
+        "L_parallel_to_AB_normal_offset": "PASS",
+        "F_moment_arm_L_sin_theta": "PASS",
+        "G_moment_arm_L_cos_theta_over_2": "PASS",
+        "static_equilibrium": "图示作用方向允许静力平衡；源码说明F*yB=G*xC，图上箭长明确不表示力大小。未代入或声称求得力值。"
+      },
+      "visual_checks": "当前重新打开的PNG中未发现文字与线条明显碰撞、文字截断或箭头作用点不清；蓝色外力/反力与暖色重力有区分，中心线、虚线投影和尺寸线层级可读。",
+      "revision_history": "初次查看时L斜尺寸线穿过Ay标签。主代理将Ay标签移至箭头右侧后重新编译，本审核再次打开最终PNG并读取最终源码，确认碰撞已消除。",
+      "notes": ["总体约114毫米宽，尺寸线偏移形成较大左上留白，但仍属可嵌入中文论文的紧凑矢量示意。进一步缩小排版需重新检查小字可读性。"],
+      "sha256": {
+        "tex": "C472BFA4C587F30F4F1EF88E1EC8154474DFCBED6454AD7A93166A3683DB1767",
+        "pdf": "DB855D1034206EE422419BEFC8D8A160A1A451BD4F9FA96FB9806AAB7BA73D0C",
+        "png": "0FAF1D53C46BEBC69414634F4415A6B84C298B40D36FAABF41597B20A21BB0F8"
+      }
+    },
+    {
+      "name": "layered-heat",
+      "status": "PASS_DEMO_WITH_NOTES",
+      "pdf_page_pt": [325.24, 223.18],
+      "pdf_page_mm_approx": [114.74, 78.73],
+      "semantic_checks": {
+        "hot_left_cold_right": "PASS",
+        "heat_flux_in_positive_x_direction": "PASS",
+        "three_layer_thickness_and_interface_positions": "PASS",
+        "ideal_contact_temperature_and_flux_continuity": "PASS; 温度连续公式须按标题在各界面处理解",
+        "Fourier_law_uses_conductivity_k": "PASS",
+        "steady_1D_no_source_nonproportional_thickness": "PASS; 图底明确标示",
+        "constant_cross_section": "形体及统一q双撇箭头与常截面假设一致，但图中未以文字单独定义常截面"
+      },
+      "visual_checks": "实际打开PNG未见明显文字碰撞或裁切。三层浅色、深色边界、暖色热流和冷侧蓝色文字易区分。厚度尺寸与x轴分行，不会混读。顶部界面引线的横段被白底文字遮盖，仅保留两条短竖线，仍能指示两个界面。",
+      "notes": ["建议论文图注或符号表补一句：k_i为第i层导热系数，各层截面积相同；当前图中仅标k_i，不能替代符号定义。", "界面温度连续式为常见简写；如后续用于公式推导，应写明在x=x_i处取两侧极限，避免误读为整层温度处处相等。", "未做灰度打印实样或论文最终缩放后的版面复核。"],
+      "sha256": {
+        "tex": "49358CEE5A8350DC72D6CF1DDD071B8F49CF8389CE850EB807F89B33CB088033",
+        "pdf": "7A6C52858EF7560D33B30E9AE989F9D3BCA500CD0ACCF0425A4F68D940309D1A",
+        "png": "524E6416EE00F6D31B26DDB90DFF720681BE549A7CBA7B1330B38170CF7420C5"
+      }
+    }
+  ]
+}

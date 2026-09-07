@@ -1,199 +1,348 @@
 {
-  "schema_version": "2.0",
-  "generated_at": "2026-09-06T07:38:23.691176+00:00",
-  "validator": "quick_validate.py",
-  "python_utf8": true,
+  "validation_date": "2026-09-07",
   "skill_count": 22,
-  "passed": 22,
-  "failed": 0,
-  "package_checks": {
-    "every_skill_has_skill_md": true,
-    "every_skill_has_agents_openai_yaml": true,
-    "cache_or_compiled_python_artifacts": 0,
-    "github_or_network_runtime_required": false,
-    "ai_usage_compliance_capability_present": false,
-    "full_local_style_index_present": true,
-    "corpus_adapter_catalog_present": true,
-    "pillow_declared": true
-  },
-  "test_results": {
-    "quick_validate": {
-      "passed": 22,
-      "total": 22
-    },
-    "new_corpus_renderer": {
-      "passed": 85,
-      "failed": 0,
-      "source": "tmp/github-package-corpus-tests-20260906/TEST_REPORT.json"
-    },
-    "reference_templates": {
-      "passed": 24,
-      "total": 24,
-      "source": "tmp/github-package-reference-tests-20260906/TEST_REPORT.json"
-    },
-    "scientific_illustration_contract": {
-      "passed": 14,
-      "failed": 0,
-      "actual_native_generation": false,
-      "source": "tmp/github-package-illustration-tests-20260906/regression-results.json"
-    },
-    "cumcm_style": {
-      "status": "PASSED",
-      "source": "tmp/github-package-style-test stdout"
-    },
-    "previous_visual_contract": {
-      "passed": 38,
-      "failed": 0,
-      "source": "previous-contract-regression.json"
-    }
-  },
-  "results": [
+  "status": "PASS_SCOPED_RELEASE_CHECKS",
+  "checks": [
     {
-      "skill": "math-modeling-orchestrator",
-      "status": "PASSED",
-      "exit_code": 0,
-      "output": "Skill is valid!\n"
+      "name": "structure/math-modeling-orchestrator",
+      "returncode": 0,
+      "output": "Skill is valid!"
     },
     {
-      "skill": "mm-abstract-polisher",
-      "status": "PASSED",
-      "exit_code": 0,
-      "output": "Skill is valid!\n"
+      "name": "structure/mm-abstract-polisher",
+      "returncode": 0,
+      "output": "Skill is valid!"
     },
     {
-      "skill": "mm-classification-clustering",
-      "status": "PASSED",
-      "exit_code": 0,
-      "output": "Skill is valid!\n"
+      "name": "structure/mm-classification-clustering",
+      "returncode": 0,
+      "output": "Skill is valid!"
     },
     {
-      "skill": "mm-contest-operations-planner",
-      "status": "PASSED",
-      "exit_code": 0,
-      "output": "Skill is valid!\n"
+      "name": "structure/mm-contest-operations-planner",
+      "returncode": 0,
+      "output": "Skill is valid!"
     },
     {
-      "skill": "mm-data-eda-cleaning",
-      "status": "PASSED",
-      "exit_code": 0,
-      "output": "Skill is valid!\n"
+      "name": "structure/mm-data-eda-cleaning",
+      "returncode": 0,
+      "output": "Skill is valid!"
     },
     {
-      "skill": "mm-dynamic-mechanism-models",
-      "status": "PASSED",
-      "exit_code": 0,
-      "output": "Skill is valid!\n"
+      "name": "structure/mm-dynamic-mechanism-models",
+      "returncode": 0,
+      "output": "Skill is valid!"
     },
     {
-      "skill": "mm-evaluation-models",
-      "status": "PASSED",
-      "exit_code": 0,
-      "output": "Skill is valid!\n"
+      "name": "structure/mm-evaluation-models",
+      "returncode": 0,
+      "output": "Skill is valid!"
     },
     {
-      "skill": "mm-graph-network-models",
-      "status": "PASSED",
-      "exit_code": 0,
-      "output": "Skill is valid!\n"
+      "name": "structure/mm-graph-network-models",
+      "returncode": 0,
+      "output": "Skill is valid!"
     },
     {
-      "skill": "mm-model-innovation-designer",
-      "status": "PASSED",
-      "exit_code": 0,
-      "output": "Skill is valid!\n"
+      "name": "structure/mm-model-innovation-designer",
+      "returncode": 0,
+      "output": "Skill is valid!"
     },
     {
-      "skill": "mm-model-selector",
-      "status": "PASSED",
-      "exit_code": 0,
-      "output": "Skill is valid!\n"
+      "name": "structure/mm-model-selector",
+      "returncode": 0,
+      "output": "Skill is valid!"
     },
     {
-      "skill": "mm-optimization-models",
-      "status": "PASSED",
-      "exit_code": 0,
-      "output": "Skill is valid!\n"
+      "name": "structure/mm-optimization-models",
+      "returncode": 0,
+      "output": "Skill is valid!"
     },
     {
-      "skill": "mm-paper-compile",
-      "status": "PASSED",
-      "exit_code": 0,
-      "output": "Skill is valid!\n"
+      "name": "structure/mm-paper-compile",
+      "returncode": 0,
+      "output": "Skill is valid!"
     },
     {
-      "skill": "mm-paper-reviewer",
-      "status": "PASSED",
-      "exit_code": 0,
-      "output": "Skill is valid!\n"
+      "name": "structure/mm-paper-reviewer",
+      "returncode": 0,
+      "output": "Skill is valid!"
     },
     {
-      "skill": "mm-paper-structure-writer",
-      "status": "PASSED",
-      "exit_code": 0,
-      "output": "Skill is valid!\n"
+      "name": "structure/mm-paper-structure-writer",
+      "returncode": 0,
+      "output": "Skill is valid!"
     },
     {
-      "skill": "mm-prediction-models",
-      "status": "PASSED",
-      "exit_code": 0,
-      "output": "Skill is valid!\n"
+      "name": "structure/mm-prediction-models",
+      "returncode": 0,
+      "output": "Skill is valid!"
     },
     {
-      "skill": "mm-problem-decomposer",
-      "status": "PASSED",
-      "exit_code": 0,
-      "output": "Skill is valid!\n"
+      "name": "structure/mm-problem-decomposer",
+      "returncode": 0,
+      "output": "Skill is valid!"
     },
     {
-      "skill": "mm-signal-image-trajectory",
-      "status": "PASSED",
-      "exit_code": 0,
-      "output": "Skill is valid!\n"
+      "name": "structure/mm-signal-image-trajectory",
+      "returncode": 0,
+      "output": "Skill is valid!"
     },
     {
-      "skill": "mm-simulation-models",
-      "status": "PASSED",
-      "exit_code": 0,
-      "output": "Skill is valid!\n"
+      "name": "structure/mm-simulation-models",
+      "returncode": 0,
+      "output": "Skill is valid!"
     },
     {
-      "skill": "mm-statistical-inference",
-      "status": "PASSED",
-      "exit_code": 0,
-      "output": "Skill is valid!\n"
+      "name": "structure/mm-statistical-inference",
+      "returncode": 0,
+      "output": "Skill is valid!"
     },
     {
-      "skill": "mm-uncertainty-validation",
-      "status": "PASSED",
-      "exit_code": 0,
-      "output": "Skill is valid!\n"
+      "name": "structure/mm-uncertainty-validation",
+      "returncode": 0,
+      "output": "Skill is valid!"
     },
     {
-      "skill": "mm-variable-assumption-builder",
-      "status": "PASSED",
-      "exit_code": 0,
-      "output": "Skill is valid!\n"
+      "name": "structure/mm-variable-assumption-builder",
+      "returncode": 0,
+      "output": "Skill is valid!"
     },
     {
-      "skill": "mm-visualization-delivery",
-      "status": "PASSED",
-      "exit_code": 0,
-      "output": "Skill is valid!\n"
+      "name": "structure/mm-visualization-delivery",
+      "returncode": 0,
+      "output": "Skill is valid!"
+    },
+    {
+      "name": "workflow_regressions",
+      "returncode": 0,
+      "output": "test_contract_keeps_legacy_figure_field_compatible (tests.test_skill_workflow_regressions.CrossSkillContractRegressionTests.test_contract_keeps_legacy_figure_field_compatible) ... ok\ntest_final_renderer_contract_remains_fail_closed (tests.test_skill_workflow_regressions.FigurePlanningRegressionTests.test_final_renderer_contract_remains_fail_closed) ... ok\ntest_table_only_question_does_not_fail_a_figure_quota (tests.test_skill_workflow_regressions.FigurePlanningRegressionTests.test_table_only_question_does_not_fail_a_figure_quota) ... ok\ntest_minimum_baseline_gate_cannot_be_bypassed (tests.test_skill_workflow_regressions.WorkflowStateRegressionTests.test_minimum_baseline_gate_cannot_be_bypassed) ... ok\ntest_semantic_amendment_invalidates_downstream_evidence (tests.test_skill_workflow_regressions.WorkflowStateRegressionTests.test_semantic_amendment_invalidates_downstream_evidence) ... ok\ntest_semantics_and_baseline_precede_main_solving (tests.test_skill_workflow_regressions.WorkflowStateRegressionTests.test_semantics_and_baseline_precede_main_solving) ... ok\n\n----------------------------------------------------------------------\nRan 6 tests in 0.702s\n\nOK"
+    },
+    {
+      "name": "geometry_regressions",
+      "returncode": 0,
+      "output": ".....\n----------------------------------------------------------------------\nRan 5 tests in 0.000s\n\nOK"
+    },
+    {
+      "name": "help/geometry_diagram_from_spec.py",
+      "returncode": 0,
+      "output": "usage: geometry_diagram_from_spec.py [-h] [--output OUTPUT] spec\n\nRender paper-style geometry diagram JSON to deterministic SVG\n\npositional arguments:\n  spec\n\noptions:\n  -h, --help            show this help message and exit\n  --output OUTPUT, -o OUTPUT"
+    },
+    {
+      "name": "help/draw_mechanism_examples.py",
+      "returncode": 0,
+      "output": "usage: draw_mechanism_examples.py [-h] --output-dir OUTPUT_DIR [--tilt TILT]\n                                  [--altitude ALTITUDE]\n\nCoordinate-driven CUMCM mechanism examples; synthetic geometry, not contest\nresults.\n\noptions:\n  -h, --help            show this help message and exit\n  --output-dir OUTPUT_DIR\n  --tilt TILT\n  --altitude ALTITUDE"
+    },
+    {
+      "name": "historical_review_asset_hashes",
+      "matched": 6,
+      "status": "PASS",
+      "scope": "Byte identity only; historical visual review not rerun"
     }
   ],
-  "visualization_scope": {
-    "source_files": 145,
-    "image_variants": 68,
-    "tutorial_named_slots": 50,
-    "source_code_files": 37,
-    "new_runtime_families": 22,
-    "full_reference_index": "included_without_original_corpus_assets",
-    "all_image_variants_exactly_reproduced": false
-  },
-  "native_backend_scope": {
-    "origin": "optional_runtime_probe_and_native_script_only",
-    "visio": "optional_runtime_probe_and_native_script_only",
-    "not_claimed_connected_by_package_build": true
-  },
-  "semantic_claim_validation": false
+  "not_rerun": [
+    "Full plotting adapter tests",
+    "Origin/Visio desktop integration",
+    "XeLaTeX rebuild and fresh visual review",
+    "Whole paper corpus reading"
+  ],
+  "historical_validation": {
+    "schema_version": "2.0",
+    "generated_at": "2026-09-06T07:38:23.691176+00:00",
+    "validator": "quick_validate.py",
+    "python_utf8": true,
+    "skill_count": 22,
+    "passed": 22,
+    "failed": 0,
+    "package_checks": {
+      "every_skill_has_skill_md": true,
+      "every_skill_has_agents_openai_yaml": true,
+      "cache_or_compiled_python_artifacts": 0,
+      "github_or_network_runtime_required": false,
+      "ai_usage_compliance_capability_present": false,
+      "full_local_style_index_present": true,
+      "corpus_adapter_catalog_present": true,
+      "pillow_declared": true
+    },
+    "test_results": {
+      "quick_validate": {
+        "passed": 22,
+        "total": 22
+      },
+      "new_corpus_renderer": {
+        "passed": 85,
+        "failed": 0,
+        "source": "tmp/github-package-corpus-tests-20260906/TEST_REPORT.json"
+      },
+      "reference_templates": {
+        "passed": 24,
+        "total": 24,
+        "source": "tmp/github-package-reference-tests-20260906/TEST_REPORT.json"
+      },
+      "scientific_illustration_contract": {
+        "passed": 14,
+        "failed": 0,
+        "actual_native_generation": false,
+        "source": "tmp/github-package-illustration-tests-20260906/regression-results.json"
+      },
+      "cumcm_style": {
+        "status": "PASSED",
+        "source": "tmp/github-package-style-test stdout"
+      },
+      "previous_visual_contract": {
+        "passed": 38,
+        "failed": 0,
+        "source": "previous-contract-regression.json"
+      }
+    },
+    "results": [
+      {
+        "skill": "math-modeling-orchestrator",
+        "status": "PASSED",
+        "exit_code": 0,
+        "output": "Skill is valid!\n"
+      },
+      {
+        "skill": "mm-abstract-polisher",
+        "status": "PASSED",
+        "exit_code": 0,
+        "output": "Skill is valid!\n"
+      },
+      {
+        "skill": "mm-classification-clustering",
+        "status": "PASSED",
+        "exit_code": 0,
+        "output": "Skill is valid!\n"
+      },
+      {
+        "skill": "mm-contest-operations-planner",
+        "status": "PASSED",
+        "exit_code": 0,
+        "output": "Skill is valid!\n"
+      },
+      {
+        "skill": "mm-data-eda-cleaning",
+        "status": "PASSED",
+        "exit_code": 0,
+        "output": "Skill is valid!\n"
+      },
+      {
+        "skill": "mm-dynamic-mechanism-models",
+        "status": "PASSED",
+        "exit_code": 0,
+        "output": "Skill is valid!\n"
+      },
+      {
+        "skill": "mm-evaluation-models",
+        "status": "PASSED",
+        "exit_code": 0,
+        "output": "Skill is valid!\n"
+      },
+      {
+        "skill": "mm-graph-network-models",
+        "status": "PASSED",
+        "exit_code": 0,
+        "output": "Skill is valid!\n"
+      },
+      {
+        "skill": "mm-model-innovation-designer",
+        "status": "PASSED",
+        "exit_code": 0,
+        "output": "Skill is valid!\n"
+      },
+      {
+        "skill": "mm-model-selector",
+        "status": "PASSED",
+        "exit_code": 0,
+        "output": "Skill is valid!\n"
+      },
+      {
+        "skill": "mm-optimization-models",
+        "status": "PASSED",
+        "exit_code": 0,
+        "output": "Skill is valid!\n"
+      },
+      {
+        "skill": "mm-paper-compile",
+        "status": "PASSED",
+        "exit_code": 0,
+        "output": "Skill is valid!\n"
+      },
+      {
+        "skill": "mm-paper-reviewer",
+        "status": "PASSED",
+        "exit_code": 0,
+        "output": "Skill is valid!\n"
+      },
+      {
+        "skill": "mm-paper-structure-writer",
+        "status": "PASSED",
+        "exit_code": 0,
+        "output": "Skill is valid!\n"
+      },
+      {
+        "skill": "mm-prediction-models",
+        "status": "PASSED",
+        "exit_code": 0,
+        "output": "Skill is valid!\n"
+      },
+      {
+        "skill": "mm-problem-decomposer",
+        "status": "PASSED",
+        "exit_code": 0,
+        "output": "Skill is valid!\n"
+      },
+      {
+        "skill": "mm-signal-image-trajectory",
+        "status": "PASSED",
+        "exit_code": 0,
+        "output": "Skill is valid!\n"
+      },
+      {
+        "skill": "mm-simulation-models",
+        "status": "PASSED",
+        "exit_code": 0,
+        "output": "Skill is valid!\n"
+      },
+      {
+        "skill": "mm-statistical-inference",
+        "status": "PASSED",
+        "exit_code": 0,
+        "output": "Skill is valid!\n"
+      },
+      {
+        "skill": "mm-uncertainty-validation",
+        "status": "PASSED",
+        "exit_code": 0,
+        "output": "Skill is valid!\n"
+      },
+      {
+        "skill": "mm-variable-assumption-builder",
+        "status": "PASSED",
+        "exit_code": 0,
+        "output": "Skill is valid!\n"
+      },
+      {
+        "skill": "mm-visualization-delivery",
+        "status": "PASSED",
+        "exit_code": 0,
+        "output": "Skill is valid!\n"
+      }
+    ],
+    "visualization_scope": {
+      "source_files": 145,
+      "image_variants": 68,
+      "tutorial_named_slots": 50,
+      "source_code_files": 37,
+      "new_runtime_families": 22,
+      "full_reference_index": "included_without_original_corpus_assets",
+      "all_image_variants_exactly_reproduced": false
+    },
+    "native_backend_scope": {
+      "origin": "optional_runtime_probe_and_native_script_only",
+      "visio": "optional_runtime_probe_and_native_script_only",
+      "not_claimed_connected_by_package_build": true
+    },
+    "semantic_claim_validation": false
+  }
 }
