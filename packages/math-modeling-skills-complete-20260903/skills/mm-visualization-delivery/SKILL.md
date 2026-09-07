@@ -1,6 +1,6 @@
 ---
 name: mm-visualization-delivery
-description: Plan and render traceable CUMCM figures, diagrams, tables, Excel workbooks, and LaTeX-ready visual evidence from verified mathematical-modeling results. Use for reader-oriented figure planning, model/mechanism diagrams, data plots, Origin/Visio delivery, deterministic SVG, visual remediation, or final figure quality control. Do not create figures to satisfy arbitrary quotas, beautify unverified results, or manually transcribe numerical outputs.
+description: Plan and render traceable CUMCM data figures and editable model schematics, including TikZ geometry, forces, boundaries, PGFPlots coordinates, Origin/Visio delivery, tables, and Excel workbooks. Use for paper figure planning, diagram drawing, visual remediation, or figure quality control. Quantitative plots require verified results; schematics may explain approved models before solving.
 ---
 
 # 数学建模：可视化规划与结果交付
@@ -33,6 +33,8 @@ description: Plan and render traceable CUMCM figures, diagrams, tables, Excel wo
 
 ## Required inputs
 
+以下结果证据输入针对结果图。示意图可在求解前根据题目、已批准模型、符号与几何/边界条件绘制；示例参数需明确标为演示，不要求先产生实验结果。
+
 - `NARRATIVE_MAP.yaml` 或等价论文叙事规划。
 - `RESULTS_TO_CLAIMS.md` / `result_evidence_map.json`。
 - 机器可读结果、字段说明、单位、精度和排序要求。
@@ -64,10 +66,12 @@ description: Plan and render traceable CUMCM figures, diagrams, tables, Excel wo
 
 8. 只有 `representation: figure` 的条目才建立完整 `FIGURE_INTENT.yaml`：`figure_id`、`question_id`、`narrative_role`、`reader_takeaway`、`claim_id`（如承担声明）、源数据、变量、单位、变换、后端、图型、最终宽度、placement 和中文 caption。
 9. 数据图依据数据结构选型：趋势用折线，长类别比较用水平点图/条形，两状态优先哑铃/坡度，分布用原始点+箱线/小提琴，连续关系用散点，二维标量场用固定色域热图/等高线，多目标用 Pareto，区间/遮蔽/调度优先时间轴或区间条。
-10. 机制、流程和结构图先列实体、关系、分组、主流向与反馈。科研总览/方法插图按 [科研插图调用协议](references/scientific_illustration_workflow.md) 调用可用的原生图像生成能力；精确几何、复杂算法分支或要求逐节点编辑时采用 Visio/FigureSpec。
+10. 机制、流程和结构图先列实体、关系、分组、主流向与反馈。数模论文示意图默认通过代码或矢量软件实际绘制：TikZ、MATLAB/Matplotlib、Visio 或 SVG/FigureSpec。用户说“画出来/可编辑/几何示意”时不要转成图片生成。仅明确需要生成式场景素材时走 [科研插图调用协议](references/scientific_illustration_workflow.md)。
+   对坐标、受力、光路、投影、材料分层与边界示意图，读取 [通用几何与物理工作流](references/geometry_diagram_workflow.md) 和 [用户确认的 TikZ 样式与构造](references/approved_tikz_schematics.md)。默认以 TikZ 实际绘制，输出可修改 `.tex` 与矢量 PDF；有明确解析关系或机器可读坐标时可用 PGFPlots。用户指定 Visio 或其他可编辑后端时尊重其选择，并核实实际支持范围。不要强制先转 SVG，也不要把物理示意图画成流程框。
+   随包 `assets/tikz-schematics/` 的受力图、分层传热图是用户确认的两种样式起点，不是题型白名单。先按当前模型提取对象—关系—符号—方程，再选整体、剖面、分体、微元或状态构图；不能只改两张示例的标题来冒充新模型。需要基础 SVG 图元时仍可用 `scripts/geometry_diagram_from_spec.py`。旧 `draw_mechanism_examples.py` 保留为构造回归示例，不再作为默认论文风格样板。优秀论文来源范围见 [专项蒸馏记录](references/award_mechanism_distillation.md)，不得把两张试画通过称为全语料蒸馏完成。
 11. 定量图用 Origin、MATLAB、Matplotlib；不能交给图像模型生成曲线、热力矩阵或结果数字。科研插图区分 `image2` 专用桥接与 `imagegen` 内置工具，发现、调用、回执、重开后才标记已运行；不得虚构工具或把一种后端冒充另一种。
 12. 所有渲染只消费已有机器可读结果。相关系数、拟合、平滑、区间、显著性、排名和新统计量必须在分析/验证代码中先计算并回写结果；渲染器不偷偷生成新结论。
-13. 原生文件与导出文件同时保存：Origin `.opju + PDF`，Visio `.vsdx + PDF`，FigureSpec `JSON/SVG + PDF`，Matplotlib/MATLAB 保存脚本/spec 与 PDF。PDF 优先用于 XeLaTeX；PNG 仅用于真实栅格或明确回退。
+13. 原生文件与导出文件同时保存：TikZ/PGFPlots `.tex + PDF`（另存数据/参数来源），Origin `.opju + PDF`，Visio `.vsdx + PDF`，FigureSpec `JSON/SVG + PDF`，Matplotlib/MATLAB 保存脚本/spec 与 PDF。PDF 优先用于 XeLaTeX；PNG 可作预览，不替代矢量母版。
     原生生成的科研插图保留 PNG、中文 brief、prompt、调用回执和审查记录。`editable_output` 此时只能指向可修改的 JSON brief，且 `editability: prompt_and_spec_only`；不承诺像素图有逐节点编辑能力，不伪装 `.vsdx`、矢量 SVG 或矢量 PDF。
 14. 在论文最终尺寸重开，检查裁切、遮挡、字体、线宽、图例、单位、视觉重心、灰度/色盲可辨。多面板常规优先 2--4 个；超过 4 个要有不可拆分理由，超过 6 个优先附录。
 15. `competition_compact` 正文优先保留：关键场景/机制、核心策略/结果、真正影响结论的验证。完整收敛、多种子、微小误差、后端 audit、版本谱系、参数全扫描默认进附录/支撑材料。`research_audit` 可完整保留。

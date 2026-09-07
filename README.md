@@ -7,8 +7,9 @@
 - 解压版：[`packages/math-modeling-skills-complete-20260903`](packages/math-modeling-skills-complete-20260903)
 - ZIP：[`dist/math-modeling-skills-complete-20260903.zip`](dist/math-modeling-skills-complete-20260903.zip)
 - Skill 数量：22
+- 2026-09-07 示意图更新：通用几何/物理示意图工作流、两张用户确认的 TikZ 原创模板（受力、分层传热）、源码/矢量 PDF/PNG 与有范围限制的历史审查记录。
 - 绘图 Skill：全量本地样式索引（145 文件 / 68 张图片 / 50 个教程槽位）与 22 类基础适配器已同步；
-- ZIP SHA-256：`5d7547644d3ee0294178b79fadc0e4725ed101d5643f85d24f032577b1120ec1`
+- ZIP SHA-256：`39a68401af01c33a863a520a1df2e318904858b8f6145e9bcc6cd1f1594162af`
 
 ## 快速安装
 
@@ -23,3 +24,5 @@ py -m pip install -r requirements.txt
 安装器默认写入当前用户的 `.codex\skills`。覆盖模式会先备份同名目录，并在安装失败时尝试回滚。完整依赖、外部软件边界、逐文件哈希和验证结果见发布目录中的 `ENVIRONMENT.md`、`PACKAGE_MANIFEST.json`、`SHA256SUMS.txt` 与 `VALIDATION_REPORT.json`。
 
 Origin 和 Microsoft Visio 是可选的外部授权软件，不随仓库分发；没有原生后端时，绘图工作流使用 Python/Matplotlib 与 SVG/FigureSpec 回退。Skills 本身不依赖远端仓库即可运行。
+
+几何、受力、边界与空间关系示意图优先使用可编辑 TikZ，解析或数值坐标可使用 PGFPlots；流程图选择原生节点连线或 TikZ。用户要求“画出来”时不改用生成式图片。新增模板是可扩展起点，不是题型白名单；Visio 任意物理图元支持和全目录论文阅读均不在本次验证声明内。

@@ -27,6 +27,8 @@
 
 ## Origin 与 Visio
 
+原生示意图模板另需 TikZ、standalone、ctex、amsmath 与 XeLaTeX。当前两张示例使用 Windows 中文字体；其他系统需要指定实际安装的中文字体再编译。MiKTeX 可加 `--disable-installer` 避免后台安装等待，TeX Live 不使用该参数。PGFPlots 是解析/数值坐标图的可选依赖。已有 PDF/PNG 可离线查看，修改源码后须重新编译、检查日志和重开成图。
+
 Origin 和 Microsoft Visio 是可选的、需要单独许可的桌面软件，因此不能随本包分发。安装后，绘图 Skill 可优先使用它们的原生后端并同时保留可编辑源文件与 LaTeX 用 PDF。没有安装时，量化图回退到 Python/Matplotlib，流程与机制图回退到 SVG/FigureSpec；不得伪造 `.opju` 或 `.vsdx`。
 
 ## 离线边界
