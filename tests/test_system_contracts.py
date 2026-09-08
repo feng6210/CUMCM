@@ -117,10 +117,17 @@ class ContractSchemaTests(unittest.TestCase):
             "source": {"kind": "official_rules", "reference": "official rulebook"},
         }
         v.validate(valid)
-        invalid = dict(valid)
-        invalid["benchmark_answers_allowed"] = "unknown"
-        with self.assertRaises(ValidationError):
-            v.validate(invalid)
+        for field in (
+            "ai_allowed",
+            "web_allowed",
+            "external_papers_allowed",
+            "benchmark_answers_allowed",
+        ):
+            with self.subTest(field=field):
+                invalid = dict(valid)
+                invalid[field] = "unknown"
+                with self.assertRaises(ValidationError):
+                    v.validate(invalid)
 
     def test_all_system_benchmark_cases_validate(self):
         v = validator("system_benchmark.schema.json")
