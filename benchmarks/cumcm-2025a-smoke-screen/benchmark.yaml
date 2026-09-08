@@ -1,0 +1,59 @@
+schema_version: "1.0"
+benchmark_id: cumcm-2025a-smoke-screen
+task_mode: training
+structure_signature:
+  - geometry
+  - optimization
+  - mixed
+source_scope: "结构性回归案例；不复制题面全文或固定获奖答案。"
+required_behaviors:
+  - id: semantic-aggregation-review
+    stage: SEMANTICS_REVIEW
+    assertion: "涉及总时长、同时遮蔽、联合覆盖或多目标聚合时，必须显式比较 sum/union/intersection/max-min 等合理语义，并记录选择依据。"
+    evidence_artifact: PROBLEM_SEMANTICS.yaml
+  - id: minimum-baseline-before-search
+    stage: BASELINE_READY
+    assertion: "复杂 DE/PSO/SA/MILP 或混合搜索前必须先有可复算的最小正确基线，用于校验 evaluator、目标方向和硬约束。"
+    evidence_artifact: baseline_result
+  - id: external-candidate-recomputed
+    stage: BENCHMARK_CHALLENGE
+    assertion: "若训练时提供外部可行策略，必须把参数或路线映射进当前正式 evaluator；不能直接拿论文报告数字与 incumbent 排大小。"
+    evidence_artifact: BENCHMARK_CHALLENGE.json
+  - id: stronger-candidate-reopens-search
+    stage: BENCHMARK_CHALLENGE
+    assertion: "同 evaluator 下外部可行方案领先超过预设容差时，最佳/稳定最优声明必须降级并返回 SOLVING。"
+    evidence_artifact: workflow_state.json
+  - id: stability-not-optimality
+    stage: VALIDATING
+    assertion: "多种子落在相近平台只能支持内部稳定性，不得单独支持搜索空间覆盖或全局最优。"
+    evidence_artifact: RESULTS_TO_CLAIMS.md
+  - id: mechanism-first-figure-planning
+    stage: WRITING
+    assertion: "复杂遮挡几何若首次阅读者无法仅由公式理解，FIGURE_PLAN 必须优先评估场景/几何/判据机制图，而不是通过固定数量补收敛图。"
+    evidence_artifact: FIGURE_PLAN.yaml
+  - id: compact-paper-layer
+    stage: WRITING
+    assertion: "competition_compact 正文以问题—数学结构—方法—结果—必要验证为主线，完整 hash/gate/失败版本谱系默认进入附录或支撑材料。"
+    evidence_artifact: NARRATIVE_MAP.yaml
+forbidden_behaviors:
+  - "题意存在会改变解结构的高风险歧义时，直接选择更容易优化的目标而不记录候选解释。"
+  - "复杂启发式在最小基线未复算前直接成为主路线。"
+  - "外部可行解击穿 incumbent 后仍用多种子稳定作为最佳声明的主要证据。"
+  - "把不同目标、不同几何判据或不同资源计数口径的论文数字直接排序比较。"
+  - "恢复每问至少 N 张图或每个核心声明必须一张图的固定图量硬门。"
+  - "把内部审计术语、hash、backend report 和旧失败谱系写成竞赛正文的主要叙事。"
+acceptance:
+  hard_fail_if:
+    - semantic_aggregation_silently_changed
+    - baseline_gate_bypassed
+    - external_challenge_ignored_when_available
+    - challenged_incumbent_still_claimed_best
+  pass_if:
+    - semantic_candidates_and_selected_reason_are_recorded
+    - minimum_baseline_is_recomputed
+    - external_candidate_uses_same_evaluator_or_is_marked_incomparable
+    - stronger_external_candidate_reopens_search
+    - figure_plan_is_reader_task_driven
+    - paper_body_keeps_a_competition_narrative
+  notes:
+    - "本案例验收系统行为，不把任何历史论文的单一数值固定为唯一正确答案。"
