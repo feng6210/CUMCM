@@ -129,7 +129,7 @@ def visual_evidence_paths(roots: set[Path]) -> set[Path]:
         current = pending.pop()
         if current in seen:
             continue
-        # A root is an explicitly designated visual-review artifact.  Transitive
+        # A root is an explicitly designated visual-review artifact. Transitive
         # references are added only after type/role/hash validation below.
         seen.add(current)
         if current.suffix.lower() != ".json" or not current.is_file() or current.is_symlink():
@@ -250,11 +250,13 @@ def source_snapshot(paper: Path, excluded: set[Path]) -> dict:
         rel = path.relative_to(paper)
         if rel.parts and rel.parts[0] == "build":
             continue
+        # Check the paper-relative object itself before resolving exclusions. A
+        # symlink to a review/gate artifact is still a mutable paper input alias.
+        if path.is_symlink():
+            raise ValueError(f"symlinked paper input is not supported by visual review snapshot: {rel.as_posix()}")
         resolved = path.resolve()
         if resolved in excluded:
             continue
-        if path.is_symlink():
-            raise ValueError(f"symlinked paper input is not supported by visual review snapshot: {rel.as_posix()}")
         if not path.is_file():
             continue
         if path.name == "compile.log" or path.name.endswith(".synctex.gz") or path.suffix.lower() in generated_suffixes:
