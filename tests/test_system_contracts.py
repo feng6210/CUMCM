@@ -122,10 +122,14 @@ class ContractSchemaTests(unittest.TestCase):
         with self.assertRaises(ValidationError):
             v.validate(invalid)
 
-    def test_system_benchmark_case_validates(self):
+    def test_all_system_benchmark_cases_validate(self):
         v = validator("system_benchmark.schema.json")
-        case = yaml.safe_load((ROOT / "benchmarks" / "cumcm-2025a-smoke-screen" / "benchmark.yaml").read_text(encoding="utf-8"))
-        v.validate(case)
+        cases = sorted((ROOT / "benchmarks").glob("*/benchmark.yaml"))
+        self.assertGreaterEqual(len(cases), 4)
+        for path in cases:
+            with self.subTest(path=path.name):
+                case = yaml.safe_load(path.read_text(encoding="utf-8"))
+                v.validate(case)
 
 
 class IntegrationDriftTests(unittest.TestCase):
@@ -145,6 +149,11 @@ class IntegrationDriftTests(unittest.TestCase):
     def test_contest_handoff_contains_normalized_contract_fields(self):
         text = (PKG / "skills" / "mm-contest-operations-planner" / "SKILL.md").read_text(encoding="utf-8")
         for token in ("COMPETITION_POLICY.yaml", "problem_semantics_ref", "baseline", "benchmark_challenge", "figure_intents"):
+            self.assertIn(token, text)
+
+    def test_orchestrator_wires_policy_and_contract_validation(self):
+        text = (ORCH / "SKILL.md").read_text(encoding="utf-8")
+        for token in ("COMPETITION_POLICY.yaml", "validate_contract.py", "schemas/", "benchmarks/"):
             self.assertIn(token, text)
 
 
