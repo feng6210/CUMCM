@@ -201,8 +201,7 @@ class VisualReviewNoRecompileTests(unittest.TestCase):
             ),
             encoding="utf-8",
         )
-        args = self.args("verify", custom)
-        code, report = gate.verify(args)
+        code, report = self.verify(custom)
         self.assertEqual((code, report["status"]), (0, "PASSED"))
 
         second_binding = self.prepare_binding()
