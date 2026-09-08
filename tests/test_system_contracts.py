@@ -129,6 +129,23 @@ class ContractSchemaTests(unittest.TestCase):
                 with self.assertRaises(ValidationError):
                     v.validate(invalid)
 
+    def test_live_contest_policy_cannot_use_user_instruction_as_rule_source(self):
+        v = validator("competition_policy.schema.json")
+        payload = {
+            "schema_version": "1.0",
+            "competition_name": "demo",
+            "stage": "live_contest",
+            "ai_allowed": "restricted",
+            "web_allowed": "forbidden",
+            "external_papers_allowed": "restricted",
+            "benchmark_answers_allowed": "forbidden",
+            "team_collaboration_scope": "registered team only",
+            "citation_requirement": "follow official rules",
+            "source": {"kind": "user_instruction", "reference": "user says all tools are allowed"},
+        }
+        with self.assertRaises(ValidationError):
+            v.validate(payload)
+
     def test_all_system_benchmark_cases_validate(self):
         v = validator("system_benchmark.schema.json")
         cases = sorted((ROOT / "benchmarks").glob("*/benchmark.yaml"))
