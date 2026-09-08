@@ -109,6 +109,20 @@ class VisualReviewGateSecurityTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "symlinked paper input"):
             gate.prepare(self.prepare_args())
 
+    def test_symlink_to_excluded_gate_artifact_is_still_rejected(self):
+        gate_artifact = self.paper / "visual_verification_report.json"
+        gate_artifact.write_text(
+            json.dumps({"verification_mode": gate.VERIFICATION_MODE, "status": "PASSED"}),
+            encoding="utf-8",
+        )
+        link = self.paper / "linked-section.tex"
+        try:
+            link.symlink_to(gate_artifact.name)
+        except (OSError, NotImplementedError) as exc:
+            self.skipTest(f"symlinks unavailable on this host: {exc}")
+        with self.assertRaisesRegex(ValueError, "symlinked paper input"):
+            gate.prepare(self.prepare_args())
+
     def test_binding_cannot_overwrite_existing_json_paper_input(self):
         model = self.paper / "model.json"
         model.write_text(json.dumps({"paper_input": True}), encoding="utf-8")
@@ -133,6 +147,17 @@ class VisualReviewGateSecurityTests(unittest.TestCase):
         self.assertEqual(code, 2)
         self.assertEqual(result["visual_check_status"], "OUTPUT_REPORT_PATH_CONFLICT")
         self.assertEqual(self.compile_report.read_bytes(), before)
+
+    def test_verification_report_cannot_overwrite_bound_paper_source(self):
+        code, _ = gate.prepare(self.prepare_args())
+        self.assertEqual(code, 0)
+        visual = self.write_visual()
+        main = self.paper / "main.tex"
+        before = main.read_bytes()
+        code, result = gate.verify(self.verify_args(visual, "main.tex"))
+        self.assertEqual(code, 2)
+        self.assertEqual(result["visual_check_status"], "OUTPUT_REPORT_PATH_CONFLICT")
+        self.assertEqual(main.read_bytes(), before)
 
     def test_review_page_reference_cannot_hide_an_existing_paper_png(self):
         figure = self.paper / "figure.png"
