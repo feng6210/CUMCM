@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Build a deterministic preview ZIP and fresh manifest from the package source tree.
+"""Build a deterministic preview ZIP and fresh metadata from the package source tree.
 
 The script does not modify the repository. It is intended for CI and release
-preparation so that source changes cannot silently ship with stale manifest or
-SHA256SUMS metadata. Wall-clock time is deliberately excluded by default so
-identical source bytes produce identical ZIP bytes across different days.
+preparation so source changes cannot silently ship with stale manifest,
+SHA256SUMS or validation metadata. Wall-clock time is deliberately excluded by
+default so identical source bytes produce identical preview ZIP bytes.
 """
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ import json
 import zipfile
 from pathlib import Path
 
-EXCLUDED_NAMES = {"PACKAGE_MANIFEST.json", "SHA256SUMS.txt"}
+GENERATED_METADATA = {"PACKAGE_MANIFEST.json", "SHA256SUMS.txt", "VALIDATION_REPORT.json"}
 
 
 def sha256_bytes(data: bytes) -> str:
@@ -34,7 +34,7 @@ def source_files(package_dir: Path) -> list[Path]:
     for path in package_dir.rglob("*"):
         if not path.is_file():
             continue
-        if path.name in EXCLUDED_NAMES:
+        if path.name in GENERATED_METADATA:
             continue
         if "__pycache__" in path.parts or path.suffix == ".pyc":
             continue
@@ -60,9 +60,30 @@ def build_manifest(package_dir: Path, files: list[Path], release_date: str | Non
         "file_count": len(entries),
         "total_bytes": total_bytes,
         "hash_algorithm": "SHA-256",
-        "manifest_excludes": sorted(EXCLUDED_NAMES),
+        "generated_metadata": sorted(GENERATED_METADATA),
         "files": entries,
     }
+
+
+def preview_validation_bytes() -> bytes:
+    payload = {
+        "schema_version": "preview-1.0",
+        "status": "PREVIEW_BUILD_NOT_FORMAL_RELEASE_VALIDATION",
+        "semantic_claim_validation": False,
+        "scope": "package source was rebuilt in CI; formal release validation was not embedded",
+        "note": "Use the PR workflow checks and package-build-report artifact for preview evidence. Do not treat this marker as model or release certification.",
+    }
+    return (json.dumps(payload, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
+
+
+def validation_bytes(validation_report: Path | None) -> tuple[bytes, str]:
+    if validation_report is None:
+        return preview_validation_bytes(), "preview_marker"
+    validation_report = validation_report.resolve()
+    payload = json.loads(validation_report.read_text(encoding="utf-8-sig"))
+    if not isinstance(payload, dict) or not payload.get("status"):
+        raise ValueError("formal validation report must be a JSON object with status")
+    return validation_report.read_bytes(), "provided_formal_report"
 
 
 def deterministic_write(archive: zipfile.ZipFile, arcname: str, data: bytes) -> None:
@@ -77,12 +98,14 @@ def build(
     output_zip: Path,
     report_path: Path | None = None,
     release_date: str | None = None,
+    validation_report: Path | None = None,
 ) -> dict:
     package_dir = package_dir.resolve()
     files = source_files(package_dir)
     manifest = build_manifest(package_dir, files, release_date=release_date)
     manifest_bytes = (json.dumps(manifest, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
     sums_bytes = ("".join(f"{entry['sha256']}  {entry['path']}\n" for entry in manifest["files"])).encode("utf-8")
+    validation_report_bytes, validation_mode = validation_bytes(validation_report)
 
     output_zip.parent.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(output_zip, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as archive:
@@ -92,13 +115,14 @@ def build(
             deterministic_write(archive, f"{prefix}/{rel}", path.read_bytes())
         deterministic_write(archive, f"{prefix}/PACKAGE_MANIFEST.json", manifest_bytes)
         deterministic_write(archive, f"{prefix}/SHA256SUMS.txt", sums_bytes)
+        deterministic_write(archive, f"{prefix}/VALIDATION_REPORT.json", validation_report_bytes)
 
     with zipfile.ZipFile(output_zip, "r") as archive:
         bad = archive.testzip()
         if bad is not None:
             raise RuntimeError(f"ZIP reopen CRC failure: {bad}")
         names = archive.namelist()
-        expected = len(files) + 2
+        expected = len(files) + 3
         if len(names) != expected:
             raise RuntimeError(f"ZIP entry count mismatch: {len(names)} != {expected}")
 
@@ -108,13 +132,15 @@ def build(
         "output_zip": str(output_zip.resolve()),
         "zip_sha256": sha256_file(output_zip),
         "source_file_count": len(files),
-        "zip_entry_count": len(files) + 2,
+        "zip_entry_count": len(files) + 3,
         "skill_count": manifest["skill_count"],
         "release_date": release_date,
         "manifest_sha256": sha256_bytes(manifest_bytes),
         "sha256s_sha256": sha256_bytes(sums_bytes),
+        "validation_report_sha256": sha256_bytes(validation_report_bytes),
+        "validation_report_mode": validation_mode,
         "deterministic_without_wall_clock": release_date is None,
-        "note": "Preview ZIP contains freshly generated manifest/SHA256SUMS; repository files are not modified.",
+        "note": "ZIP contains freshly generated manifest/SHA256SUMS and either a preview validation marker or an explicitly provided formal validation report; repository files are not modified.",
     }
     if report_path:
         report_path.parent.mkdir(parents=True, exist_ok=True)
@@ -135,12 +161,23 @@ def main() -> int:
         "--release-date",
         help="Optional explicit YYYY-MM-DD release metadata. Omit for source-byte-deterministic CI previews.",
     )
+    parser.add_argument(
+        "--validation-report",
+        type=Path,
+        help="Optional formal JSON validation report to embed. Omit in CI previews to embed an explicit PREVIEW marker instead of stale committed validation metadata.",
+    )
     args = parser.parse_args()
     try:
-        report = build(args.package_dir, args.output_zip, args.report, release_date=args.release_date)
+        report = build(
+            args.package_dir,
+            args.output_zip,
+            args.report,
+            release_date=args.release_date,
+            validation_report=args.validation_report,
+        )
         print(json.dumps(report, ensure_ascii=False, indent=2))
         return 0
-    except (OSError, ValueError, RuntimeError, zipfile.BadZipFile) as exc:
+    except (OSError, ValueError, RuntimeError, json.JSONDecodeError, zipfile.BadZipFile) as exc:
         print(json.dumps({"status": "FAILED", "error": f"{type(exc).__name__}: {exc}"}, ensure_ascii=False))
         return 1
 
