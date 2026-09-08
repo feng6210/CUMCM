@@ -1,0 +1,42 @@
+schema_version: "1.0"
+benchmark_id: random-simulation
+task_mode: training
+structure_signature:
+  - simulation
+  - statistical_inference
+source_scope: "合成随机仿真案例，用于检查种子、重复次数、MC误差、失败保留和稳健性。"
+required_behaviors:
+  - id: distribution-source
+    stage: SEMANTICS_LOCKED
+    assertion: "随机变量的分布、参数和独立性假设必须有题面、数据或明确建模依据，不能为了方便模拟随意指定。"
+    evidence_artifact: PROBLEM_SEMANTICS.yaml
+  - id: deterministic-limit-baseline
+    stage: BASELINE_READY
+    assertion: "在可行时先检查确定性极限、解析期望或小规模枚举，用于验证模拟器方向和单位。"
+    evidence_artifact: baseline_result
+  - id: seeds-and-repetitions
+    stage: SOLVING
+    assertion: "运行清单必须记录预定种子、重复次数、样本量和停止规则，不能只保留最好一次运行。"
+    evidence_artifact: RUN_MANIFEST.json
+  - id: mc-uncertainty
+    stage: VALIDATING
+    assertion: "随机估计必须报告 Monte Carlo 标准误、置信区间或等价误差度量，并说明是否足以支持论文精度。"
+    evidence_artifact: result_evidence_map.json
+  - id: scenario-robustness
+    stage: VALIDATING
+    assertion: "关键分布参数、情景概率或随机模型变化后，应区分点值变化、排序变化、可行性变化和结论翻转。"
+    evidence_artifact: RESULTS_TO_CLAIMS.md
+forbidden_behaviors:
+  - "只报告最优随机种子或删除失败/不收敛运行。"
+  - "把一次模拟曲线的视觉平滑当成统计收敛证据。"
+  - "未报告 Monte Carlo 误差就给出超过模拟精度的高位小数。"
+acceptance:
+  hard_fail_if:
+    - cherry_picked_seed
+    - stochastic_assumption_without_source
+    - monte_carlo_uncertainty_missing
+  pass_if:
+    - seeds_and_repetitions_are_predeclared
+    - deterministic_or_boundary_check_is_used_when_available
+    - monte_carlo_uncertainty_is_reported
+    - robustness_distinguishes_value_rank_feasibility_and_claim_flip

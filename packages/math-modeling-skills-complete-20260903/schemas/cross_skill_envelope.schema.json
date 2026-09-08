@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/cumcm/cross_skill_envelope.schema.json",
+  "title": "CUMCM Cross-Skill Envelope",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "question_id",
+    "inputs",
+    "problem_semantics_ref",
+    "assumptions",
+    "baseline",
+    "model_and_solver",
+    "machine_readable_results",
+    "benchmark_challenge",
+    "diagnostics",
+    "unresolved_risks",
+    "latex_equations",
+    "figure_intents"
+  ],
+  "properties": {
+    "schema_version": {"type": "string", "const": "1.0"},
+    "question_id": {"type": "string", "minLength": 1},
+    "inputs": {"type": ["object", "array"]},
+    "problem_semantics_ref": {"type": ["string", "object"], "minLength": 1},
+    "assumptions": {"type": ["object", "array"]},
+    "baseline": {
+      "oneOf": [
+        {"type": "object"},
+        {"type": "string", "enum": ["not_applicable", "PENDING", "BLOCKED_INPUT"]}
+      ]
+    },
+    "model_and_solver": {"type": ["object", "string"]},
+    "machine_readable_results": {"type": ["object", "array", "string", "null"]},
+    "benchmark_challenge": {
+      "oneOf": [
+        {"type": "object"},
+        {
+          "type": "string",
+          "enum": ["PENDING", "PASS", "CHALLENGED", "INCOMPARABLE", "NOT_ALLOWED_BY_RULES", "BLOCKED_INPUT"]
+        }
+      ]
+    },
+    "diagnostics": {"type": ["object", "array"]},
+    "unresolved_risks": {"type": "array", "items": {"type": "string"}},
+    "latex_equations": {"type": ["array", "string"]},
+    "figure_intents": {"type": "array", "items": {"type": ["object", "string"]}},
+    "upstream_versions": {"type": ["object", "array"]},
+    "dependencies": {"type": ["object", "array"]},
+    "paper_section": {"type": ["string", "null"]}
+  },
+  "additionalProperties": true
+}

@@ -4,30 +4,121 @@ on:
   pull_request:
     paths:
       - "packages/math-modeling-skills-complete-20260903/skills/**"
-      - "tests/test_skill_workflow_regressions.py"
+      - "packages/math-modeling-skills-complete-20260903/schemas/**"
+      - "packages/math-modeling-skills-complete-20260903/requirements.txt"
+      - "benchmarks/**"
+      - "tests/**"
+      - "tools/**"
       - ".github/workflows/skill-regression.yml"
   push:
     branches: [main]
     paths:
       - "packages/math-modeling-skills-complete-20260903/skills/**"
-      - "tests/test_skill_workflow_regressions.py"
+      - "packages/math-modeling-skills-complete-20260903/schemas/**"
+      - "packages/math-modeling-skills-complete-20260903/requirements.txt"
+      - "benchmarks/**"
+      - "tests/**"
+      - "tools/**"
 
 permissions:
   contents: read
 
 jobs:
-  regression:
+  workflow-contracts:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Install test dependency
-        run: python -m pip install --disable-pip-version-check PyYAML==6.0.3
-      - name: Compile modified Python workflow scripts
+      - name: Install contract dependencies
+        run: python -m pip install --disable-pip-version-check "PyYAML>=6.0" "jsonschema>=4.23"
+      - name: Compile workflow and contract checkers
         run: |
           python -m py_compile packages/math-modeling-skills-complete-20260903/skills/math-modeling-orchestrator/scripts/workflow_state.py
+          python -m py_compile packages/math-modeling-skills-complete-20260903/skills/math-modeling-orchestrator/scripts/validate_contract.py
           python -m py_compile packages/math-modeling-skills-complete-20260903/skills/mm-visualization-delivery/scripts/validate_figure_intent.py
-      - name: Run regression tests
-        run: python -m unittest tests/test_skill_workflow_regressions.py -v
+          python -m py_compile tools/build_release_package.py
+      - name: Run root workflow and schema regressions
+        run: python -m unittest discover -s tests -p "test_*.py" -v
+      - name: Validate every system benchmark spec
+        shell: bash
+        run: |
+          set -euo pipefail
+          found=0
+          for case_file in benchmarks/*/benchmark.yaml; do
+            test -f "$case_file" || continue
+            found=1
+            python packages/math-modeling-skills-complete-20260903/skills/math-modeling-orchestrator/scripts/validate_contract.py \
+              --schema packages/math-modeling-skills-complete-20260903/schemas/system_benchmark.schema.json \
+              --input "$case_file"
+          done
+          test "$found" -eq 1
+
+  visualization-regressions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install CJK fonts required by paper renderers
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends fonts-noto-cjk
+          fc-cache -f
+          fc-list :lang=zh family | head -n 20
+      - name: Install package dependencies
+        run: python -m pip install --disable-pip-version-check -r packages/math-modeling-skills-complete-20260903/requirements.txt
+      - name: Compile deterministic visualization scripts
+        run: |
+          python -m py_compile packages/math-modeling-skills-complete-20260903/skills/mm-visualization-delivery/scripts/geometry_diagram_from_spec.py
+          python -m py_compile packages/math-modeling-skills-complete-20260903/skills/mm-visualization-delivery/scripts/scientific_illustration.py
+          python -m py_compile packages/math-modeling-skills-complete-20260903/skills/mm-visualization-delivery/scripts/render_corpus_chart.py
+          python -m py_compile packages/math-modeling-skills-complete-20260903/skills/mm-visualization-delivery/scripts/validate_figure_intent.py
+      - name: Run visualization unit/regression tests
+        working-directory: packages/math-modeling-skills-complete-20260903/skills/mm-visualization-delivery/scripts
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m unittest test_geometry_primitives.py -v
+          python test_scientific_illustration.py --output-dir "$RUNNER_TEMP/scientific-illustration-regression"
+          python test_validate_figure_intent.py
+          python test_render_corpus_chart.py --output-dir "$RUNNER_TEMP/corpus-renderer-regression"
+          python test_reference_templates.py --output-dir "$RUNNER_TEMP/reference-template-regression"
+
+  package-structure:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Check package entry points and no compiled caches
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f packages/math-modeling-skills-complete-20260903/README.md
+          test -f packages/math-modeling-skills-complete-20260903/schemas/README.md
+          count=$(find packages/math-modeling-skills-complete-20260903/skills -mindepth 2 -maxdepth 2 -name SKILL.md | wc -l)
+          test "$count" -eq 22
+          if find packages/math-modeling-skills-complete-20260903 \( -type d -name __pycache__ -o -type f -name '*.pyc' \) -print | grep -q .; then
+            echo "compiled Python cache found in package"
+            exit 1
+          fi
+      - name: Build deterministic package preview
+        run: |
+          python tools/build_release_package.py \
+            --output-zip "$RUNNER_TEMP/math-modeling-skills-complete-20260903.zip" \
+            --report "$RUNNER_TEMP/package-build-report.json"
+      - name: Upload package preview
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: math-modeling-skills-package-preview
+          path: |
+            ${{ runner.temp }}/math-modeling-skills-complete-20260903.zip
+            ${{ runner.temp }}/package-build-report.json
+          if-no-files-found: error

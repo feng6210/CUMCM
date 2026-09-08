@@ -2,11 +2,13 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 STAGES = (
     "NEW", "INPUT_REGISTERED", "DECOMPOSED",
@@ -22,8 +24,9 @@ RESULT_TO_CLAIM = ("NOT_EVALUATED", "YES", "PARTIAL", "NO", "BLOCKED")
 TASK_MODES = ("training", "live_contest", "coursework", "research", "business", "engineering")
 DELIVERABLE_MODES = ("analysis", "code", "figures", "paper_outline", "cumcm_latex_paper", "submission_package")
 REPORTING_PROFILES = ("competition_compact", "research_audit")
+POLICY_STATUSES = ("NOT_REQUIRED", "PENDING", "VALIDATED", "BLOCKED")
 
-# The minimum-baseline stage is deliberately mandatory.  A task whose baseline is
+# The minimum-baseline stage is deliberately mandatory. A task whose baseline is
 # genuinely not applicable still passes through BASELINE_SOLVING -> BASELINE_READY
 # with an explicit not-applicable baseline record; it must not jump directly from
 # semantics/data audit to MODEL_PLANNED.
@@ -70,6 +73,25 @@ def read_json(path: Path) -> dict:
     return value
 
 
+def load_document(path: Path) -> Any:
+    text = path.read_text(encoding="utf-8-sig")
+    if path.suffix.lower() == ".json":
+        return json.loads(text)
+    try:
+        import yaml  # type: ignore
+    except ImportError as exc:
+        raise RuntimeError("YAML input requires PyYAML") from exc
+    return yaml.safe_load(text)
+
+
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
 def write_json(path: Path, value: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     fd, temp_name = tempfile.mkstemp(prefix=path.name + ".", suffix=".tmp", dir=path.parent)
@@ -109,6 +131,9 @@ def validate_state(state: dict) -> None:
     profile = state.get("reporting_profile")
     if profile is not None and profile not in REPORTING_PROFILES:
         raise ValueError("unknown reporting_profile")
+    policy_status = state.get("competition_policy_status")
+    if policy_status is not None and policy_status not in POLICY_STATUSES:
+        raise ValueError("unknown competition_policy_status")
 
 
 def default_reporting_profile(task_mode: str) -> str:
@@ -126,6 +151,8 @@ def initialize(path: Path, task_id: str, scope: str, task_mode: str, deliverable
         "task_mode": task_mode,
         "deliverable_mode": deliverable_mode,
         "reporting_profile": default_reporting_profile(task_mode),
+        "competition_policy_status": "PENDING" if task_mode == "live_contest" else "NOT_REQUIRED",
+        "competition_policy": None,
         "output_language": "zh-CN",
         "paper_profile": "cumcm-2026-electronic",
         "paper_format": "latex",
@@ -155,12 +182,99 @@ def initialize(path: Path, task_id: str, scope: str, task_mode: str, deliverable
     return state
 
 
+def validate_competition_policy(policy_path: Path) -> dict:
+    try:
+        import jsonschema  # type: ignore
+    except ImportError as exc:
+        raise RuntimeError("competition policy validation requires jsonschema>=4.23") from exc
+
+    payload = load_document(policy_path)
+    if not isinstance(payload, dict):
+        raise ValueError("competition policy root must be an object")
+    package_root = Path(__file__).resolve().parents[3]
+    schema_path = package_root / "schemas" / "competition_policy.schema.json"
+    schema = json.loads(schema_path.read_text(encoding="utf-8"))
+    validator_cls = jsonschema.validators.validator_for(schema)
+    validator_cls.check_schema(schema)
+    errors = sorted(validator_cls(schema).iter_errors(payload), key=lambda e: (list(e.absolute_path), e.message))
+    if errors:
+        joined = "; ".join(f"{list(error.absolute_path)}: {error.message}" for error in errors[:8])
+        raise ValueError(f"competition policy schema failed: {joined}")
+    return payload
+
+
+def record_competition_policy(path: Path, policy_path: Path) -> dict:
+    state = read_json(path)
+    validate_state(state)
+    policy_path = policy_path.resolve()
+    policy = validate_competition_policy(policy_path)
+    if state["task_mode"] == "live_contest" and policy.get("stage") != "live_contest":
+        raise ValueError("live_contest workflow requires a live_contest competition policy")
+    state["competition_policy_status"] = "VALIDATED"
+    state["competition_policy"] = {
+        "file": str(policy_path),
+        "sha256": sha256_file(policy_path),
+        "stage": policy.get("stage"),
+        "ai_allowed": policy.get("ai_allowed"),
+        "ai_scope": policy.get("ai_scope"),
+        "web_allowed": policy.get("web_allowed"),
+        "web_scope": policy.get("web_scope"),
+        "external_papers_allowed": policy.get("external_papers_allowed"),
+        "external_papers_scope": policy.get("external_papers_scope"),
+        "benchmark_answers_allowed": policy.get("benchmark_answers_allowed"),
+        "benchmark_answers_scope": policy.get("benchmark_answers_scope"),
+        "source": policy.get("source"),
+    }
+    state["history"].append({
+        "at": now(),
+        "event": "competition_policy_recorded",
+        "status": "VALIDATED",
+        "policy_sha256": state["competition_policy"]["sha256"],
+    })
+    write_json(path, state)
+    return state
+
+
+def assert_competition_policy_current(state: dict) -> dict:
+    if state.get("competition_policy_status") != "VALIDATED":
+        raise ValueError("live_contest requires a validated COMPETITION_POLICY before substantive AI work")
+    binding = state.get("competition_policy")
+    if not isinstance(binding, dict):
+        raise ValueError("validated competition policy is missing its hash-bound record")
+    file_value = binding.get("file")
+    expected_hash = binding.get("sha256")
+    if not isinstance(file_value, str) or not file_value or not isinstance(expected_hash, str):
+        raise ValueError("validated competition policy binding is incomplete")
+    policy_path = Path(file_value)
+    if not policy_path.is_file():
+        raise ValueError("bound COMPETITION_POLICY file is missing; revalidate policy before continuing")
+    if sha256_file(policy_path) != expected_hash:
+        raise ValueError("bound COMPETITION_POLICY changed after validation; revalidate policy before continuing")
+    return binding
+
+
+def assert_live_contest_ai_use_allowed(state: dict) -> dict:
+    binding = assert_competition_policy_current(state)
+    if binding.get("ai_allowed") == "forbidden":
+        raise ValueError("COMPETITION_POLICY forbids AI use in this live contest; stop the AI workflow")
+    if binding.get("ai_allowed") == "restricted" and not binding.get("ai_scope"):
+        raise ValueError("restricted AI permission requires an explicit ai_scope")
+    return binding
+
+
 def transition(path: Path, target: str, next_skill: str | None, evidence_status: str | None) -> dict:
     state = read_json(path)
     validate_state(state)
     current = state["stage"]
     if target not in ALLOWED[current]:
         raise ValueError(f"transition not allowed: {current} -> {target}")
+
+    # Registering inputs/rules is allowed before policy binding. Any substantive
+    # decomposition/modeling/validation/writing transition is AI work and must
+    # already be permitted by a current official/course policy in live contests.
+    if state["task_mode"] == "live_contest" and target not in {"INPUT_REGISTERED", "BLOCKED_INPUT"}:
+        assert_live_contest_ai_use_allowed(state)
+
     approval = state.get("model_approval") or {}
     if target == "USER_APPROVED" and approval.get("approved") is not True:
         raise ValueError("model approval record required before USER_APPROVED")
@@ -257,6 +371,9 @@ def build_parser() -> argparse.ArgumentParser:
     move.add_argument("--to", choices=STAGES, required=True)
     move.add_argument("--next-skill")
     move.add_argument("--evidence-status", choices=EVIDENCE)
+    policy = sub.add_parser("set-competition-policy", help="Validate and bind COMPETITION_POLICY.yaml to a workflow state.")
+    policy.add_argument("--state", type=Path, required=True)
+    policy.add_argument("--policy-file", type=Path, required=True)
     approval = sub.add_parser("approve-model", help="Record a valid model decision while awaiting approval.")
     approval.add_argument("--state", type=Path, required=True)
     approval.add_argument("--decision-file", type=Path, required=True)
@@ -283,6 +400,8 @@ def main() -> int:
             emit(state)
         elif args.command == "transition":
             emit(transition(args.state, args.to, args.next_skill, args.evidence_status))
+        elif args.command == "set-competition-policy":
+            emit(record_competition_policy(args.state, args.policy_file))
         elif args.command == "approve-model":
             emit(approve(args.state, args.decision_file))
         elif args.command == "amend-plan":
@@ -290,7 +409,7 @@ def main() -> int:
         else:
             emit(mark_stale(args.state, args.artifacts, args.reason))
         return 0
-    except (OSError, ValueError, json.JSONDecodeError) as error:
+    except (OSError, ValueError, RuntimeError, json.JSONDecodeError) as error:
         print(f"workflow state error: {error}", file=os.sys.stderr)
         return 2
 

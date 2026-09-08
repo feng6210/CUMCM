@@ -1,6 +1,6 @@
 # 数学建模跨 Skill 交接契约
 
-本契约定义**总控看到的规范化交接包**。为避免一次升级要求 22 个专业 Skill 同时重写，区分“专业 Skill 原生输出”和“总控规范化 envelope”。
+本契约定义**总控看到的规范化交接包**。为避免一次升级要求 22 个专业 Skill 同时重写，区分“专业 Skill 原生输出”和“总控规范化 envelope”。规范化后可按 `schemas/cross_skill_envelope.schema.json` 做机器结构校验；schema PASS 只证明字段与类型闭合，不证明数学结论或证据成立。
 
 ## 1. 专业模型 Skill 的核心原生输出
 
@@ -30,6 +30,7 @@ recommended_figures     # 旧字段，迁移期兼容
 进入验证、跨问交接或论文链之前，总控把专业 Skill 输出规范化为：
 
 ```text
+schema_version
 question_id
 inputs
 problem_semantics_ref
@@ -44,7 +45,13 @@ latex_equations
 figure_intents
 ```
 
-其中 `question_id`、`problem_semantics_ref`、`baseline` 和 `benchmark_challenge` 可以由总控从 `workflow_state.json`、`PROBLEM_SEMANTICS.yaml`、基线工件和挑战阶段继承/补齐；**不得要求每个专业 Skill 重复生成这些上游事实，也不得为了满足 schema 伪造值。**
+其中 `question_id`、`problem_semantics_ref`、`baseline` 和 `benchmark_challenge` 可以由总控从 `workflow_state.json`、`PROBLEM_SEMANTICS.yaml`、基线工件和挑战阶段继承/补齐；**不得要求每个专业 Skill 重复生成这些上游事实，也不得为了满足 schema 伪造值。** `schema_version` 当前使用 `1.0`。
+
+推荐校验：
+
+```powershell
+python scripts/validate_contract.py --schema ../../schemas/cross_skill_envelope.schema.json --input QUESTION_HANDOFF.json
+```
 
 ## 3. 字段语义
 

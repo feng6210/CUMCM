@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/cumcm/benchmark_challenge.schema.json",
+  "title": "CUMCM Benchmark Challenge",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "benchmark_id",
+    "source_scope",
+    "same_evaluator",
+    "feasible_under_current_model",
+    "outcome",
+    "reason"
+  ],
+  "properties": {
+    "schema_version": {"type": "string", "const": "1.0"},
+    "benchmark_id": {"type": "string", "minLength": 1},
+    "source_scope": {"type": "string", "minLength": 1},
+    "parameter_mapping": {"type": "object"},
+    "same_objective": {"type": ["boolean", "null"]},
+    "same_physics": {"type": ["boolean", "null"]},
+    "same_evaluator": {"type": "boolean"},
+    "feasible_under_current_model": {"type": ["boolean", "null"]},
+    "objective_value": {"type": ["number", "null"]},
+    "incumbent_value": {"type": ["number", "null"]},
+    "tolerance": {"type": ["number", "null"], "minimum": 0},
+    "objective_direction": {"enum": ["max", "min", null]},
+    "outcome": {
+      "enum": [
+        "PENDING",
+        "PASS",
+        "CHALLENGED",
+        "INCOMPARABLE",
+        "NOT_ALLOWED_BY_RULES",
+        "BLOCKED_INPUT"
+      ]
+    },
+    "reason": {"type": "string", "minLength": 1},
+    "policy_ref": {"type": ["string", "null"]},
+    "reopen_search_required": {"type": "boolean"},
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["file", "sha256"],
+        "properties": {
+          "file": {"type": "string", "minLength": 1},
+          "sha256": {"type": "string", "pattern": "^[0-9a-fA-F]{64}$"}
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {"outcome": {"const": "CHALLENGED"}},
+        "required": ["outcome"]
+      },
+      "then": {
+        "required": ["objective_value", "incumbent_value", "tolerance", "objective_direction", "reopen_search_required"],
+        "properties": {
+          "same_evaluator": {"const": true},
+          "feasible_under_current_model": {"const": true},
+          "reopen_search_required": {"const": true}
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {"outcome": {"const": "NOT_ALLOWED_BY_RULES"}},
+        "required": ["outcome"]
+      },
+      "then": {
+        "required": ["policy_ref"]
+      }
+    }
+  ],
+  "additionalProperties": true
+}

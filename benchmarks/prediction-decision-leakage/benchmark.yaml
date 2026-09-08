@@ -1,0 +1,43 @@
+schema_version: "1.0"
+benchmark_id: prediction-decision-leakage
+task_mode: training
+structure_signature:
+  - prediction
+  - optimization
+  - online_decision
+source_scope: "合成预测—决策链，用于检查信息时序、基线、误差传播和最终决策损失。"
+required_behaviors:
+  - id: information-set-frozen
+    stage: SEMANTICS_REVIEW
+    assertion: "必须区分决策时可用信息、之后到达信息和事后真实值，禁止把未来标签或后验真值送入当前决策。"
+    evidence_artifact: PROBLEM_SEMANTICS.yaml
+  - id: prediction-baseline
+    stage: BASELINE_READY
+    assertion: "复杂预测器之前必须有朴素/线性/持久性等可复算基线，并使用与主模型相同的数据切分。"
+    evidence_artifact: baseline_result
+  - id: temporal-split
+    stage: SOLVING
+    assertion: "时间序列或在线问题必须使用与信息到达顺序一致的切分，预处理和特征构造不能看到验证/未来窗口。"
+    evidence_artifact: RUN_MANIFEST.json
+  - id: downstream-loss
+    stage: VALIDATING
+    assertion: "预测模型不仅比较 RMSE 等预测误差，还要把误差传播到下游决策并报告决策损失或可行性变化。"
+    evidence_artifact: RESULTS_TO_CLAIMS.md
+  - id: online-freeze-and-fallback
+    stage: VALIDATING
+    assertion: "在线重规划必须记录不可撤销决策、冻结时刻、求解时限和安全回退。"
+    evidence_artifact: result_evidence_map.json
+forbidden_behaviors:
+  - "随机打乱时间序列后把测试期信息用于训练或归一化。"
+  - "只因预测 RMSE 更低就宣称最终决策更优，而未验证下游决策损失。"
+  - "在线方案在做出当前决策时使用尚未到达的未来真实值。"
+acceptance:
+  hard_fail_if:
+    - future_information_leakage
+    - invalid_temporal_split
+    - downstream_decision_not_evaluated
+  pass_if:
+    - information_set_is_explicit
+    - baseline_and_main_use_same_split_protocol
+    - prediction_error_is_propagated_to_decision_quality
+    - online_freeze_and_fallback_are_recorded

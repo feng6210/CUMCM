@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/cumcm/figure_plan.schema.json",
+  "title": "CUMCM Figure Plan",
+  "type": "object",
+  "required": ["schema_version", "coverage_plan"],
+  "properties": {
+    "schema_version": {"type": "string", "const": "1.0"},
+    "coverage_plan": {
+      "type": "object",
+      "required": ["expected_question_ids", "questions"],
+      "properties": {
+        "expected_question_ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "questions": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["question_id", "tasks"],
+            "properties": {
+              "question_id": {"type": "string", "minLength": 1},
+              "core_claim_ids": {
+                "type": "array",
+                "items": {"type": "string", "minLength": 1}
+              },
+              "tasks": {
+                "type": "object",
+                "minProperties": 1,
+                "additionalProperties": {
+                  "type": "object",
+                  "required": ["representation", "reason"],
+                  "properties": {
+                    "representation": {
+                      "enum": ["figure", "table", "text", "appendix", "not_applicable"]
+                    },
+                    "reason": {"type": "string", "minLength": 8},
+                    "figure_ids": {
+                      "type": "array",
+                      "uniqueItems": true,
+                      "items": {"type": "string", "minLength": 1}
+                    },
+                    "reader_takeaway": {"type": "string"}
+                  },
+                  "allOf": [
+                    {
+                      "if": {
+                        "properties": {"representation": {"const": "figure"}},
+                        "required": ["representation"]
+                      },
+                      "then": {
+                        "required": ["figure_ids"],
+                        "properties": {
+                          "figure_ids": {"minItems": 1}
+                        }
+                      }
+                    }
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            },
+            "additionalProperties": true
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "figures": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["figure_id", "question_id", "narrative_role", "reader_takeaway", "placement"],
+        "properties": {
+          "figure_id": {"type": "string", "pattern": "^[A-Za-z0-9_.-]+$"},
+          "question_id": {"type": "string", "minLength": 1},
+          "narrative_role": {"enum": ["orientation", "mechanism", "evidence", "validation"]},
+          "reader_takeaway": {"type": "string", "minLength": 8},
+          "placement": {"enum": ["body", "appendix"]}
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": true
+}
