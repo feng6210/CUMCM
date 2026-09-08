@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Build a deterministic preview ZIP and fresh manifest from the package source tree.
 
-The script does not modify the repository.  It is intended for CI and release
+The script does not modify the repository. It is intended for CI and release
 preparation so that source changes cannot silently ship with stale manifest or
-SHA256SUMS metadata.
+SHA256SUMS metadata. Wall-clock time is deliberately excluded by default so
+identical source bytes produce identical ZIP bytes across different days.
 """
 from __future__ import annotations
 
@@ -11,7 +12,6 @@ import argparse
 import hashlib
 import json
 import zipfile
-from datetime import date
 from pathlib import Path
 
 EXCLUDED_NAMES = {"PACKAGE_MANIFEST.json", "SHA256SUMS.txt"}
@@ -42,7 +42,7 @@ def source_files(package_dir: Path) -> list[Path]:
     return sorted(result, key=lambda p: p.relative_to(package_dir).as_posix())
 
 
-def build_manifest(package_dir: Path, files: list[Path]) -> dict:
+def build_manifest(package_dir: Path, files: list[Path], release_date: str | None = None) -> dict:
     skills_dir = package_dir / "skills"
     skill_count = sum(1 for path in skills_dir.glob("*/SKILL.md") if path.is_file())
     entries = []
@@ -55,7 +55,7 @@ def build_manifest(package_dir: Path, files: list[Path]) -> dict:
     return {
         "schema_version": "3.0",
         "package": package_dir.name,
-        "generated_date": date.today().isoformat(),
+        "release_date": release_date,
         "skill_count": skill_count,
         "file_count": len(entries),
         "total_bytes": total_bytes,
@@ -72,10 +72,15 @@ def deterministic_write(archive: zipfile.ZipFile, arcname: str, data: bytes) -> 
     archive.writestr(info, data)
 
 
-def build(package_dir: Path, output_zip: Path, report_path: Path | None = None) -> dict:
+def build(
+    package_dir: Path,
+    output_zip: Path,
+    report_path: Path | None = None,
+    release_date: str | None = None,
+) -> dict:
     package_dir = package_dir.resolve()
     files = source_files(package_dir)
-    manifest = build_manifest(package_dir, files)
+    manifest = build_manifest(package_dir, files, release_date=release_date)
     manifest_bytes = (json.dumps(manifest, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
     sums_bytes = ("".join(f"{entry['sha256']}  {entry['path']}\n" for entry in manifest["files"])).encode("utf-8")
 
@@ -105,8 +110,10 @@ def build(package_dir: Path, output_zip: Path, report_path: Path | None = None) 
         "source_file_count": len(files),
         "zip_entry_count": len(files) + 2,
         "skill_count": manifest["skill_count"],
+        "release_date": release_date,
         "manifest_sha256": sha256_bytes(manifest_bytes),
         "sha256s_sha256": sha256_bytes(sums_bytes),
+        "deterministic_without_wall_clock": release_date is None,
         "note": "Preview ZIP contains freshly generated manifest/SHA256SUMS; repository files are not modified.",
     }
     if report_path:
@@ -124,9 +131,13 @@ def main() -> int:
     )
     parser.add_argument("--output-zip", type=Path, required=True)
     parser.add_argument("--report", type=Path)
+    parser.add_argument(
+        "--release-date",
+        help="Optional explicit YYYY-MM-DD release metadata. Omit for source-byte-deterministic CI previews.",
+    )
     args = parser.parse_args()
     try:
-        report = build(args.package_dir, args.output_zip, args.report)
+        report = build(args.package_dir, args.output_zip, args.report, release_date=args.release_date)
         print(json.dumps(report, ensure_ascii=False, indent=2))
         return 0
     except (OSError, ValueError, RuntimeError, zipfile.BadZipFile) as exc:
