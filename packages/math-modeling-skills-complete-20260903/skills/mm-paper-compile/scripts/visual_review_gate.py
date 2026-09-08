@@ -10,6 +10,9 @@ from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 COMPILE_SCRIPT = SCRIPT_DIR / "compile_paper.py"
+DEFAULT_VISUAL_REPORT = "PDF_VISUAL_CHECK.json"
+DEFAULT_VERIFICATION_REPORT = "visual_verification_report.json"
+DEFAULT_BINDING = "VISUAL_REVIEW_BINDING.json"
 
 
 def _load_compile_module():
@@ -51,27 +54,71 @@ def _artifact(base: Path, value: object) -> Path:
     return (path if path.is_absolute() else base / path).resolve()
 
 
-def review_evidence_paths(visual_path: Path | None) -> set[Path]:
-    """Exclude review-only JSON/PNGs from the frozen paper-source snapshot."""
-    if visual_path is None:
-        return set()
-    pending = [visual_path.resolve()]
+def _optional_artifact(base: Path, value: object) -> Path | None:
+    if not isinstance(value, str) or not value.strip():
+        return None
+    path = Path(value)
+    return (path if path.is_absolute() else base / path).resolve()
+
+
+def review_artifact_paths(
+    paper: Path,
+    binding_path: Path,
+    visual_path: Path | None = None,
+    output_report: Path | None = None,
+) -> set[Path]:
+    """Return gate/review-only artifacts to exclude from paper-source snapshots.
+
+    The same helper is used by both prepare and verify.  It always excludes the
+    default gate outputs, even before they exist, and follows review-evidence
+    references from any existing JSON artifact.  This lets a later compile / review
+    cycle retain prior evidence without making an unchanged paper source look stale.
+    """
+    pending = [
+        binding_path.resolve(),
+        (paper / DEFAULT_VISUAL_REPORT).resolve(),
+        (paper / DEFAULT_VERIFICATION_REPORT).resolve(),
+    ]
+    if visual_path is not None:
+        pending.append(visual_path.resolve())
+    if output_report is not None:
+        pending.append(output_report.resolve())
+
     seen: set[Path] = set()
     while pending:
         current = pending.pop()
         if current in seen:
             continue
         seen.add(current)
+        if not current.is_file() or current.suffix.lower() != ".json":
+            continue
         try:
             payload = read_json(current)
         except (OSError, ValueError, json.JSONDecodeError, UnicodeError):
+            # The named artifact is still review/gate evidence and remains excluded;
+            # malformed evidence is rejected later by the actual verification path.
             continue
+
         for row in payload.get("page_images", []):
-            if isinstance(row, dict) and isinstance(row.get("file"), str) and row["file"].strip():
-                pending.append(_artifact(current.parent, row["file"]))
+            if isinstance(row, dict):
+                referenced = _optional_artifact(current.parent, row.get("file"))
+                if referenced is not None:
+                    pending.append(referenced)
+
         previous = payload.get("previous_report")
-        if isinstance(previous, dict) and isinstance(previous.get("file"), str) and previous["file"].strip():
-            pending.append(_artifact(current.parent, previous["file"]))
+        if isinstance(previous, dict):
+            referenced = _optional_artifact(current.parent, previous.get("file"))
+            if referenced is not None:
+                pending.append(referenced)
+
+        # A prior visual_verification_report.json records the actual review file;
+        # following it keeps custom review filenames out of the next source snapshot.
+        visual = payload.get("visual_report")
+        if isinstance(visual, dict):
+            referenced = _optional_artifact(current.parent, visual.get("file"))
+            if referenced is not None:
+                pending.append(referenced)
+
     return seen
 
 
@@ -127,7 +174,7 @@ def prepare(args) -> tuple[int, dict]:
     if str(report.get("pdf_sha256", "")).lower() != current_pdf_hash:
         return 2, {"status": "PUBLISHED_PDF_CHANGED", "pdf": str(pdf)}
     pages = compile_paper.pdf_page_count(pdf)
-    excluded = {compile_report_path, pdf, binding_path}
+    excluded = {compile_report_path, pdf} | review_artifact_paths(paper, binding_path)
     snapshot = source_snapshot(paper, excluded)
     binding = {
         "schema_version": "1.0",
@@ -136,6 +183,11 @@ def prepare(args) -> tuple[int, dict]:
         "compile_report": {"file": str(compile_report_path), "sha256": sha256(compile_report_path)},
         "paper_pdf": {"file": str(pdf), "sha256": current_pdf_hash, "page_count": pages},
         "source_snapshot": snapshot,
+        "review_artifact_policy": {
+            "default_visual_report": DEFAULT_VISUAL_REPORT,
+            "default_verification_report": DEFAULT_VERIFICATION_REPORT,
+            "binding": binding_path.name,
+        },
         "scope": "Binds the already published PDF and paper inputs for later no-recompile visual verification.",
     }
     write_json(binding_path, binding)
@@ -152,57 +204,119 @@ def verify(args) -> tuple[int, dict]:
         "paper_dir": str(paper),
         "status": "UNKNOWN",
     }
+
+    def finish(code: int, **updates) -> tuple[int, dict]:
+        result.update(updates)
+        write_json(output_report, result)
+        return code, result
+
+    if output_report in {compile_report_path, pdf, binding_path, visual_path}:
+        return finish(
+            2,
+            status="VISUAL_VERIFICATION_REQUIRES_RECOMPILE",
+            visual_check_status="OUTPUT_REPORT_PATH_CONFLICT",
+        )
     if not binding_path.is_file():
-        result.update(status="VISUAL_VERIFICATION_REQUIRES_RECOMPILE", visual_check_status="BINDING_MISSING")
-        return 2, result
+        return finish(
+            2,
+            status="VISUAL_VERIFICATION_REQUIRES_RECOMPILE",
+            visual_check_status="BINDING_MISSING",
+        )
     try:
         binding = read_json(binding_path)
     except (OSError, ValueError, json.JSONDecodeError, UnicodeError) as exc:
-        result.update(status="VISUAL_VERIFICATION_REQUIRES_RECOMPILE", visual_check_status="BINDING_INVALID", error=str(exc))
-        return 2, result
+        return finish(
+            2,
+            status="VISUAL_VERIFICATION_REQUIRES_RECOMPILE",
+            visual_check_status="BINDING_INVALID",
+            error=str(exc),
+        )
     compile_binding = binding.get("compile_report")
     pdf_binding = binding.get("paper_pdf")
     source_binding = binding.get("source_snapshot")
     if not all(isinstance(item, dict) for item in (compile_binding, pdf_binding, source_binding)):
-        result.update(status="VISUAL_VERIFICATION_REQUIRES_RECOMPILE", visual_check_status="BINDING_INVALID")
-        return 2, result
+        return finish(
+            2,
+            status="VISUAL_VERIFICATION_REQUIRES_RECOMPILE",
+            visual_check_status="BINDING_INVALID",
+        )
     if not compile_report_path.is_file() or sha256(compile_report_path) != compile_binding.get("sha256"):
-        result.update(status="VISUAL_VERIFICATION_REQUIRES_RECOMPILE", visual_check_status="COMPILE_REPORT_CHANGED")
-        return 2, result
-    if _artifact(binding_path.parent, compile_binding.get("file")) != compile_report_path:
-        result.update(status="VISUAL_VERIFICATION_REQUIRES_RECOMPILE", visual_check_status="COMPILE_REPORT_PATH_CHANGED")
-        return 2, result
+        return finish(
+            2,
+            status="VISUAL_VERIFICATION_REQUIRES_RECOMPILE",
+            visual_check_status="COMPILE_REPORT_CHANGED",
+        )
+    try:
+        recorded_compile_report = _artifact(binding_path.parent, compile_binding.get("file"))
+    except ValueError as exc:
+        return finish(
+            2,
+            status="VISUAL_VERIFICATION_REQUIRES_RECOMPILE",
+            visual_check_status="BINDING_INVALID",
+            error=str(exc),
+        )
+    if recorded_compile_report != compile_report_path:
+        return finish(
+            2,
+            status="VISUAL_VERIFICATION_REQUIRES_RECOMPILE",
+            visual_check_status="COMPILE_REPORT_PATH_CHANGED",
+        )
     if not pdf.is_file() or pdf.is_symlink():
-        result.update(status="VISUAL_VERIFICATION_REQUIRES_RECOMPILE", visual_check_status="PUBLISHED_PDF_MISSING")
-        return 2, result
-    if _artifact(binding_path.parent, pdf_binding.get("file")) != pdf or sha256(pdf) != pdf_binding.get("sha256"):
-        result.update(status="VISUAL_VERIFICATION_REQUIRES_RECOMPILE", visual_check_status="PUBLISHED_PDF_CHANGED")
-        return 2, result
-    excluded = {compile_report_path, pdf, binding_path, output_report} | review_evidence_paths(visual_path)
+        return finish(
+            2,
+            status="VISUAL_VERIFICATION_REQUIRES_RECOMPILE",
+            visual_check_status="PUBLISHED_PDF_MISSING",
+        )
+    try:
+        recorded_pdf = _artifact(binding_path.parent, pdf_binding.get("file"))
+    except ValueError as exc:
+        return finish(
+            2,
+            status="VISUAL_VERIFICATION_REQUIRES_RECOMPILE",
+            visual_check_status="BINDING_INVALID",
+            error=str(exc),
+        )
+    if recorded_pdf != pdf or sha256(pdf) != pdf_binding.get("sha256"):
+        return finish(
+            2,
+            status="VISUAL_VERIFICATION_REQUIRES_RECOMPILE",
+            visual_check_status="PUBLISHED_PDF_CHANGED",
+        )
+
+    excluded = {compile_report_path, pdf} | review_artifact_paths(
+        paper,
+        binding_path,
+        visual_path=visual_path,
+        output_report=output_report,
+    )
     current_snapshot = source_snapshot(paper, excluded)
     result["source_snapshot"] = {"expected": source_binding.get("sha256"), "current": current_snapshot["sha256"]}
     if current_snapshot["sha256"] != source_binding.get("sha256"):
-        result.update(status="VISUAL_VERIFICATION_REQUIRES_RECOMPILE", visual_check_status="SOURCE_SNAPSHOT_CHANGED")
-        return 2, result
+        return finish(
+            2,
+            status="VISUAL_VERIFICATION_REQUIRES_RECOMPILE",
+            visual_check_status="SOURCE_SNAPSHOT_CHANGED",
+        )
+
     pages = compile_paper.pdf_page_count(pdf)
     visual_check = compile_paper.check_visual_report(visual_path, pdf, pages)
     result["paper_pdf"] = {"file": str(pdf), "sha256": sha256(pdf), "page_count": pages}
     result["compile_report"] = {"file": str(compile_report_path), "sha256": sha256(compile_report_path)}
-    result["visual_report"] = {"file": str(visual_path), "sha256": sha256(visual_path)}
+    if visual_path.is_file():
+        result["visual_report"] = {"file": str(visual_path), "sha256": sha256(visual_path)}
+    else:
+        result["visual_report"] = {"file": str(visual_path), "sha256": None}
     result["visual_check_details"] = visual_check
     result["visual_check_status"] = visual_check["status"]
     if visual_check["status"] == "PASSED":
-        result["status"] = "PASSED"
-        result["visual_check_status"] = f"PASSED_ALL_{pages}_PAGES"
-        code = 0
-    elif visual_check["status"] == "REVIEW_REQUIRED":
-        result["status"] = "COMPILED_PENDING_VISUAL_CHECK"
-        code = 0
-    else:
-        result["status"] = "VISUAL_CHECK_FAILED"
-        code = 2
-    write_json(output_report, result)
-    return code, result
+        return finish(
+            0,
+            status="PASSED",
+            visual_check_status=f"PASSED_ALL_{pages}_PAGES",
+        )
+    if visual_check["status"] == "REVIEW_REQUIRED":
+        return finish(0, status="COMPILED_PENDING_VISUAL_CHECK")
+    return finish(2, status="VISUAL_CHECK_FAILED")
 
 
 def parser() -> argparse.ArgumentParser:
@@ -213,10 +327,10 @@ def parser() -> argparse.ArgumentParser:
         p.add_argument("--paper-dir", type=Path, required=True)
         p.add_argument("--compile-report", type=Path, default=Path("compile_report.json"))
         p.add_argument("--output-pdf", type=Path, default=Path("main.pdf"))
-        p.add_argument("--binding", type=Path, default=Path("VISUAL_REVIEW_BINDING.json"))
+        p.add_argument("--binding", type=Path, default=Path(DEFAULT_BINDING))
         if name == "verify":
             p.add_argument("--visual-report", type=Path, required=True)
-            p.add_argument("--report", type=Path, default=Path("visual_verification_report.json"))
+            p.add_argument("--report", type=Path, default=Path(DEFAULT_VERIFICATION_REPORT))
     return ap
 
 
@@ -226,6 +340,13 @@ def main() -> int:
         code, payload = prepare(args) if args.command == "prepare" else verify(args)
     except (OSError, ValueError, json.JSONDecodeError, UnicodeError, KeyError, TypeError) as exc:
         code, payload = 2, {"status": "FAILED", "error": f"{type(exc).__name__}: {exc}"}
+        if args.command == "verify":
+            try:
+                paper = args.paper_dir.resolve()
+                report_path = (args.report if args.report.is_absolute() else paper / args.report).resolve()
+                write_json(report_path, payload)
+            except (OSError, ValueError, TypeError):
+                pass
     print(json.dumps(payload, ensure_ascii=False, indent=2))
     return code
 
