@@ -1,0 +1,127 @@
+from __future__ import annotations
+
+import importlib.util
+import json
+import tempfile
+import unittest
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+WORKFLOW = (
+    ROOT
+    / "packages"
+    / "math-modeling-skills-complete-20260903"
+    / "skills"
+    / "math-modeling-orchestrator"
+    / "scripts"
+    / "workflow_state.py"
+)
+
+
+def load_workflow_module():
+    spec = importlib.util.spec_from_file_location("workflow_state_live_policy_test", WORKFLOW)
+    assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+class LiveContestPolicyTests(unittest.TestCase):
+    def _advance_to_approval(self, wf, state_path: Path):
+        for target in (
+            "INPUT_REGISTERED",
+            "DECOMPOSED",
+            "SEMANTICS_REVIEW",
+            "SEMANTICS_LOCKED",
+            "BASELINE_SOLVING",
+            "BASELINE_READY",
+            "MODEL_PLANNED",
+            "INNOVATION_PROPOSED",
+            "AWAITING_MODEL_APPROVAL",
+        ):
+            wf.transition(state_path, target, None, None)
+
+    def test_live_contest_cannot_enter_user_approved_without_validated_policy(self):
+        wf = load_workflow_module()
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            state_path = root / "workflow_state.json"
+            wf.initialize(state_path, "live-demo", "policy regression", "live_contest", "analysis")
+            self.assertEqual(wf.read_json(state_path)["competition_policy_status"], "PENDING")
+            self._advance_to_approval(wf, state_path)
+
+            decision = root / "decision.json"
+            decision.write_text(
+                json.dumps(
+                    {
+                        "approved": True,
+                        "selected_routes": {"Q1": "route-A"},
+                        "approved_claim_scope": ["claim-q1"],
+                    },
+                    ensure_ascii=False,
+                ),
+                encoding="utf-8",
+            )
+            wf.approve(state_path, decision)
+
+            with self.assertRaises(ValueError):
+                wf.transition(state_path, "USER_APPROVED", None, None)
+
+            policy = root / "COMPETITION_POLICY.yaml"
+            policy.write_text(
+                """schema_version: \"1.0\"
+competition_name: Demo Contest
+stage: live_contest
+ai_allowed: restricted
+web_allowed: forbidden
+external_papers_allowed: restricted
+benchmark_answers_allowed: forbidden
+team_collaboration_scope: registered team only
+citation_requirement: follow official rules
+source:
+  kind: official_rules
+  reference: demo official rulebook
+unresolved: []
+""",
+                encoding="utf-8",
+            )
+            wf.record_competition_policy(state_path, policy)
+            bound = wf.read_json(state_path)
+            self.assertEqual(bound["competition_policy_status"], "VALIDATED")
+            self.assertEqual(bound["competition_policy"]["benchmark_answers_allowed"], "forbidden")
+
+            wf.transition(state_path, "USER_APPROVED", None, None)
+            wf.transition(state_path, "SOLVING", None, None)
+            self.assertEqual(wf.read_json(state_path)["stage"], "SOLVING")
+
+    def test_unknown_live_contest_permissions_are_rejected(self):
+        wf = load_workflow_module()
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            state_path = root / "workflow_state.json"
+            wf.initialize(state_path, "live-demo", "policy regression", "live_contest", "analysis")
+            policy = root / "COMPETITION_POLICY.yaml"
+            policy.write_text(
+                """schema_version: \"1.0\"
+competition_name: Demo Contest
+stage: live_contest
+ai_allowed: unknown
+web_allowed: forbidden
+external_papers_allowed: restricted
+benchmark_answers_allowed: forbidden
+team_collaboration_scope: registered team only
+citation_requirement: follow official rules
+source:
+  kind: official_rules
+  reference: incomplete rulebook
+unresolved:
+  - AI permission unresolved
+""",
+                encoding="utf-8",
+            )
+            with self.assertRaises(ValueError):
+                wf.record_competition_policy(state_path, policy)
+
+
+if __name__ == "__main__":
+    unittest.main()
