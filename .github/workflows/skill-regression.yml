@@ -72,12 +72,14 @@ jobs:
           python -m py_compile packages/math-modeling-skills-complete-20260903/skills/mm-visualization-delivery/scripts/validate_figure_intent.py
       - name: Run visualization unit/regression tests
         working-directory: packages/math-modeling-skills-complete-20260903/skills/mm-visualization-delivery/scripts
+        shell: bash
         run: |
+          set -euo pipefail
           python -m unittest test_geometry_primitives.py -v
-          python -m unittest test_scientific_illustration.py -v
-          python -m unittest test_validate_figure_intent.py -v
-          python -m unittest test_render_corpus_chart.py -v
-          python -m unittest test_reference_templates.py -v
+          python test_scientific_illustration.py --output-dir "$RUNNER_TEMP/scientific-illustration-regression"
+          python test_validate_figure_intent.py
+          python test_render_corpus_chart.py --output-dir "$RUNNER_TEMP/corpus-renderer-regression"
+          python test_reference_templates.py --output-dir "$RUNNER_TEMP/reference-template-regression"
 
   package-structure:
     runs-on: ubuntu-latest
