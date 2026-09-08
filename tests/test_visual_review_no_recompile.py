@@ -106,50 +106,111 @@ class VisualReviewNoRecompileTests(unittest.TestCase):
         self.assertTrue(self.binding.is_file())
         return binding
 
-    def test_visual_verification_uses_existing_pdf_without_compiler(self):
-        self.prepare_binding()
-        visual = self.visual_report()
+    def verify(self, visual: Path):
         with (
             patch.object(gate.compile_paper, "pdf_page_count", return_value=3),
             patch.object(gate.compile_paper, "run_compile", side_effect=AssertionError("must not compile")),
         ):
-            code, report = gate.verify(self.args("verify", visual))
+            return gate.verify(self.args("verify", visual))
+
+    def test_visual_verification_uses_existing_pdf_without_compiler(self):
+        self.prepare_binding()
+        visual = self.visual_report()
+        code, report = self.verify(visual)
         self.assertEqual(code, 0)
         self.assertEqual(report["status"], "PASSED")
         self.assertEqual(report["verification_mode"], "existing_published_artifact_no_recompile")
         self.assertEqual(report["visual_check_status"], "PASSED_ALL_3_PAGES")
         self.assertEqual(self.pdf.read_bytes(), PDF)
+        persisted = json.loads(self.verify_report.read_text(encoding="utf-8"))
+        self.assertEqual(persisted["status"], "PASSED")
 
-    def test_source_change_requires_recompile(self):
+    def test_source_change_requires_recompile_and_overwrites_old_pass_report(self):
         self.prepare_binding()
         visual = self.visual_report()
+        code, report = self.verify(visual)
+        self.assertEqual((code, report["status"]), (0, "PASSED"))
+        self.assertEqual(json.loads(self.verify_report.read_text(encoding="utf-8"))["status"], "PASSED")
+
         main = self.paper / "main.tex"
         main.write_text(main.read_text(encoding="utf-8") + "% changed after review\n", encoding="utf-8")
-        with patch.object(gate.compile_paper, "run_compile", side_effect=AssertionError("must not compile")):
-            code, report = gate.verify(self.args("verify", visual))
+        code, report = self.verify(visual)
         self.assertEqual(code, 2)
         self.assertEqual(report["status"], "VISUAL_VERIFICATION_REQUIRES_RECOMPILE")
         self.assertEqual(report["visual_check_status"], "SOURCE_SNAPSHOT_CHANGED")
+        persisted = json.loads(self.verify_report.read_text(encoding="utf-8"))
+        self.assertEqual(persisted["status"], "VISUAL_VERIFICATION_REQUIRES_RECOMPILE")
+        self.assertEqual(persisted["visual_check_status"], "SOURCE_SNAPSHOT_CHANGED")
 
     def test_published_pdf_change_requires_recompile_and_rereview(self):
         self.prepare_binding()
         visual = self.visual_report()
         self.pdf.write_bytes(PDF + b"changed")
-        with patch.object(gate.compile_paper, "run_compile", side_effect=AssertionError("must not compile")):
-            code, report = gate.verify(self.args("verify", visual))
+        code, report = self.verify(visual)
         self.assertEqual(code, 2)
         self.assertEqual(report["status"], "VISUAL_VERIFICATION_REQUIRES_RECOMPILE")
         self.assertEqual(report["visual_check_status"], "PUBLISHED_PDF_CHANGED")
+        persisted = json.loads(self.verify_report.read_text(encoding="utf-8"))
+        self.assertEqual(persisted["visual_check_status"], "PUBLISHED_PDF_CHANGED")
 
-    def test_compile_report_change_invalidates_binding(self):
+    def test_compile_report_change_invalidates_binding_and_persists_failure(self):
         self.prepare_binding()
         visual = self.visual_report()
         payload = json.loads(self.compile_report.read_text(encoding="utf-8"))
         payload["note"] = "changed after binding"
         self.compile_report.write_text(json.dumps(payload), encoding="utf-8")
-        code, report = gate.verify(self.args("verify", visual))
+        code, report = self.verify(visual)
         self.assertEqual(code, 2)
         self.assertEqual(report["visual_check_status"], "COMPILE_REPORT_CHANGED")
+        persisted = json.loads(self.verify_report.read_text(encoding="utf-8"))
+        self.assertEqual(persisted["visual_check_status"], "COMPILE_REPORT_CHANGED")
+
+    def test_prepare_after_completed_cycle_excludes_prior_review_evidence(self):
+        first_binding = self.prepare_binding()
+        visual = self.visual_report()
+        code, report = self.verify(visual)
+        self.assertEqual((code, report["status"]), (0, "PASSED"))
+        self.assertTrue(self.verify_report.is_file())
+
+        # Prior review evidence is deliberately retained. A new prepare on an
+        # unchanged paper must still freeze the same paper-source snapshot.
+        second_binding = self.prepare_binding()
+        self.assertEqual(
+            first_binding["source_snapshot"]["sha256"],
+            second_binding["source_snapshot"]["sha256"],
+        )
+        code, report = self.verify(visual)
+        self.assertEqual((code, report["status"]), (0, "PASSED"))
+        self.assertNotEqual(report["visual_check_status"], "SOURCE_SNAPSHOT_CHANGED")
+
+    def test_prepare_follows_custom_visual_report_referenced_by_prior_verification(self):
+        first_binding = self.prepare_binding()
+        custom = self.paper / "custom-review.json"
+        custom.write_text(
+            json.dumps(
+                {
+                    "status": "PASSED",
+                    "paper_pdf": "main.pdf",
+                    "paper_sha256": digest(PDF),
+                    "page_count": 3,
+                    "rendered_pages": [1, 2, 3],
+                    "reviewed_pages": [1, 2, 3],
+                    "reviewer_id": "custom-reviewer",
+                    "reviewer_role": "author self-review; not independent",
+                }
+            ),
+            encoding="utf-8",
+        )
+        args = self.args("verify", custom)
+        code, report = gate.verify(args)
+        self.assertEqual((code, report["status"]), (0, "PASSED"))
+
+        second_binding = self.prepare_binding()
+        self.assertEqual(
+            first_binding["source_snapshot"]["sha256"],
+            second_binding["source_snapshot"]["sha256"],
+        )
+        self.assertNotIn("custom-review.json", {row["path"] for row in second_binding["source_snapshot"]["files"]})
 
 
 if __name__ == "__main__":
