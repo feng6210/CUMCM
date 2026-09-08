@@ -18,13 +18,15 @@
 
 For pull requests, CI uploads `math-modeling-skills-package-preview` containing a fresh deterministic ZIP and build report from the PR source tree. The preview artifact is for review/testing and does not silently overwrite `dist/`.
 
+Preview builds deliberately omit wall-clock release metadata, so identical package source bytes produce identical ZIP bytes across different days. A formal release may add an explicit date with `--release-date YYYY-MM-DD`; the date is then part of the release bytes by design.
+
 ## Formal package refresh
 
 A formal packaged release should:
 
 1. start from a clean commit with passing CI;
-2. run `tools/build_release_package.py` from that commit;
-3. refresh the committed package manifest and SHA256SUMS using the same source tree;
+2. run `tools/build_release_package.py --release-date YYYY-MM-DD` from that commit;
+3. refresh the committed package manifest and SHA256SUMS using the same source tree and explicit release metadata;
 4. replace `dist/math-modeling-skills-complete-20260903.zip` with the generated ZIP;
 5. update the root README ZIP SHA-256;
 6. tag the release commit or otherwise record the exact source SHA;
