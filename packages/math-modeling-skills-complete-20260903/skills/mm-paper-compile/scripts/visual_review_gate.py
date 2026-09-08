@@ -69,9 +69,9 @@ def review_artifact_paths(
 ) -> set[Path]:
     """Return gate/review-only artifacts to exclude from paper-source snapshots.
 
-    The same helper is used by both prepare and verify.  It always excludes the
+    The same helper is used by both prepare and verify. It always excludes the
     default gate outputs, even before they exist, and follows review-evidence
-    references from any existing JSON artifact.  This lets a later compile / review
+    references from any existing JSON artifact. This lets a later compile/review
     cycle retain prior evidence without making an unchanged paper source look stale.
     """
     pending = [
@@ -83,6 +83,18 @@ def review_artifact_paths(
         pending.append(visual_path.resolve())
     if output_report is not None:
         pending.append(output_report.resolve())
+
+    # Discover custom verification-report filenames from prior cycles. The
+    # signature is specific enough that ordinary modeling JSON remains source.
+    for candidate in paper.glob("*.json"):
+        if candidate in pending or not candidate.is_file() or candidate.is_symlink():
+            continue
+        try:
+            payload = read_json(candidate)
+        except (OSError, ValueError, json.JSONDecodeError, UnicodeError):
+            continue
+        if payload.get("verification_mode") == "existing_published_artifact_no_recompile":
+            pending.append(candidate.resolve())
 
     seen: set[Path] = set()
     while pending:
@@ -111,8 +123,8 @@ def review_artifact_paths(
             if referenced is not None:
                 pending.append(referenced)
 
-        # A prior visual_verification_report.json records the actual review file;
-        # following it keeps custom review filenames out of the next source snapshot.
+        # A prior verification report records the actual review file; following
+        # it keeps custom review filenames out of the next source snapshot.
         visual = payload.get("visual_report")
         if isinstance(visual, dict):
             referenced = _optional_artifact(current.parent, visual.get("file"))
@@ -123,17 +135,25 @@ def review_artifact_paths(
 
 
 def source_snapshot(paper: Path, excluded: set[Path]) -> dict:
-    """Hash paper inputs while excluding compiler outputs and review evidence."""
+    """Hash paper inputs while excluding compiler outputs and review evidence.
+
+    Symlinked paper inputs are rejected rather than silently omitted: otherwise a
+    target change after prepare could evade the snapshot while changing the paper.
+    Review/gate artifacts may still be excluded by their resolved path.
+    """
     excluded = {path.resolve() for path in excluded}
     generated_suffixes = {".aux", ".log", ".out", ".toc", ".blg", ".bbl", ".fls", ".fdb_latexmk"}
     files: list[dict] = []
     for path in sorted(paper.rglob("*"), key=lambda item: item.relative_to(paper).as_posix()):
-        if not path.is_file() or path.is_symlink():
-            continue
         rel = path.relative_to(paper)
         if rel.parts and rel.parts[0] == "build":
             continue
-        if path.resolve() in excluded:
+        resolved = path.resolve()
+        if resolved in excluded:
+            continue
+        if path.is_symlink():
+            raise ValueError(f"symlinked paper input is not supported by visual review snapshot: {rel.as_posix()}")
+        if not path.is_file():
             continue
         if path.name == "compile.log" or path.name.endswith(".synctex.gz") or path.suffix.lower() in generated_suffixes:
             continue
@@ -204,18 +224,21 @@ def verify(args) -> tuple[int, dict]:
         "paper_dir": str(paper),
         "status": "UNKNOWN",
     }
+    protected_outputs = {compile_report_path, pdf, binding_path, visual_path}
 
     def finish(code: int, **updates) -> tuple[int, dict]:
         result.update(updates)
         write_json(output_report, result)
         return code, result
 
-    if output_report in {compile_report_path, pdf, binding_path, visual_path}:
-        return finish(
-            2,
+    # Never overwrite an evidence input while trying to report an invalid CLI
+    # configuration. The caller must choose a separate JSON report path.
+    if output_report in protected_outputs:
+        result.update(
             status="VISUAL_VERIFICATION_REQUIRES_RECOMPILE",
             visual_check_status="OUTPUT_REPORT_PATH_CONFLICT",
         )
+        return 2, result
     if not binding_path.is_file():
         return finish(
             2,
@@ -342,9 +365,11 @@ def main() -> int:
         code, payload = 2, {"status": "FAILED", "error": f"{type(exc).__name__}: {exc}"}
         if args.command == "verify":
             try:
-                paper = args.paper_dir.resolve()
+                paper, compile_report, pdf, binding = resolve_paths(args)
+                visual = (args.visual_report if args.visual_report.is_absolute() else paper / args.visual_report).resolve()
                 report_path = (args.report if args.report.is_absolute() else paper / args.report).resolve()
-                write_json(report_path, payload)
+                if report_path not in {compile_report, pdf, binding, visual}:
+                    write_json(report_path, payload)
             except (OSError, ValueError, TypeError):
                 pass
     print(json.dumps(payload, ensure_ascii=False, indent=2))
