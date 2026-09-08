@@ -1,7 +1,7 @@
 interface:
   display_name: "数学建模：总控调度"
-  short_description: "先锁题意和基线，再求解、外部挑战、验证、叙事与交付。"
+  short_description: "先锁赛制权限、题意和基线，再求解、挑战、验证与交付。"
   brand_color: "#2563EB"
-  default_prompt: "请使用 $math-modeling-orchestrator 按分阶段闭环推进：先拆题并生成 PROBLEM_SEMANTICS，裁决目标函数、时间集合、资源复用和多目标语义；再建立最小正确基线，按结构选择模型并等待主路线批准；主求解后若有合法的题目样例、优秀论文或外部可行策略，必须映射进自己的正式 evaluator 做 BENCHMARK_CHALLENGE，不能只比较原文数字；随后由独立验证区分内部稳定、数值可信、稳健性和外部击穿。论文默认 competition_compact：正文突出问题→数学结构→方法→结果→必要验证，hash/gate/旧失败谱系和低价值审计信息移入附录。Figure planning 与 rendering 分离，不设置每问固定图数，复杂几何/机理优先解释图。"
+  default_prompt: "请使用 $math-modeling-orchestrator 按分阶段闭环推进。若是 live_contest，先建立并核对 COMPETITION_POLICY，未知的 AI/联网/公开答案权限不得默认允许；随后拆题并生成 PROBLEM_SEMANTICS，裁决目标函数、时间集合、资源复用和多目标语义，并用版本化 schema 做结构校验。建立最小正确基线后再按结构选模型并等待主路线批准。主求解后若规则允许且有题目样例、优秀论文或外部可行策略，必须映射进自己的正式 evaluator 做 BENCHMARK_CHALLENGE，不能只比较原文数字；被更优可行解击穿就降级强声明并返回搜索。独立验证区分内部稳定、数值可信、稳健性和外部击穿。论文默认 competition_compact：正文突出问题→数学结构→方法→结果→必要验证，hash/gate/旧失败谱系和低价值审计信息移入附录。Figure planning 与 rendering 分离，不设置每问固定图数，复杂几何/机理优先解释图。训练/研发场景按仓库 benchmarks 做系统级回归，防止语义门、基线门和 challenge 退化。"
 policy:
   allow_implicit_invocation: true
