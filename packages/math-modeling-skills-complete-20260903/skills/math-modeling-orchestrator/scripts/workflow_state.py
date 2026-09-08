@@ -216,9 +216,13 @@ def record_competition_policy(path: Path, policy_path: Path) -> dict:
         "sha256": sha256_file(policy_path),
         "stage": policy.get("stage"),
         "ai_allowed": policy.get("ai_allowed"),
+        "ai_scope": policy.get("ai_scope"),
         "web_allowed": policy.get("web_allowed"),
+        "web_scope": policy.get("web_scope"),
         "external_papers_allowed": policy.get("external_papers_allowed"),
+        "external_papers_scope": policy.get("external_papers_scope"),
         "benchmark_answers_allowed": policy.get("benchmark_answers_allowed"),
+        "benchmark_answers_scope": policy.get("benchmark_answers_scope"),
         "source": policy.get("source"),
     }
     state["history"].append({
@@ -231,9 +235,9 @@ def record_competition_policy(path: Path, policy_path: Path) -> dict:
     return state
 
 
-def assert_competition_policy_current(state: dict) -> None:
+def assert_competition_policy_current(state: dict) -> dict:
     if state.get("competition_policy_status") != "VALIDATED":
-        raise ValueError("live_contest requires a validated COMPETITION_POLICY before approval/solving/challenge")
+        raise ValueError("live_contest requires a validated COMPETITION_POLICY before substantive AI work")
     binding = state.get("competition_policy")
     if not isinstance(binding, dict):
         raise ValueError("validated competition policy is missing its hash-bound record")
@@ -246,6 +250,16 @@ def assert_competition_policy_current(state: dict) -> None:
         raise ValueError("bound COMPETITION_POLICY file is missing; revalidate policy before continuing")
     if sha256_file(policy_path) != expected_hash:
         raise ValueError("bound COMPETITION_POLICY changed after validation; revalidate policy before continuing")
+    return binding
+
+
+def assert_live_contest_ai_use_allowed(state: dict) -> dict:
+    binding = assert_competition_policy_current(state)
+    if binding.get("ai_allowed") == "forbidden":
+        raise ValueError("COMPETITION_POLICY forbids AI use in this live contest; stop the AI workflow")
+    if binding.get("ai_allowed") == "restricted" and not binding.get("ai_scope"):
+        raise ValueError("restricted AI permission requires an explicit ai_scope")
+    return binding
 
 
 def transition(path: Path, target: str, next_skill: str | None, evidence_status: str | None) -> dict:
@@ -254,8 +268,13 @@ def transition(path: Path, target: str, next_skill: str | None, evidence_status:
     current = state["stage"]
     if target not in ALLOWED[current]:
         raise ValueError(f"transition not allowed: {current} -> {target}")
-    if state["task_mode"] == "live_contest" and target in {"USER_APPROVED", "SOLVING", "BENCHMARK_CHALLENGE"}:
-        assert_competition_policy_current(state)
+
+    # Registering inputs/rules is allowed before policy binding. Any substantive
+    # decomposition/modeling/validation/writing transition is AI work and must
+    # already be permitted by a current official/course policy in live contests.
+    if state["task_mode"] == "live_contest" and target not in {"INPUT_REGISTERED", "BLOCKED_INPUT"}:
+        assert_live_contest_ai_use_allowed(state)
+
     approval = state.get("model_approval") or {}
     if target == "USER_APPROVED" and approval.get("approved") is not True:
         raise ValueError("model approval record required before USER_APPROVED")
