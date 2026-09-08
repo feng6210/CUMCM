@@ -45,6 +45,13 @@
         "required": ["stage"]
       },
       "then": {
+        "properties": {
+          "source": {
+            "properties": {
+              "kind": {"enum": ["official_rules", "course_policy"]}
+            }
+          }
+        },
         "not": {
           "anyOf": [
             {"properties": {"ai_allowed": {"const": "unknown"}}, "required": ["ai_allowed"]},
