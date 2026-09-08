@@ -38,11 +38,19 @@ jobs:
           python -m py_compile packages/math-modeling-skills-complete-20260903/skills/mm-visualization-delivery/scripts/validate_figure_intent.py
       - name: Run root workflow and schema regressions
         run: python -m unittest discover -s tests -p "test_*.py" -v
-      - name: Validate system benchmark specs
+      - name: Validate every system benchmark spec
+        shell: bash
         run: |
-          python packages/math-modeling-skills-complete-20260903/skills/math-modeling-orchestrator/scripts/validate_contract.py \
-            --schema packages/math-modeling-skills-complete-20260903/schemas/system_benchmark.schema.json \
-            --input benchmarks/cumcm-2025a-smoke-screen/benchmark.yaml
+          set -euo pipefail
+          found=0
+          for case_file in benchmarks/*/benchmark.yaml; do
+            test -f "$case_file" || continue
+            found=1
+            python packages/math-modeling-skills-complete-20260903/skills/math-modeling-orchestrator/scripts/validate_contract.py \
+              --schema packages/math-modeling-skills-complete-20260903/schemas/system_benchmark.schema.json \
+              --input "$case_file"
+          done
+          test "$found" -eq 1
 
   visualization-regressions:
     runs-on: ubuntu-latest
@@ -83,7 +91,7 @@ jobs:
           test -f packages/math-modeling-skills-complete-20260903/schemas/README.md
           count=$(find packages/math-modeling-skills-complete-20260903/skills -mindepth 2 -maxdepth 2 -name SKILL.md | wc -l)
           test "$count" -eq 22
-          if find packages/math-modeling-skills-complete-20260903 -type d -name __pycache__ -o -type f -name '*.pyc' | grep -q .; then
+          if find packages/math-modeling-skills-complete-20260903 \( -type d -name __pycache__ -o -type f -name '*.pyc' \) -print | grep -q .; then
             echo "compiled Python cache found in package"
             exit 1
           fi
