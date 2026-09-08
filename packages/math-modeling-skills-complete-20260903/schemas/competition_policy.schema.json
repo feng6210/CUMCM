@@ -49,6 +49,7 @@
           "anyOf": [
             {"properties": {"ai_allowed": {"const": "unknown"}}, "required": ["ai_allowed"]},
             {"properties": {"web_allowed": {"const": "unknown"}}, "required": ["web_allowed"]},
+            {"properties": {"external_papers_allowed": {"const": "unknown"}}, "required": ["external_papers_allowed"]},
             {"properties": {"benchmark_answers_allowed": {"const": "unknown"}}, "required": ["benchmark_answers_allowed"]}
           ]
         }
