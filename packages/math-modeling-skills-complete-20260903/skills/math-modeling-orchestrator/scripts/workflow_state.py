@@ -206,6 +206,7 @@ def validate_competition_policy(policy_path: Path) -> dict:
 def record_competition_policy(path: Path, policy_path: Path) -> dict:
     state = read_json(path)
     validate_state(state)
+    policy_path = policy_path.resolve()
     policy = validate_competition_policy(policy_path)
     if state["task_mode"] == "live_contest" and policy.get("stage") != "live_contest":
         raise ValueError("live_contest workflow requires a live_contest competition policy")
@@ -230,6 +231,23 @@ def record_competition_policy(path: Path, policy_path: Path) -> dict:
     return state
 
 
+def assert_competition_policy_current(state: dict) -> None:
+    if state.get("competition_policy_status") != "VALIDATED":
+        raise ValueError("live_contest requires a validated COMPETITION_POLICY before approval/solving/challenge")
+    binding = state.get("competition_policy")
+    if not isinstance(binding, dict):
+        raise ValueError("validated competition policy is missing its hash-bound record")
+    file_value = binding.get("file")
+    expected_hash = binding.get("sha256")
+    if not isinstance(file_value, str) or not file_value or not isinstance(expected_hash, str):
+        raise ValueError("validated competition policy binding is incomplete")
+    policy_path = Path(file_value)
+    if not policy_path.is_file():
+        raise ValueError("bound COMPETITION_POLICY file is missing; revalidate policy before continuing")
+    if sha256_file(policy_path) != expected_hash:
+        raise ValueError("bound COMPETITION_POLICY changed after validation; revalidate policy before continuing")
+
+
 def transition(path: Path, target: str, next_skill: str | None, evidence_status: str | None) -> dict:
     state = read_json(path)
     validate_state(state)
@@ -237,8 +255,7 @@ def transition(path: Path, target: str, next_skill: str | None, evidence_status:
     if target not in ALLOWED[current]:
         raise ValueError(f"transition not allowed: {current} -> {target}")
     if state["task_mode"] == "live_contest" and target in {"USER_APPROVED", "SOLVING", "BENCHMARK_CHALLENGE"}:
-        if state.get("competition_policy_status") != "VALIDATED":
-            raise ValueError("live_contest requires a validated COMPETITION_POLICY before approval/solving/challenge")
+        assert_competition_policy_current(state)
     approval = state.get("model_approval") or {}
     if target == "USER_APPROVED" and approval.get("approved") is not True:
         raise ValueError("model approval record required before USER_APPROVED")
