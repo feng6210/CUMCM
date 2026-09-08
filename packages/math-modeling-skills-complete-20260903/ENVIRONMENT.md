@@ -12,6 +12,7 @@
 - `jsonschema` 用于 `PROBLEM_SEMANTICS`、跨 Skill envelope、`BENCHMARK_CHALLENGE`、`FIGURE_PLAN`、`COMPETITION_POLICY` 等版本化机器契约的结构校验；
 - `numpy`、`pandas`、`scipy`、`scikit-learn`、`networkx` 用于模型和验证脚本；
 - `matplotlib` 与 `Pillow` 用于可复现绘图和栅格重开检查；
+- `pypdfium2` 用于定量图渲染器的 PDF 真正重开/栅格化检查，避免“文件存在”被误当成可用 PDF；
 - `openpyxl` 用于 Excel 数据读写。
 
 安装后可运行：
@@ -27,7 +28,9 @@
 - XeLaTeX；
 - latexmk；
 - BibTeX，以及模板使用的 `gbt7714-numerical` 样式；
-- Poppler 的 `pdftoppm`，用于把编译后的 PDF 渲染成页面图做视觉检查。
+- Poppler 的 `pdftoppm`，用于把整篇编译后的论文 PDF 渲染成页面图做视觉检查。
+
+定量图 renderer 的单图 PDF reopen 由 Python 依赖 `pypdfium2` 完成；整篇论文页面级视觉检查仍可使用 Poppler。两者职责不同，不能因安装了其中一个就宣称另一层检查已完成。
 
 可使用 MiKTeX 或 TeX Live 提供前三项。若缺少正式模板、字体或宏包，`mm-paper-compile` 会在编译报告中明确报告，不会把缺失依赖静默解释为论文通过。
 
