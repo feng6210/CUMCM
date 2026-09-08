@@ -8,6 +8,7 @@ on:
       - "packages/math-modeling-skills-complete-20260903/requirements.txt"
       - "benchmarks/**"
       - "tests/**"
+      - "tools/**"
       - ".github/workflows/skill-regression.yml"
   push:
     branches: [main]
@@ -17,6 +18,7 @@ on:
       - "packages/math-modeling-skills-complete-20260903/requirements.txt"
       - "benchmarks/**"
       - "tests/**"
+      - "tools/**"
 
 permissions:
   contents: read
@@ -36,6 +38,7 @@ jobs:
           python -m py_compile packages/math-modeling-skills-complete-20260903/skills/math-modeling-orchestrator/scripts/workflow_state.py
           python -m py_compile packages/math-modeling-skills-complete-20260903/skills/math-modeling-orchestrator/scripts/validate_contract.py
           python -m py_compile packages/math-modeling-skills-complete-20260903/skills/mm-visualization-delivery/scripts/validate_figure_intent.py
+          python -m py_compile tools/build_release_package.py
       - name: Run root workflow and schema regressions
         run: python -m unittest discover -s tests -p "test_*.py" -v
       - name: Validate every system benchmark spec
@@ -95,3 +98,17 @@ jobs:
             echo "compiled Python cache found in package"
             exit 1
           fi
+      - name: Build deterministic package preview
+        run: |
+          python tools/build_release_package.py \
+            --output-zip "$RUNNER_TEMP/math-modeling-skills-complete-20260903.zip" \
+            --report "$RUNNER_TEMP/package-build-report.json"
+      - name: Upload package preview
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: math-modeling-skills-package-preview
+          path: |
+            ${{ runner.temp }}/math-modeling-skills-complete-20260903.zip
+            ${{ runner.temp }}/package-build-report.json
+          if-no-files-found: error
