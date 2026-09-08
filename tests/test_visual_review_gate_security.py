@@ -109,10 +109,18 @@ class VisualReviewGateSecurityTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "symlinked paper input"):
             gate.prepare(self.prepare_args())
 
-    def test_binding_cannot_overwrite_existing_paper_input(self):
+    def test_binding_cannot_overwrite_existing_json_paper_input(self):
+        model = self.paper / "model.json"
+        model.write_text(json.dumps({"paper_input": True}), encoding="utf-8")
+        before = model.read_bytes()
+        with self.assertRaisesRegex(ValueError, "collides with an existing non-binding"):
+            gate.prepare(self.prepare_args("model.json"))
+        self.assertEqual(model.read_bytes(), before)
+
+    def test_binding_rejects_non_json_destination_without_overwrite(self):
         main = self.paper / "main.tex"
         before = main.read_bytes()
-        with self.assertRaisesRegex(ValueError, "collides with an existing non-binding"):
+        with self.assertRaisesRegex(ValueError, "must be a .json"):
             gate.prepare(self.prepare_args("main.tex"))
         self.assertEqual(main.read_bytes(), before)
 
