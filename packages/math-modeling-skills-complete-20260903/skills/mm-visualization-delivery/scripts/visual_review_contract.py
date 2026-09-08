@@ -20,6 +20,26 @@ def bound_file(record, root: Path, label: str):
         raise ValueError(f"{label}: missing/stale file or hash mismatch")
     return path
 
+
+def generation_contributors(provenance, root: Path, seen=None) -> set[str]:
+    """Follow hash-bound compiler history; a later recorder cannot erase an artist."""
+    seen = set() if seen is None else seen
+    contributors = set()
+    for field in ("generator_id", "post_generation_editor", "symbol_unification_by"):
+        value = provenance.get(field)
+        if isinstance(value, str) and value:
+            contributors.add(value.strip())
+        elif isinstance(value, list):
+            contributors.update(item.strip() for item in value if isinstance(item, str) and item.strip())
+    previous = provenance.get("original_backend_receipt")
+    if previous is not None:
+        path = bound_file(previous, root, "original_backend_receipt").resolve()
+        if path in seen or len(seen) >= 16:
+            raise ValueError("cyclic or excessive generation provenance chain")
+        seen.add(path)
+        contributors.update(generation_contributors(json.loads(path.read_text(encoding="utf-8-sig")), path.parent, seen))
+    return contributors
+
 def validate_review(entry, root: Path) -> list[str]:
     errors = []
     try:
@@ -62,10 +82,38 @@ def validate_review(entry, root: Path) -> list[str]:
         if not generator or not isinstance(reviewers, list) or not reviewers:
             errors.append("visual_review: generator_id and reviewers required")
             reviewers = []
-        visual = [r for r in reviewers if r.get("role") == "visual"]
-        independent = [r for r in visual if r.get("reviewer_id") and
-                       r["reviewer_id"] != generator and
-                       r.get("origin") in {"same-family-fresh", "external"}]
+        contributors = {generator.strip() if isinstance(generator, str) else generator}
+        # Do not let a post-generation editor pass by naming only the original
+        # artist as generator. The report is already bound by the intent.
+        if entry.get("backend_report"):
+            backend = bound_file({"file": entry["backend_report"],
+                                  "sha256": entry.get("backend_report_sha256")}, root, "backend_report")
+            provenance = json.loads(backend.read_text(encoding="utf-8-sig"))
+            known_generator = provenance.get("generator_id")
+            if known_generator and str(known_generator).strip() != str(generator).strip():
+                errors.append("visual_review: generator_id differs from backend provenance")
+            contributors.update(generation_contributors(provenance, backend.parent))
+            if provenance.get("reopen_evidence") is not None:
+                bound_file(provenance["reopen_evidence"], backend.parent, "reopen_evidence")
+        if review.get("source_checks") is not None:
+            bound_file(review["source_checks"], root, "source_checks")
+        for opened in review.get("opened_image_bindings", []):
+            bound_file(opened, root, "opened_image_binding")
+        visual = [r for r in reviewers if isinstance(r, dict) and r.get("role") == "visual"]
+        independent = []
+        for reviewer in visual:
+            identifier = reviewer.get("reviewer_id")
+            if not isinstance(identifier, str) or not identifier.strip() or identifier.strip() in contributors:
+                continue
+            if reviewer.get("independent_of_figure_generation") is False:
+                continue
+            origin = reviewer.get("origin")
+            if origin in {"same-family-fresh", "external"}:
+                independent.append(reviewer)
+            elif (origin == "same-family-cross-review" and
+                  reviewer.get("independent_of_figure_generation") is True and
+                  reviewer.get("zero_context") is False):
+                independent.append(reviewer)
         if not independent:
             errors.append("visual_review: independent visual reviewer missing (do not claim independence)")
         checks = review.get("checks", {})

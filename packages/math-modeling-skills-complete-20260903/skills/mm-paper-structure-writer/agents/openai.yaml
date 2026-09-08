@@ -2,6 +2,6 @@ interface:
   display_name: "数学建模：论文结构"
   short_description: "按题意、共享内核和读者任务组织紧凑的 CUMCM LaTeX 论文。"
   brand_color: "#2563EB"
-  default_prompt: "请使用 $mm-paper-structure-writer 先核对 PROBLEM_SEMANTICS 与结果口径，再建立 NARRATIVE_MAP 和 FIGURE_PLAN。论文默认 competition_compact：突出题目→数学结构/机制→模型增量→求解→关键结果→必要验证；hash、gate 名、旧版本 FAIL 谱系、全部种子、微小数值差和后端 audit 默认移入附录/支撑材料。Figure planning 在写作前完成，不设每问固定图数；复杂几何/机理优先二维解释图，算法流程图只在算法本身成为理解障碍时使用。"
+  default_prompt: "请使用 $mm-paper-structure-writer 先核对 PROBLEM_SEMANTICS 与结果口径，再建立 NARRATIVE_MAP 和 FIGURE_PLAN。论文默认中文 CUMCM LaTeX、competition_compact，按本题数学结构组织叙事，不固定段落链；工程日志和完整版本记录进入支撑材料，科学失败和适用范围不能隐藏。关键词默认整行加粗，正式模板优先。先清点已有图表，不设固定图数；示意图黑线黑字白底，结果图可采用鲜明配色与有真实坐标的二维/三维组合。修订后重查声明、图注和实际 PDF，旧审查不得直接换哈希续用。"
 policy:
   allow_implicit_invocation: true

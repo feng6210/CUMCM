@@ -52,7 +52,7 @@ DIAGRAM_TYPES = {
 }
 DATA_BACKENDS = {"origin", "matlab", "python", "python/matplotlib", "matplotlib"}
 GENERATIVE_BACKENDS = {"image2", "imagegen"}
-DIAGRAM_BACKENDS = {"visio", "figurespec", "figurespec/svg", "svg", "mermaid"} | GENERATIVE_BACKENDS
+DIAGRAM_BACKENDS = {"visio", "figurespec", "figurespec/svg", "svg", "mermaid", "tikz"} | GENERATIVE_BACKENDS
 RESTRICTED_TYPES = {"radar", "pie", "donut", "dual_axis", "surface_3d", "bar_3d", "scatter_3d", "surface_wireframe", "area_3d", "parallel_coordinates"}
 
 REQUIRED_FIGURE_FIELDS = (
@@ -63,6 +63,11 @@ REQUIRED_FIGURE_FIELDS = (
 )
 ZH_RE = re.compile(r"[\u3400-\u9fff]")
 HEX64_RE = re.compile(r"[0-9a-f]{64}")
+
+
+def backend_identity(value: Any) -> str:
+    name = str(value).strip().lower()
+    return "matplotlib" if name in {"python", "python/matplotlib", "matplotlib"} else name
 
 
 def load_document(path: Path) -> Any:
@@ -330,6 +335,8 @@ def validate_backend_report(
             errors.append(f"{prefix}.backend_report: {label} output hash is not recorded by the runtime report")
 
     backend = str(entry.get("backend_preference", "")).strip().lower()
+    if report.get("actual_backend") is not None and backend_identity(report["actual_backend"]) != backend_identity(backend):
+        errors.append(f"{prefix}.backend_report.actual_backend: does not match declared backend")
     grammar = entry.get("visual_grammar") if isinstance(entry.get("visual_grammar"), dict) else {}
     style = report.get("style") if isinstance(report.get("style"), dict) else report
 
@@ -421,6 +428,41 @@ def validate_backend_report(
         reopen = report.get("reopen_check")
         if not isinstance(reopen, dict) or not reopen or not all(value is True for value in reopen.values()):
             errors.append(f"{prefix}.backend_report.reopen_check: every recorded output must be true")
+
+    elif backend == "tikz":
+        from visual_review_contract import bound_file
+        if report.get("actual_backend") != "tikz":
+            errors.append(f"{prefix}.backend_report.actual_backend: expected tikz")
+        reopen = report.get("reopen_check", {})
+        if not isinstance(reopen, dict) or any(reopen.get(key) is not True for key in ("pdf", "editable")):
+            errors.append(f"{prefix}.backend_report.reopen_check: TikZ PDF and editable source must be reopened")
+        # A later inspector may bind the original compiler receipt rather than
+        # pretending it reran TeX. Either route requires a real successful receipt.
+        receipt = report
+        receipt_root = report_path.parent
+        try:
+            if "original_backend_receipt" in report:
+                receipt_path = bound_file(report["original_backend_receipt"], report_path.parent,
+                                          "TikZ original compiler receipt")
+                receipt_root = receipt_path.parent
+                receipt = load_document(receipt_path)
+            if (receipt.get("status") not in {"PASSED", "RUNTIME_VERIFIED"} or receipt.get("actual_backend") != "tikz" or
+                    type(receipt.get("compiler_exit_code")) is not int or receipt["compiler_exit_code"] != 0):
+                errors.append(f"{prefix}.backend_report: successful TikZ compiler receipt required")
+            receipt_hashes = report_output_hashes(receipt)
+            if any(value and value not in receipt_hashes for value in (editable_hash, latex_hash)):
+                errors.append(f"{prefix}.backend_report: TikZ compiler receipt does not bind current source/PDF")
+            original_sources = receipt.get("sources", [])
+            if not isinstance(original_sources, list) or not original_sources:
+                raise ValueError("TikZ original receipt sources required")
+            for source in original_sources:
+                bound_file(source, receipt_root, "TikZ original source")
+            paths = collect_paths(entry.get("source_data"))
+            expected_sources = {declared_hash_for_path(entry.get("source_data"), path, len(paths)) for path in paths}
+            if not expected_sources.issubset({source["sha256"] for source in original_sources}):
+                errors.append(f"{prefix}.backend_report: TikZ original receipt source hashes contradict intent")
+        except (OSError, ValueError, TypeError, AttributeError) as exc:
+            errors.append(f"{prefix}.backend_report: invalid TikZ compiler receipt: {exc}")
 
     elif backend == "origin":
         for field in (
@@ -710,6 +752,8 @@ def validate_entry(
         errors.append(f"{prefix}.editable_output: MATLAB source must use .fig, .m or .json")
     if backend == "mermaid" and editable.suffix.lower() not in {".mmd", ".md"}:
         errors.append(f"{prefix}.editable_output: Mermaid source must use .mmd or .md")
+    if backend == "tikz" and (editable.suffix.lower() != ".tex" or latex.suffix.lower() != ".pdf"):
+        errors.append(f"{prefix}: TikZ requires editable .tex and vector .pdf outputs")
     if backend in GENERATIVE_BACKENDS:
         if editable.suffix.lower() != ".json" or entry.get("editability") != "prompt_and_spec_only":
             errors.append(f"{prefix}.editable_output: native raster requires JSON brief and prompt_and_spec_only")
@@ -750,6 +794,22 @@ def validate_entry(
                 errors.append(f"{prefix}.source_data.sha256: mismatch for {candidate}")
 
     if require_outputs:
+        from visual_review_contract import bound_file
+        if entry.get("actual_backend") is not None and backend_identity(entry["actual_backend"]) != backend_identity(backend):
+            errors.append(f"{prefix}.actual_backend: does not match backend_preference")
+        # Optional declared provenance is still a binding, not unchecked prose.
+        for extra in ("renderer_source", "caption_source", "claim_source", "vector_editable_output"):
+            if extra in entry:
+                try:
+                    bound_file(entry[extra], base_dir, extra)
+                except (OSError, ValueError, TypeError) as exc:
+                    errors.append(f"{prefix}.{extra}: {exc}")
+        if entry.get("preview_output"):
+            try:
+                bound_file({"file": entry["preview_output"], "sha256": entry.get("preview_sha256")},
+                           base_dir, "preview_output")
+            except (OSError, ValueError, TypeError) as exc:
+                errors.append(f"{prefix}.preview_output: {exc}")
         resolved_hashes: dict[str, str] = {}
         for field, path_value, hash_field in (
             ("editable_output", editable, "editable_sha256"),

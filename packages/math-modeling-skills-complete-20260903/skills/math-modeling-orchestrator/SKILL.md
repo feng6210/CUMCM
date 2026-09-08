@@ -28,14 +28,14 @@ description: Orchestrate mathematical-modeling work from contest-policy and prob
 6. 向用户汇报每问语义口径、基线、模型路线、创新机理、验证方法、成本、失败回退和 `MODELING_EXPERIMENT_PLAN.yaml`。主路线进入 `AWAITING_MODEL_APPROVAL`；没有有效 `model_approval` 不得首次进入主 `SOLVING`。
 7. 按批准路线调用专业模型 Skill。每个交接遵守 [跨 Skill 交接契约](references/cross_skill_output_contract.md)。Solver 负责候选和求解边界，不拥有“最佳/稳定/鲁棒”等强声明的最终 PASS 权。总控负责把专业 Skill 原生输出规范化为 envelope，不要求下游 Skill 伪造上游事实。
 8. 为实际运行创建 `RUN_MANIFEST.json`；保留失败、不可行、超时和不收敛运行。所有候选必须由原始硬约束和原始目标函数重算，而不是只信搜索内核/求解器状态。
-9. **外部/异源挑战门**：若用户提供优秀论文、公开可行解、题目样例或其他合法基准，且当前 `COMPETITION_POLICY.yaml` 允许使用，必须把其参数/路线/预测映射进当前 evaluator，生成 `BENCHMARK_CHALLENGE.json`。不能直接拿不同口径的论文数字排大小。外部可行解在同 evaluator 下领先超过预设容差时，当前“最佳/稳定最优”声明自动降级并返回 `SOLVING`。正式竞赛规则不允许外部解时记录 `NOT_ALLOWED_BY_RULES` 和 policy 引用，不绕过规则。
+9. **外部/异源挑战门**：外部数值挑战须在本次用户授权范围内，正式竞赛还须当前 `COMPETITION_POLICY.yaml` 允许；“仅本地/不查答案”或只参考排版不授权额外查解。获准比较时，把参数/路线/预测映射进当前 evaluator，生成 `BENCHMARK_CHALLENGE.json`，不能按不同口径的论文数字排名。领先超过预设容差时降级当前“最佳”声明；继续求解仍限已批准模型和预算，超出时重新提案。正式竞赛规则不允许时记录 `NOT_ALLOWED_BY_RULES` 和 policy 引用，不绕过规则。
 10. 先执行 [证据预检查](scripts/evidence_precheck.py)，再调用 `mm-uncertainty-validation`。验证至少区分：同源重算、数值收敛、统计/随机稳定、情景稳健、异源/外部挑战。多种子收敛到同一平台不能单独证明解盆地覆盖。
 11. 将通过验证的结果写入 `RESULTS_TO_CLAIMS.md` 和 `result_evidence_map.json`。文件存在或数字可定位只证明证据存在，不证明结论成立。
 12. 只有 `PASS` 或范围明确的 `PARTIAL` 才能进入论文链。先依据 [国奖与优秀论文叙事—图表蒸馏](references/local_corpus/award_paper_narrative_figure_distillation.md) 建立 `NARRATIVE_MAP.yaml`，同时建立 `FIGURE_PLAN.yaml`：先识别“读者在哪里会看不懂”，再决定是否需要场景图、几何/机制图、case 图、时间区间图、结果图或验证图。**不设每问固定图数。** 推荐用 `schemas/figure_plan.schema.json` 做结构校验，再交给 `mm-visualization-delivery` 做更严格的来源/输出/视觉审查。
 13. 调用 `mm-paper-structure-writer` 生成竞赛叙事骨架。`competition_compact` 正文优先“问题 → 数学结构 → 方法 → 结果 → 必要验证”；完整 gate 名、hash、旧版本 FAIL 谱系和后端运行日志默认移入支撑材料。`research_audit` 可展开复现实验链。
 14. 调用 `mm-visualization-delivery` 时分两步：`figure planning` 已由叙事阶段确定每张图的不可替代读者任务；`figure rendering` 只负责真实数据绑定、视觉语法、原生文件、PDF 和最终尺寸检查。不得用“每问至少 N 张图”驱动渲染。
 15. 终稿进入编译前，在平台允许且已获委派权限时自动启动彼此独立的 fresh-agent 审查：数字/结论、题意语义与目标一致性、图表/证据、CUMCM 结构/叙事至少四条审查线。不向审查 Agent 提供预期 PASS 或拟议修复。
-16. 若 fresh-agent 不可用，将 `independent_review_status` 设为 `INDEPENDENT_REVIEW_NOT_RUN`，显式报告原因；同一上下文自审只能算同源诊断。P0/P1 修复或结果、目标、图表、正文变化后旧审查标记 stale。
+16. 审查线是责任维度，不是固定 agent 数。若 fresh-agent 不可用，先如实记录原因；可用未生成/编辑被审工件的既有 agent 做 `same-family-cross-review`，披露 `zero_context: false` 和模型作者背景，不称外部认证。无此分工时记录 `INDEPENDENT_REVIEW_NOT_RUN`，同一作者自审仅算同源诊断。P0/P1 修复或结果、目标、图表、正文变化后旧审查标记 stale；只改论文不等于更新 Skill。
 17. 最终完成独立审查汇总、论文数字审计、引用审计、XeLaTeX/PDF、支撑材料和赛制交付检查。
 
 ## State and amendments
@@ -63,7 +63,7 @@ description: Orchestrate mathematical-modeling work from contest-policy and prob
 - 使用图表或正文数字前必须有机器可读结果与验证状态。
 - 共享的坐标系、动力学、数据变换或评价规则集中建立一次；后续分问只写继承对象、模型增量、求解差异和误差传播。
 - 图表角色为导航、机制、证据或验证。正文优先机制与决策必需图；精确答案优先表格；低价值收敛、微小数值误差、完整参数扫描和工程审计图默认进附录。
-- 能用二维解释清楚时，不为“高级感”强行三维；真实三维空间部署需要时才保留，并提供投影/切片/关键点。
+- 真实空间、双参数响应或三维轨迹可采用三维与二维组合，提供投影/切片/关键点；样式按用户选择，不把低装饰或二维作为绝对优先。论文修订的可读性与审查重绑见 [通用修订规则](../mm-paper-structure-writer/references/paper_readability_and_revision.md)。
 
 ## Local corpus distillation route
 

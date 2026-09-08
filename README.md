@@ -16,6 +16,16 @@
 
 ## 新增的系统级可靠性层
 
+2026-09-08 论文质量更新（源码）：
+
+- 中文摘要选择性强调、关键词整行粗体，以及可覆盖的内置标题/图表/符号表样式；用户正式模板优先。
+- 根据数学对象组织叙事和图后解释；不固定四问、段落数、图数、少色或二维偏好。
+- 几何图、隔离受力图与消约束广义作用图区分；示意/流程图默认黑线黑字白底，结果图保留鲜明配色；新增按唯一 LaTeX label 提取完整图注的工具，保留可编辑 TikZ/Visio 路线。
+- 同族交叉审查真实角色、修改后证据失效与限定复核；数值比较明确时间窗和聚合口径。
+- 编译输出显式另存与锁文件失败报告，避免旧 PDF 冒充本轮产物；新增正反例及可选真实 XeLaTeX 模板回归。
+
+这是对既有阅读和修订经验的通用化，不分发参考论文、题目答案或本地数据，不等于全语料阅读/全后端/全部数学模型验证。使用细则见 [论文可读性与修订](packages/math-modeling-skills-complete-20260903/skills/mm-paper-structure-writer/references/paper_readability_and_revision.md)。
+
 - `packages/.../schemas/`：`PROBLEM_SEMANTICS`、`BENCHMARK_CHALLENGE`、`FIGURE_PLAN`、`COMPETITION_POLICY` 等版本化机器契约；
 - `benchmarks/`：整题/系统级行为回归，不只测单个脚本；
 - `COMPETITION_POLICY.yaml`：live contest 中先锁 AI、联网、外部论文和公开答案/benchmark 权限；

@@ -21,7 +21,7 @@ description: Create evidence-grounded Chinese CUMCM mathematical-modeling paper 
 题目要求 → 数学对象/机制 → 本问模型增量 → 求解策略 → 关键结果 → 必要检验
 ```
 
-以下内容默认不进入正文，除非它们直接改变结论：完整 gate 名、hash、backend report、旧版本 FAIL 谱系、全部随机种子、微小步长差、完整敏感性矩阵、软件运行日志。它们放入附录/支撑材料。
+以下内容默认不进入正文，除非它们直接改变结论：完整 gate 名、hash、backend report、旧版本 FAIL 谱系、全部随机种子、微小步长差、软件运行日志。它们放入附录/支撑材料。关键敏感性矩阵若直接解释设计风险可留正文，不因“验证图”类别自动迁移。
 
 ### `research_audit`
 
@@ -37,6 +37,8 @@ description: Create evidence-grounded Chinese CUMCM mathematical-modeling paper 
 信息或证据不足时只能使用结构模式；不得用看似合理的数值、图表或引用填满正文。
 
 ## Required workflow
+
+已有论文修订或根据优秀论文改进表达时，先读 [读者任务、版式与修订闭环](references/paper_readability_and_revision.md)。区分用户要求修改的是论文还是 Skill；字体与强调规则是可调整默认值，不覆盖用户正式模板。
 
 1. 读取题目、`PROBLEM_SEMANTICS.yaml`、分问、假设、结果、`RESULTS_TO_CLAIMS.md` 与 `result_evidence_map.json`。任何主目标或计时/资源口径在写作阶段发生变化，都必须回到语义/求解阶段，不能靠措辞修复。
 2. 读取总控的 [国奖与优秀论文叙事—图表蒸馏](../math-modeling-orchestrator/references/local_corpus/award_paper_narrative_figure_distillation.md)。先建立 `NARRATIVE_MAP.yaml`：论文总矛盾、分问依赖图、共享模型内核、每问继承对象与模型增量、精确结果位置、关键检验、声明边界和问间交接。

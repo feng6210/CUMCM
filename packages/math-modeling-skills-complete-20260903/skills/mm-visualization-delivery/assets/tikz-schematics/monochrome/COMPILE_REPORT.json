@@ -1,0 +1,102 @@
+{
+  "schema": "monochrome-tikz-runtime-v1",
+  "status": "RUNTIME_VERIFIED",
+  "actual_backend": "tikz",
+  "independent_visual_review": false,
+  "user_has_viewed_new_assets": false,
+  "automatic_installation": false,
+  "compiler_version": "MiKTeX-XeTeX 4.18 (MiKTeX 26.2)",
+  "builder_sha256": "6d5fed800dbdc002c587d3dd5d734eb1c14109a1c5257ceb8bc06b6f734f4e9a",
+  "templates": [
+    {
+      "source": {
+        "file": "force-balance.tex",
+        "sha256": "f3ed5057bd696f59d478e1b4a7635d438fd4cc9749c444a1446370c5ad8fa3b9"
+      },
+      "historical_colored_assets": [
+        {
+          "file": "../force-balance.tex",
+          "sha256": "c472bfa4c587f30f4f1ef88e1ec8154474dfcbed6454ad7a93166a3683db1767"
+        },
+        {
+          "file": "../force-balance.pdf",
+          "sha256": "db855d1034206ee422419befc8d8a160a1a451bd4f9fa96fb9806aab7ba73d0c"
+        },
+        {
+          "file": "../force-balance.png",
+          "sha256": "0faf1d53c46bebc69414634f4415a6b84c298b40d36faabf41597b20a21bb0f8"
+        }
+      ],
+      "derivation": "Same physical construction; black line/text, white area fills; layered material uses black hatch strips. Historical assets unchanged.",
+      "command": [
+        "xelatex",
+        "--disable-installer",
+        "-no-shell-escape",
+        "-interaction=nonstopmode",
+        "-halt-on-error",
+        "force-balance.tex"
+      ],
+      "pdf": {
+        "file": "force-balance.pdf",
+        "sha256": "0da7ebe36fe252205ac2c7d576164811606fae6e671783fc46289498802f2574"
+      },
+      "preview": {
+        "file": "force-balance.png",
+        "sha256": "458e9338cd67e8801ae3395342c0b1928d17484f6d4fd68deb1ffbfcbc42451f"
+      },
+      "build_log_sha256": "e901fe0fd04b4d911bd1874e67200625c7c1caf54985f2272f785bf466d5d18a",
+      "stdout_log_sha256": "6ed840dea409d2267e63781528b72ed443321efa54c58a0a704160c9dc2ffdb4",
+      "logs_scope": "Full logs remain in the new build output directory; not redistributed because local tool logs may contain private paths.",
+      "compiler_exit_code": 0,
+      "renderer_exit_code": 0,
+      "font_or_overfull_defects": [],
+      "all_pixels_achromatic": true,
+      "raster_antialiasing_note": "Gray edge pixels may result from antialiasing; no intentional gray/coded fills in source."
+    },
+    {
+      "source": {
+        "file": "layered-heat.tex",
+        "sha256": "9823f81e5805eb1332273666cc7b8bddbe6b7a86be03914bf0bcd9189057166e"
+      },
+      "historical_colored_assets": [
+        {
+          "file": "../layered-heat.tex",
+          "sha256": "49358cee5a8350dc72d6cf1ddd071b8f49cf8389ce850eb807f89b33cb088033"
+        },
+        {
+          "file": "../layered-heat.pdf",
+          "sha256": "7a6c52858ef7560d33b30e9ae989f9d3bca500cd0accf0425a4f68d940309d1a"
+        },
+        {
+          "file": "../layered-heat.png",
+          "sha256": "524e6416ee00f6d31b26ddb90dff720681be549a7cba7b1330b38170cf7420c5"
+        }
+      ],
+      "derivation": "Same physical construction; black line/text, white area fills; layered material uses black hatch strips. Historical assets unchanged.",
+      "command": [
+        "xelatex",
+        "--disable-installer",
+        "-no-shell-escape",
+        "-interaction=nonstopmode",
+        "-halt-on-error",
+        "layered-heat.tex"
+      ],
+      "pdf": {
+        "file": "layered-heat.pdf",
+        "sha256": "021d86d1a26b8c3bca05ea290f6680eaedcd655aafdd5842126ef575cb7501c2"
+      },
+      "preview": {
+        "file": "layered-heat.png",
+        "sha256": "abd7109f885e96da3a006aa3f1364c2a0e2cea76ea1b0b5498b0d01155fe6634"
+      },
+      "build_log_sha256": "5397fb605826d9c212487ce4bfca765211d4ab3d51e662a62aab2070847df4e1",
+      "stdout_log_sha256": "dabee2681b1c05a9a888f86ace45f25ceed828c2a612e1660d4a2a5c94369da7",
+      "logs_scope": "Full logs remain in the new build output directory; not redistributed because local tool logs may contain private paths.",
+      "compiler_exit_code": 0,
+      "renderer_exit_code": 0,
+      "font_or_overfull_defects": [],
+      "all_pixels_achromatic": true,
+      "raster_antialiasing_note": "Gray edge pixels may result from antialiasing; no intentional gray/coded fills in source."
+    }
+  ]
+}

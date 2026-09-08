@@ -7,7 +7,7 @@ description: Plan and render traceable CUMCM data figures and editable model sch
 
 ## Purpose
 
-把已验证结果转成**讲解充分、视觉精致、数值准确、可追溯且适合 CUMCM 中文论文**的图表。当前用户偏好本地素材中的鲜明配色、组合构图和适用的三维表现；不默认压少图量，也不把朴素等同于科研质量。其他用户明确指定的审美或正式模板优先。
+把已验证结果转成**讲解充分、视觉精致、数值准确、可追溯且适合 CUMCM 中文论文**的图表。按当前用户选择分流：示意、流程、结构、受力和几何图默认纯黑线条与文字、白底，不用彩色或灰色填充；用虚实线、线宽、箭头、剖面线及标签区分。结果图仍采用鲜明的 `cumcm-vivid` 配色、组合构图和适用的三维表现，不随示意图改黑。历史彩色示意参考保留但不再默认；其他用户明确指定的审美或正式模板优先。
 
 本 Skill 明确分成两个阶段：
 
@@ -67,7 +67,9 @@ description: Plan and render traceable CUMCM data figures and editable model sch
 8. 只有 `representation: figure` 的条目才建立完整 `FIGURE_INTENT.yaml`：`figure_id`、`question_id`、`narrative_role`、`reader_takeaway`、`claim_id`（如承担声明）、源数据、变量、单位、变换、后端、图型、最终宽度、placement 和中文 caption。
 9. 数据图依据数据结构选型：趋势用折线，长类别比较用水平点图/条形，两状态优先哑铃/坡度，分布用原始点+箱线/小提琴，连续关系用散点，二维标量场用固定色域热图/等高线，多目标用 Pareto，区间/遮蔽/调度优先时间轴或区间条。
 10. 机制、流程和结构图先列实体、关系、分组、主流向与反馈。数模论文示意图默认通过代码或矢量软件实际绘制：TikZ、MATLAB/Matplotlib、Visio 或 SVG/FigureSpec。用户说“画出来/可编辑/几何示意”时不要转成图片生成。仅明确需要生成式场景素材时走 [科研插图调用协议](references/scientific_illustration_workflow.md)。
+   这类示意图先采用纯黑白视觉语言；不从结果图继承 vivid，也不把历史彩色参考原样当默认。阴影/灰阶不作区域区分，必要区域用黑色剖面线、虚实边界和文字说明。
    对坐标、受力、光路、投影、材料分层与边界示意图，读取 [通用几何与物理工作流](references/geometry_diagram_workflow.md) 和 [用户确认的 TikZ 样式与构造](references/approved_tikz_schematics.md)。默认以 TikZ 实际绘制，输出可修改 `.tex` 与矢量 PDF；有明确解析关系或机器可读坐标时可用 PGFPlots。用户指定 Visio 或其他可编辑后端时尊重其选择，并核实实际支持范围。不要强制先转 SVG，也不要把物理示意图画成流程框。
+   明确图区分几何/运动、完整隔离受力或消约束后的广义作用；核对原始与平衡消项阶段、有效连接点、力矩正方向及同实体跨图一致，具体见该工作流。不用广义作用图冒充漏画约束反力的完整受力图。
    随包 `assets/tikz-schematics/` 的受力图、分层传热图是用户确认的两种样式起点，不是题型白名单。先按当前模型提取对象—关系—符号—方程，再选整体、剖面、分体、微元或状态构图；不能只改两张示例的标题来冒充新模型。需要基础 SVG 图元时仍可用 `scripts/geometry_diagram_from_spec.py`。旧 `draw_mechanism_examples.py` 保留为构造回归示例，不再作为默认论文风格样板。优秀论文来源范围见 [专项蒸馏记录](references/award_mechanism_distillation.md)，不得把两张试画通过称为全语料蒸馏完成。
 11. 定量图用 Origin、MATLAB、Matplotlib；不能交给图像模型生成曲线、热力矩阵或结果数字。科研插图区分 `image2` 专用桥接与 `imagegen` 内置工具，发现、调用、回执、重开后才标记已运行；不得虚构工具或把一种后端冒充另一种。
 12. 所有渲染只消费已有机器可读结果。相关系数、拟合、平滑、区间、显著性、排名和新统计量必须在分析/验证代码中先计算并回写结果；渲染器不偷偷生成新结论。
@@ -76,6 +78,7 @@ description: Plan and render traceable CUMCM data figures and editable model sch
 14. 在论文最终尺寸重开，检查裁切、遮挡、字体、线宽、图例、单位、视觉重心、灰度/色盲可辨。多面板常规优先 2--4 个；超过 4 个要有不可拆分理由，超过 6 个优先附录。
 15. `competition_compact` 正文优先保留：关键场景/机制、核心策略/结果、真正影响结论的验证。完整收敛、多种子、微小误差、后端 audit、版本谱系、参数全扫描默认进附录/支撑材料。`research_audit` 可完整保留。
 16. 按 [参考对照与独立视觉审查](references/reference_visual_review.md) 将样图与最终尺寸成图并列检查；数值检查与审美审查分别记录。由未参与该图生成的子 agent 做视觉审查（可用且允许时），如不可用则如实标记非独立，不能自称独立通过。
+    已有 agent 互审使用真实 `same-family-cross-review`，披露其已有上下文和模型作者身份；图形原作者及后续编辑者不得自审。TikZ 验证保留 `.tex + PDF` 与成功编译回执，不改名冒充其他后端。
     最终运行 `scripts/validate_figure_intent.py --require-sources --require-outputs --require-visual-review --require-coverage`（另传 intent 路径）。检查的是哈希绑定的证据与审查记录，不是脚本替人判断“好看”。结果/图/brief 改变后旧审查失效。
 17. 对 Origin/Visio/PDF 做匿名和元数据检查，生成交付清单与哈希。
 
@@ -104,7 +107,9 @@ description: Plan and render traceable CUMCM data figures and editable model sch
 - `orientation` 不承担数值结论；`mechanism` 像推导的一部分；`evidence/validation` 必须绑定真实来源。
 - 证据与验证不是强制成对放正文。验证如果只用于工程审计，可进入附录。
 - 图内默认不放论文式标题；中文解释写入 LaTeX `\caption{}`。
+- 从论文绑定独立图注时用 `scripts/extract_latex_caption.py source.tex --label fig:target`，按唯一目标图和配对括号提取，不用可跨前图的贪婪正则；边界与复核方法见 [审查文件格式](references/reference_visual_review.md)。
 - 默认从本地样式卡选型，常规数据图采用 `cumcm-vivid`；`cumcm-clean` 保留为用户选择或黑白优先场景，不自动覆盖鲜明风格。可用渐变、透明填充、纹理、阴影与层次构图，不能遮挡数据或让装饰冒充新变量。
+- 上述渐变/彩色层次针对数据结果图。示意/流程/结构/受力/几何图默认黑线黑字白底，无彩色或灰色填充；线型和剖面线须有明确语义，不只给成图套灰度滤镜。
 - 全量样式库不删掉相同图型的配色、构图或视角变体。基础适配器成功不代表原图中的所有复合面板均已复刻；未适配部分保留检索与定制路线，不虚报全量运行闭环。原目录移动或不可用时，核心绘图仍用随包原创模板运行。
 - 类别编码不能只依赖红绿颜色；误差棒、星号、区间必须绑定真实统计。渐变若编码变量要记录色域，纯装饰则声明非语义并检查不误导。
 - 两状态对比先评估哑铃/坡度；长标签优先横向图；完整精确值进入表格。
