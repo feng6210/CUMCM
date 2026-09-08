@@ -15,7 +15,7 @@ description: Compile and verify Chinese CUMCM LaTeX mathematical-modeling papers
 2. 运行 `scripts/compile_paper.py --paper-dir paper`。脚本先做 CUMCM 源码静态检查，再探测 `latexmk` 与 `xelatex`。
 3. 编译时最多针对有明确日志证据的问题做三次修复；同类错误连续两次时停止并保留日志。
 4. 读取 `.aux` 的 `mm:body-start` 和 `mm:appendix-start` 标签，检查正文不超过 30 页；检查摘要专页和 PDF 20 MB 限制。
-5. 重新打开实际输出 PDF 并渲染全部页面检查（含参考文献和附录）；不能用前三页或联系图生成完成代替人工阅读。按下述视觉报告契约记录后，再运行 `compile_paper.py --paper-dir paper --visual-report PDF_VISUAL_CHECK.json`；使用另存路径时两次都传同一 `--output-pdf`。重编译若改变 PDF 哈希，旧报告即失效，必须按实际新文件复查，不能只改哈希。若环境没有 XeLaTeX，报告 `BACKEND_UNAVAILABLE`，不得声称 PDF 已验证。
+5. 编译成功后，先运行 `scripts/visual_review_gate.py prepare --paper-dir paper`，把**本轮已发布 PDF、当前 `compile_report.json` 和论文源文件快照**绑定到 `VISUAL_REVIEW_BINDING.json`。随后重新打开该 PDF 并检查全部页面（含参考文献和附录），按下述视觉报告契约写 `PDF_VISUAL_CHECK.json`，最后运行 `scripts/visual_review_gate.py verify --paper-dir paper --visual-report PDF_VISUAL_CHECK.json`。若首次编译使用 `--output-pdf main-revised.pdf`，prepare/verify 均传同一 `--output-pdf main-revised.pdf`。verify 只检查已经审阅的既有工件，**不重新运行 XeLaTeX/latexmk**；源码、编译报告或 PDF 任一变化时返回 `VISUAL_VERIFICATION_REQUIRES_RECOMPILE`，必须重新编译并重新审阅新工件。最终两阶段视觉复核不要再用第二次 `compile_paper.py --visual-report ...` 代替 gate，因为重新编译即使源码不变也可能产生不同 PDF 字节并使刚完成的视觉报告失效。若首次环境没有 XeLaTeX，报告 `BACKEND_UNAVAILABLE`，不得声称 PDF 已验证。
 
 ## 输出路径与失败保留
 
@@ -27,7 +27,7 @@ description: Compile and verify Chinese CUMCM LaTeX mathematical-modeling papers
 
 ## 视觉报告与增量复查
 
-`compile_paper.py` 会尝试渲染所有页面，但渲染成功不等于已查看。视觉报告由实际查看者填写，页号使用从 1 开始的 PDF 物理页；例如两页报告的最小结构如下（哈希、身份和范围必须替换为真实记录）：
+`compile_paper.py` 会尝试渲染所有页面，但渲染成功不等于已查看。`visual_review_gate.py prepare` 在人工阅读前冻结已发布 PDF、编译报告与当前论文输入；`verify` 只验证这组冻结工件和人工报告，不执行编译器。视觉报告由实际查看者填写，页号使用从 1 开始的 PDF 物理页；例如两页报告的最小结构如下（哈希、身份和范围必须替换为真实记录）：
 
 ```json
 {
@@ -42,6 +42,7 @@ description: Compile and verify Chinese CUMCM LaTeX mathematical-modeling papers
 }
 ```
 
+- `VISUAL_REVIEW_BINDING.json` 记录 `compile_report.json` 哈希、已发布 PDF 哈希/页数和论文源快照。源快照排除 `build/`、交付 PDF、编译/视觉报告及视觉证据本身；因此添加审图记录不会把论文源误判为变化，但正文、类文件、图表、数据/代码附件等输入变化会使旧绑定失效。绑定创建后若 `compile_report.json`、PDF 或论文输入改变，verify 返回 `VISUAL_VERIFICATION_REQUIRES_RECOMPILE`，不能通过重新计算旧报告哈希绕过。
 - 相对工件路径以视觉报告所在目录为基准；`paper_pdf` 若提供，必须是本次实际输出。完整范围须覆盖全部页面；缺少页数、实际渲染/查看范围或身份角色的旧报告不删除、不冒判通过，返回 `REVIEW_REQUIRED` 并说明待补字段。先留存旧报告，再补充实际检查证据迁移。
 - 机器只核对文件绑定与声明范围，不能证明人真的打开了图片或证明独立性。必须如实记录原作者身份、同源交叉审查或零上下文来源；没有固定人数要求，也不能靠写一个身份字段取得“独立验证”认证。
 - 改版后的继承仅限已经检查且渲染图完全相同的页面。先将旧报告保存为另一个文件；新报告记录 `previous_report: {"file": "prior-review.json", "sha256": "..."}`、`inherited_pages: [页号]`。新旧报告均保留 `page_images: [{"page": 1, "file": "pages/page-1.png", "sha256": "..."}]`。脚本逐一比对当前 PNG 与旧报告哈希；字节完全相同是同像素的充分证据。其他格式、重编码后仅声称同像素或缺历史证据不能自动继承，需直接复看或另附明确的像素比较记录供人工复核。
