@@ -26,6 +26,22 @@ def load_workflow_module():
     return module
 
 
+VALID_POLICY = """schema_version: \"1.0\"
+competition_name: Demo Contest
+stage: live_contest
+ai_allowed: restricted
+web_allowed: forbidden
+external_papers_allowed: restricted
+benchmark_answers_allowed: forbidden
+team_collaboration_scope: registered team only
+citation_requirement: follow official rules
+source:
+  kind: official_rules
+  reference: demo official rulebook
+unresolved: []
+"""
+
+
 class LiveContestPolicyTests(unittest.TestCase):
     def _advance_to_approval(self, wf, state_path: Path):
         for target in (
@@ -41,6 +57,21 @@ class LiveContestPolicyTests(unittest.TestCase):
         ):
             wf.transition(state_path, target, None, None)
 
+    def _decision(self, root: Path) -> Path:
+        decision = root / "decision.json"
+        decision.write_text(
+            json.dumps(
+                {
+                    "approved": True,
+                    "selected_routes": {"Q1": "route-A"},
+                    "approved_claim_scope": ["claim-q1"],
+                },
+                ensure_ascii=False,
+            ),
+            encoding="utf-8",
+        )
+        return decision
+
     def test_live_contest_cannot_enter_user_approved_without_validated_policy(self):
         wf = load_workflow_module()
         with tempfile.TemporaryDirectory() as tmp:
@@ -49,46 +80,18 @@ class LiveContestPolicyTests(unittest.TestCase):
             wf.initialize(state_path, "live-demo", "policy regression", "live_contest", "analysis")
             self.assertEqual(wf.read_json(state_path)["competition_policy_status"], "PENDING")
             self._advance_to_approval(wf, state_path)
-
-            decision = root / "decision.json"
-            decision.write_text(
-                json.dumps(
-                    {
-                        "approved": True,
-                        "selected_routes": {"Q1": "route-A"},
-                        "approved_claim_scope": ["claim-q1"],
-                    },
-                    ensure_ascii=False,
-                ),
-                encoding="utf-8",
-            )
-            wf.approve(state_path, decision)
+            wf.approve(state_path, self._decision(root))
 
             with self.assertRaises(ValueError):
                 wf.transition(state_path, "USER_APPROVED", None, None)
 
             policy = root / "COMPETITION_POLICY.yaml"
-            policy.write_text(
-                """schema_version: \"1.0\"
-competition_name: Demo Contest
-stage: live_contest
-ai_allowed: restricted
-web_allowed: forbidden
-external_papers_allowed: restricted
-benchmark_answers_allowed: forbidden
-team_collaboration_scope: registered team only
-citation_requirement: follow official rules
-source:
-  kind: official_rules
-  reference: demo official rulebook
-unresolved: []
-""",
-                encoding="utf-8",
-            )
+            policy.write_text(VALID_POLICY, encoding="utf-8")
             wf.record_competition_policy(state_path, policy)
             bound = wf.read_json(state_path)
             self.assertEqual(bound["competition_policy_status"], "VALIDATED")
             self.assertEqual(bound["competition_policy"]["benchmark_answers_allowed"], "forbidden")
+            self.assertTrue(Path(bound["competition_policy"]["file"]).is_absolute())
 
             wf.transition(state_path, "USER_APPROVED", None, None)
             wf.transition(state_path, "SOLVING", None, None)
@@ -121,6 +124,26 @@ unresolved:
             )
             with self.assertRaises(ValueError):
                 wf.record_competition_policy(state_path, policy)
+
+    def test_policy_file_change_invalidates_sensitive_transition(self):
+        wf = load_workflow_module()
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            state_path = root / "workflow_state.json"
+            wf.initialize(state_path, "live-demo", "policy hash regression", "live_contest", "analysis")
+            self._advance_to_approval(wf, state_path)
+            wf.approve(state_path, self._decision(root))
+            policy = root / "COMPETITION_POLICY.yaml"
+            policy.write_text(VALID_POLICY, encoding="utf-8")
+            wf.record_competition_policy(state_path, policy)
+
+            policy.write_text(VALID_POLICY + "notes:\n  - changed after validation\n", encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "changed after validation"):
+                wf.transition(state_path, "USER_APPROVED", None, None)
+
+            wf.record_competition_policy(state_path, policy)
+            wf.transition(state_path, "USER_APPROVED", None, None)
+            self.assertEqual(wf.read_json(state_path)["stage"], "USER_APPROVED")
 
 
 if __name__ == "__main__":
