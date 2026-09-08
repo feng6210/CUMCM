@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/cumcm/competition_policy.schema.json",
+  "title": "CUMCM Competition Policy",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "competition_name",
+    "stage",
+    "ai_allowed",
+    "web_allowed",
+    "external_papers_allowed",
+    "benchmark_answers_allowed",
+    "team_collaboration_scope",
+    "citation_requirement",
+    "source"
+  ],
+  "properties": {
+    "schema_version": {"type": "string", "const": "1.0"},
+    "competition_name": {"type": "string", "minLength": 1},
+    "stage": {"enum": ["training", "live_contest", "coursework", "research"]},
+    "ai_allowed": {"enum": ["allowed", "forbidden", "restricted", "unknown"]},
+    "web_allowed": {"enum": ["allowed", "forbidden", "restricted", "unknown"]},
+    "external_papers_allowed": {"enum": ["allowed", "forbidden", "restricted", "unknown"]},
+    "benchmark_answers_allowed": {"enum": ["allowed", "forbidden", "restricted", "unknown"]},
+    "team_collaboration_scope": {"type": "string", "minLength": 1},
+    "citation_requirement": {"type": "string", "minLength": 1},
+    "source": {
+      "type": "object",
+      "required": ["kind", "reference"],
+      "properties": {
+        "kind": {"enum": ["official_rules", "course_policy", "user_instruction", "unknown"]},
+        "reference": {"type": "string", "minLength": 1},
+        "checked_at": {"type": ["string", "null"]}
+      },
+      "additionalProperties": true
+    },
+    "notes": {"type": "array", "items": {"type": "string"}},
+    "unresolved": {"type": "array", "items": {"type": "string"}}
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {"stage": {"const": "live_contest"}},
+        "required": ["stage"]
+      },
+      "then": {
+        "not": {
+          "anyOf": [
+            {"properties": {"ai_allowed": {"const": "unknown"}}, "required": ["ai_allowed"]},
+            {"properties": {"web_allowed": {"const": "unknown"}}, "required": ["web_allowed"]},
+            {"properties": {"benchmark_answers_allowed": {"const": "unknown"}}, "required": ["benchmark_answers_allowed"]}
+          ]
+        }
+      }
+    }
+  ],
+  "additionalProperties": true
+}
