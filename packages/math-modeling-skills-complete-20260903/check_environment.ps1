@@ -35,11 +35,11 @@ if ($null -ne $python) {
     if ($python.Name -eq 'py.exe' -or $python.Name -eq 'py') {
         $launcherArgs += '-3'
     }
-    $probe = 'import importlib.util,json; names=["yaml","jsonschema","numpy","pandas","matplotlib","PIL","scipy","sklearn","networkx","openpyxl"]; print(json.dumps({n:(importlib.util.find_spec(n) is not None) for n in names}))'
+    $probe = 'import importlib.util,json; names=["yaml","jsonschema","numpy","pandas","matplotlib","PIL","pypdfium2","scipy","sklearn","networkx","openpyxl"]; print(json.dumps({n:(importlib.util.find_spec(n) is not None) for n in names}))'
     $json = & $python.Source @launcherArgs -c $probe
     if ($LASTEXITCODE -eq 0) {
         $parsed = $json | ConvertFrom-Json
-        foreach ($name in @('yaml', 'jsonschema', 'numpy', 'pandas', 'matplotlib', 'PIL', 'scipy', 'sklearn', 'networkx', 'openpyxl')) {
+        foreach ($name in @('yaml', 'jsonschema', 'numpy', 'pandas', 'matplotlib', 'PIL', 'pypdfium2', 'scipy', 'sklearn', 'networkx', 'openpyxl')) {
             $pythonPackages[$name] = [bool]$parsed.$name
         }
         $pythonOk = -not ($pythonPackages.Values -contains $false)
