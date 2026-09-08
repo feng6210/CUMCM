@@ -1,0 +1,35 @@
+schema_version: "1.0"
+benchmark_id: simple-closed-form
+task_mode: training
+structure_signature:
+  - mechanism
+source_scope: "合成简单题，用于检查系统不会为了复杂度、图量或审计而过度工程化。"
+required_behaviors:
+  - id: explicit-semantics
+    stage: SEMANTICS_LOCKED
+    assertion: "目标和单位仍需明确，但不存在实质歧义时应快速锁定，不人为制造多条无意义解释。"
+    evidence_artifact: PROBLEM_SEMANTICS.yaml
+  - id: minimal-baseline-is-main-solution
+    stage: BASELINE_READY
+    assertion: "若解析或闭式基线已经满足任务要求，应允许不升级复杂模型，并把该决定记录为结构化选型结果。"
+    evidence_artifact: baseline_result
+  - id: no-forced-figures
+    stage: WRITING
+    assertion: "如果精确答案用一张三线表或一句量化文字已最清楚，FIGURE_PLAN 可以零正文图。"
+    evidence_artifact: FIGURE_PLAN.yaml
+  - id: compact-body
+    stage: WRITING
+    assertion: "competition_compact 正文不应因哈希、种子、版本谱系或无必要收敛图膨胀。"
+    evidence_artifact: NARRATIVE_MAP.yaml
+forbidden_behaviors:
+  - "为了所谓创新强行把已足够的闭式/简单模型替换成深度学习或多启发式组合。"
+  - "为了图证完整给每个分问强制生成固定数量图。"
+  - "把软件运行日志或哈希清单放到正文主线。"
+acceptance:
+  hard_fail_if:
+    - unnecessary_complexity_escalation
+    - fixed_figure_quota_reappears
+  pass_if:
+    - simple_model_is_allowed_to_remain_final
+    - zero_body_figure_is_allowed_when_reader_task_absent
+    - audit_details_remain_outside_competition_body
