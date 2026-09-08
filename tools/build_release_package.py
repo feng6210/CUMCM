@@ -14,7 +14,8 @@ import json
 import zipfile
 from pathlib import Path
 
-GENERATED_METADATA = {"PACKAGE_MANIFEST.json", "SHA256SUMS.txt", "VALIDATION_REPORT.json"}
+SOURCE_METADATA_TO_REGENERATE = {"PACKAGE_MANIFEST.json", "SHA256SUMS.txt", "VALIDATION_REPORT.json"}
+SELF_REFERENTIAL_METADATA = {"PACKAGE_MANIFEST.json", "SHA256SUMS.txt"}
 
 
 def sha256_bytes(data: bytes) -> str:
@@ -34,35 +35,12 @@ def source_files(package_dir: Path) -> list[Path]:
     for path in package_dir.rglob("*"):
         if not path.is_file():
             continue
-        if path.name in GENERATED_METADATA:
+        if path.name in SOURCE_METADATA_TO_REGENERATE:
             continue
         if "__pycache__" in path.parts or path.suffix == ".pyc":
             continue
         result.append(path)
     return sorted(result, key=lambda p: p.relative_to(package_dir).as_posix())
-
-
-def build_manifest(package_dir: Path, files: list[Path], release_date: str | None = None) -> dict:
-    skills_dir = package_dir / "skills"
-    skill_count = sum(1 for path in skills_dir.glob("*/SKILL.md") if path.is_file())
-    entries = []
-    total_bytes = 0
-    for path in files:
-        rel = path.relative_to(package_dir).as_posix()
-        size = path.stat().st_size
-        total_bytes += size
-        entries.append({"path": rel, "bytes": size, "sha256": sha256_file(path)})
-    return {
-        "schema_version": "3.0",
-        "package": package_dir.name,
-        "release_date": release_date,
-        "skill_count": skill_count,
-        "file_count": len(entries),
-        "total_bytes": total_bytes,
-        "hash_algorithm": "SHA-256",
-        "generated_metadata": sorted(GENERATED_METADATA),
-        "files": entries,
-    }
 
 
 def preview_validation_bytes() -> bytes:
@@ -86,6 +64,46 @@ def validation_bytes(validation_report: Path | None) -> tuple[bytes, str]:
     return validation_report.read_bytes(), "provided_formal_report"
 
 
+def build_manifest(
+    package_dir: Path,
+    files: list[Path],
+    validation_report_bytes: bytes,
+    release_date: str | None = None,
+) -> dict:
+    skills_dir = package_dir / "skills"
+    skill_count = sum(1 for path in skills_dir.glob("*/SKILL.md") if path.is_file())
+    entries = []
+    total_bytes = 0
+    for path in files:
+        rel = path.relative_to(package_dir).as_posix()
+        size = path.stat().st_size
+        total_bytes += size
+        entries.append({"path": rel, "bytes": size, "sha256": sha256_file(path)})
+
+    validation_entry = {
+        "path": "VALIDATION_REPORT.json",
+        "bytes": len(validation_report_bytes),
+        "sha256": sha256_bytes(validation_report_bytes),
+        "generated": True,
+    }
+    entries.append(validation_entry)
+    entries.sort(key=lambda item: item["path"])
+    total_bytes += len(validation_report_bytes)
+
+    return {
+        "schema_version": "3.0",
+        "package": package_dir.name,
+        "release_date": release_date,
+        "skill_count": skill_count,
+        "file_count": len(entries),
+        "total_bytes": total_bytes,
+        "hash_algorithm": "SHA-256",
+        "manifest_excludes": sorted(SELF_REFERENTIAL_METADATA),
+        "regenerated_metadata": sorted(SOURCE_METADATA_TO_REGENERATE),
+        "files": entries,
+    }
+
+
 def deterministic_write(archive: zipfile.ZipFile, arcname: str, data: bytes) -> None:
     info = zipfile.ZipInfo(arcname, date_time=(1980, 1, 1, 0, 0, 0))
     info.compress_type = zipfile.ZIP_DEFLATED
@@ -102,10 +120,15 @@ def build(
 ) -> dict:
     package_dir = package_dir.resolve()
     files = source_files(package_dir)
-    manifest = build_manifest(package_dir, files, release_date=release_date)
+    validation_report_bytes, validation_mode = validation_bytes(validation_report)
+    manifest = build_manifest(
+        package_dir,
+        files,
+        validation_report_bytes=validation_report_bytes,
+        release_date=release_date,
+    )
     manifest_bytes = (json.dumps(manifest, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
     sums_bytes = ("".join(f"{entry['sha256']}  {entry['path']}\n" for entry in manifest["files"])).encode("utf-8")
-    validation_report_bytes, validation_mode = validation_bytes(validation_report)
 
     output_zip.parent.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(output_zip, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as archive:
@@ -113,9 +136,9 @@ def build(
         for path in files:
             rel = path.relative_to(package_dir).as_posix()
             deterministic_write(archive, f"{prefix}/{rel}", path.read_bytes())
+        deterministic_write(archive, f"{prefix}/VALIDATION_REPORT.json", validation_report_bytes)
         deterministic_write(archive, f"{prefix}/PACKAGE_MANIFEST.json", manifest_bytes)
         deterministic_write(archive, f"{prefix}/SHA256SUMS.txt", sums_bytes)
-        deterministic_write(archive, f"{prefix}/VALIDATION_REPORT.json", validation_report_bytes)
 
     with zipfile.ZipFile(output_zip, "r") as archive:
         bad = archive.testzip()
@@ -132,6 +155,7 @@ def build(
         "output_zip": str(output_zip.resolve()),
         "zip_sha256": sha256_file(output_zip),
         "source_file_count": len(files),
+        "manifest_file_count": manifest["file_count"],
         "zip_entry_count": len(files) + 3,
         "skill_count": manifest["skill_count"],
         "release_date": release_date,
