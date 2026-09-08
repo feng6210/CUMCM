@@ -1,0 +1,17 @@
+{
+  "scope": "Two original monochrome derivative templates. User requested black/white defaults but has not reviewed these new rendered assets. Historical colored files remain unchanged.",
+  "cards": [
+    {
+      "card_id": "tikz-force-balance-monochrome",
+      "preview_sha256": "458e9338cd67e8801ae3395342c0b1928d17484f6d4fd68deb1ffbfcbc42451f",
+      "preview": {"file": "force-balance.png", "sha256": "458e9338cd67e8801ae3395342c0b1928d17484f6d4fd68deb1ffbfcbc42451f"},
+      "style_role": "black outlines, black force arrows, dashed projection guides, white background"
+    },
+    {
+      "card_id": "tikz-layered-heat-monochrome",
+      "preview_sha256": "abd7109f885e96da3a006aa3f1364c2a0e2cea76ea1b0b5498b0d01155fe6634",
+      "preview": {"file": "layered-heat.png", "sha256": "abd7109f885e96da3a006aa3f1364c2a0e2cea76ea1b0b5498b0d01155fe6634"},
+      "style_role": "black layer boundaries, distinct black hatch strips, direct material labels, white fills"
+    }
+  ]
+}

@@ -4,6 +4,15 @@
 
 ## 随包可用的源码与预览
 
+当前默认已按用户新增选择切换为纯黑线条/文字、白底，无彩色或灰色填充。优先使用：
+
+- [黑白受力图源码](../assets/tikz-schematics/monochrome/force-balance.tex)、[预览](../assets/tikz-schematics/monochrome/force-balance.png)、[矢量PDF](../assets/tikz-schematics/monochrome/force-balance.pdf)。
+- [黑白分层图源码](../assets/tikz-schematics/monochrome/layered-heat.tex)、[预览](../assets/tikz-schematics/monochrome/layered-heat.png)、[矢量PDF](../assets/tikz-schematics/monochrome/layered-heat.pdf)。
+
+[编译与来源报告](../assets/tikz-schematics/monochrome/COMPILE_REPORT.json) 保留真实工具版本、退出码、历史来源和新资产哈希；[黑白样式卡](../assets/tikz-schematics/monochrome/STYLE_REFERENCE_CATALOG.json) 可供新图建立自己的 `style_reference`。用户批准的是黑白默认要求，并未实看认可这两张新成图；作者重开检查不代替非作者审查。重建命令为 `python scripts/build_monochrome_templates.py --output-dir NEW_DIR --pdftoppm PATH_TO_PDFTOPPM`，只在新目录编译，不覆盖历史或安装资产。
+
+以下旧彩色文件及其历史回执原样保留，供构图参考或明确请求的历史复现，不再作为默认色彩方案；旧回执不认证新黑白资产：
+
 - [受力图源码](../assets/tikz-schematics/force-balance.tex)、[PNG预览](../assets/tikz-schematics/force-balance.png)、[矢量PDF](../assets/tikz-schematics/force-balance.pdf)。
 - [传热图源码](../assets/tikz-schematics/layered-heat.tex)、[PNG预览](../assets/tikz-schematics/layered-heat.png)、[矢量PDF](../assets/tikz-schematics/layered-heat.pdf)。
 - [原始两图审查回执](../assets/tikz-schematics/REVIEW.json)：历史 `same-family-fresh` 审查与六个源文件/输出哈希，范围仅两张演示。回执中原论文页面相对路径属于当时工作目录，不是安装后的运行依赖；新图不能沿用该回执作为自己的审查。
@@ -14,7 +23,7 @@
 
 ### 受力图：紧凑线稿与数学构造
 
-深蓝灰轮廓 `#27394B`，蓝色向量 `#24678D`，暖色重点 `#C65F36`，浅色辅助线。颜色角色可随题目改变，但同一组图要一致；它们是用户认可的起点，不排斥其他配色。
+默认轮廓、向量、文字全部纯黑，白底；主轮廓较粗、辅助线细虚线、尺寸线较细，作用方向用箭头和标签而非颜色区分。旧深蓝灰/蓝/暖色版本只保留为历史参考，不把浅灰辅助线带入当前默认。
 
 命名坐标构造端点和质心，角弧由 `atan2` 求出，杆长尺寸线平行于构件并沿法向偏移；力臂是到作用线的垂直距离。保留铰支/固支的区别，不为美观移动受力点。不同作用点的力不能不加条件地合并到同一点。
 
@@ -22,7 +31,7 @@
 
 ### 分层图：实体、界面和边界条件对应
 
-砂色 `#F2D6B3`、浅青 `#D9E7E2`、浅蓝 `#C8D9EA` 区分区域；尺寸线与坐标轴分行；少量立体厚度帮助辨认材料，不代表三维求解。理想接触条件标在界面附近，文字、符号和热流箭头分层布局。
+默认用黑色区域边界、不同剖面线及材料标签区分层，不铺彩色或灰色底。尺寸线与坐标轴分行；少量黑色边线表达厚度，不作灰阶阴影，也不代表三维求解。理想接触条件标在界面附近，文字、符号和热流箭头分层布局。旧砂色/浅青/浅蓝版本仅保留历史。
 
 演示仅适用于一维稳态、等截面积、无内热源、理想层间接触且左热右冷的情景。`k_i` 为导热系数，温度连续式指在界面 `x=x_i` 两侧相等，不能理解为整层温度处处相同。用于正文时在图注或符号表说明这些条件。新题有接触热阻、内热源、非稳态或变截面时，必须改关系与标注，不能直接套连续热流箭头。
 
@@ -32,7 +41,7 @@
 
 选择整体、剖面、分体、局部放大、微元或状态图；单图能说明时不默认四联画。图应解释相邻公式中的对象和量，不在图中堆标题、段落和审计信息。
 
-几何坐标决定关系；布局坐标决定标签与留白。可调整标签、尺寸线偏移、视角与配色，不能改变法向、作用点、交点或角度以迁就布局。空间角先在模型坐标内采样，再与实体使用同一投影。
+几何坐标决定关系；布局坐标决定标签与留白。可调整标签、尺寸线偏移、视角和黑白线型，不能改变法向、作用点、交点或角度以迁就布局。空间角先在模型坐标内采样，再与实体使用同一投影。此示意图约定不把结果图的 vivid 配色改成黑白。
 
 ## 实际使用与编译
 

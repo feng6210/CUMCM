@@ -1,0 +1,19 @@
+{
+  "status": "AUTHOR_OPENED_PENDING_NONAUTHOR_REVIEW",
+  "generator_and_editor": "/root/coupled_model_builder",
+  "independent_visual_approval": false,
+  "user_visual_approval": false,
+  "user_authorized_scope": "Pure black/white schematic defaults, not aesthetic approval of these two new rendered assets.",
+  "compile_report": {"file": "COMPILE_REPORT.json", "sha256": "a626c63922834f05bb04053556e69e6ca3f09064646e94afb06da474dde0f663"},
+  "actually_opened_images": [
+    {"file": "force-balance.png", "sha256": "458e9338cd67e8801ae3395342c0b1928d17484f6d4fd68deb1ffbfcbc42451f"},
+    {"file": "layered-heat.png", "sha256": "abd7109f885e96da3a006aa3f1364c2a0e2cea76ea1b0b5498b0d01155fe6634"}
+  ],
+  "observations": [
+    "The rod, force arrows, support and dimension lines are black; guide projections are fine dashed lines and the rod interior is white. Labels do not overlap the length dimension.",
+    "The material regions use white interiors and black boundaries; three bottom hatch strips distinguish materials while direct labels and the flux equation remain legible.",
+    "Both complete standalone previews were opened. No observed cropping or missing glyphs; no intentional gray or colored area fills. Antialiased edge pixels can be gray.",
+    "Coordinates, action points, arrow directions and physical assumptions remain those of the historical templates. These are examples, not a required number of figures for a problem."
+  ],
+  "not_claimed": ["user approval of the actual new previews", "independent aesthetic or physical certification", "all figure families converted to monochrome", "data result palettes changed"]
+}

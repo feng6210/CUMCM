@@ -84,6 +84,7 @@ jobs:
         run: |
           set -euo pipefail
           python -m unittest test_geometry_primitives.py -v
+          python -m unittest test_extract_latex_caption.py test_visual_review_provenance.py test_monochrome_diagrams.py -v
           python test_scientific_illustration.py --output-dir "$RUNNER_TEMP/scientific-illustration-regression"
           python test_validate_figure_intent.py
           python test_render_corpus_chart.py --output-dir "$RUNNER_TEMP/corpus-renderer-regression"

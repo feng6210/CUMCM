@@ -2,6 +2,6 @@ interface:
   display_name: "数学建模：可视化规划与交付"
   short_description: "参考已确认样式，用 TikZ 或原生矢量画中文示意图，并交付可追溯数据图。"
   brand_color: "#2563EB"
-  default_prompt: "请使用 $mm-visualization-delivery 参考已确认样式把模型讲清楚：示意图优先用 TikZ 或用户指定的原生矢量后端实际绘制，数据图绑定真实结果，仅在明确需要生成式素材时调用图片生成，并保留可编辑源码、矢量 PDF 与独立语义和视觉审查。"
+  default_prompt: "请使用 $mm-visualization-delivery 把模型讲清楚：示意/流程/结构/受力/几何图用 TikZ 或指定矢量后端实际绘制，默认黑线黑字白底、以线型和剖面线区分；数据结果图保留 vivid 并绑定真实结果，交付可编辑源码、矢量 PDF 与独立语义和视觉审查。"
 policy:
   allow_implicit_invocation: true

@@ -110,6 +110,9 @@ def validate(spec: dict):
 def render(spec: dict) -> str:
     validate(spec)
     c = spec["canvas"]
+    mode = spec.get("style", {}).get("color_mode", "monochrome")
+    if mode not in {"monochrome", "color"}:
+        raise ValueError("geometry style.color_mode must be monochrome or explicit color")
     st = {"font_family": "Arial, Microsoft YaHei, sans-serif", "font_size": 16,
           "bg_color": "#FFFFFF", "ink": "#263238", "axis": "#50626B",
           "accent": "#E76F51", "secondary": "#168AAD", "guide": "#90A4AE", **spec.get("style", {})}
@@ -117,6 +120,12 @@ def render(spec: dict) -> str:
                             "width": str(c["width"]), "height": str(c["height"]), "font-family": st["font_family"]})
     SubElement(svg, "rect", {"width": str(c["width"]), "height": str(c["height"]), "fill": color(st["bg_color"], "#FFFFFF")})
     defs = SubElement(svg, "defs")
+    for hatch in ("diagonal", "cross"):
+        pattern = SubElement(defs, "pattern", {"id": "hatch-" + hatch, "patternUnits": "userSpaceOnUse", "width": "10", "height": "10"})
+        SubElement(pattern, "rect", {"width": "10", "height": "10", "fill": "#FFFFFF"})
+        SubElement(pattern, "path", {"d": "M -2 2 L 2 -2 M 0 10 L 10 0 M 8 12 L 12 8", "fill": "none", "stroke": "#000000", "stroke-width": "0.7"})
+        if hatch == "cross":
+            SubElement(pattern, "path", {"d": "M -2 8 L 2 12 M 0 0 L 10 10 M 8 -2 L 12 2", "fill": "none", "stroke": "#000000", "stroke-width": "0.7"})
     marker(defs, "arrow", color(st["ink"], "#263238")); marker(defs, "arrow-accent", color(st["accent"], "#E76F51"))
     fs = float(st["font_size"])
 
@@ -125,7 +134,8 @@ def render(spec: dict) -> str:
         x, y, w, h = [float(region.get(k, 0)) for k in ("x", "y", "width", "height")]
         SubElement(svg, "rect", {"x": str(x), "y": str(y), "width": str(w), "height": str(h),
                                    "rx": "8", "fill": color(region.get("fill"), "#F4F8F7"),
-                                   "stroke": color(region.get("stroke"), "#D5E2E0"), "stroke-width": "1"})
+                                   "stroke": color(region.get("stroke"), "#D5E2E0"), "stroke-width": "1",
+                                   **({"data-hatch": region["hatch"]} if region.get("hatch") in {"diagonal", "cross"} else {})})
         if region.get("label"):
             label(svg, x + 10, y + 20, region["label"], fs - 2, "#60747A", "start", "bold")
 
@@ -141,7 +151,8 @@ def render(spec: dict) -> str:
         if len(pts) < 3: raise ValueError("polygon requires at least 3 points")
         SubElement(svg, "polygon", {"points": " ".join(f"{x:.2f},{y:.2f}" for x, y in pts),
                                       "fill": color(obj.get("fill"), "#D9ECE8"), "fill-opacity": str(obj.get("fill_opacity", .45)),
-                                      "stroke": color(obj.get("stroke"), st["secondary"]), "stroke-width": str(obj.get("width", 2))})
+                                      "stroke": color(obj.get("stroke"), st["secondary"]), "stroke-width": str(obj.get("width", 2)),
+                                      **({"data-hatch": obj["hatch"]} if obj.get("hatch") in {"diagonal", "cross"} else {})})
 
     for group in ("lines", "vectors"):
         for obj in spec.get(group, []):
@@ -174,6 +185,20 @@ def render(spec: dict) -> str:
 
     for obj in spec.get("labels", []):
         label(svg, float(obj["x"]), float(obj["y"]), obj.get("text", ""), obj.get("font_size", fs), color(obj.get("color"), st["ink"]), obj.get("anchor", "middle"), obj.get("weight", "normal"), obj.get("rotate"))
+    if mode == "monochrome":
+        # Geometry-only rendering policy: imported historic colors do not leak
+        # into the default. Coordinates, line styles and arrow directions stay.
+        for element in svg.iter():
+            if "stroke" in element.attrib and element.attrib["stroke"] != "none":
+                element.set("stroke", "#000000")
+            if "fill" in element.attrib and element.attrib["fill"] != "none":
+                hatch = element.attrib.pop("data-hatch", None)
+                fill = "url(#hatch-" + hatch + ")" if hatch else ("#FFFFFF" if element.tag in {"rect", "polygon"} else "#000000")
+                element.set("fill", fill)
+            element.attrib.pop("fill-opacity", None)
+            element.attrib.pop("stroke-opacity", None)
+            element.attrib.pop("opacity", None)
+    svg.set("data-color-mode", mode)
     return tostring(svg, encoding="unicode")
 
 

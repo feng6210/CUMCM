@@ -38,6 +38,8 @@ description: Improve or structure a mathematical modeling abstract by summarizin
 6. 输出改写版本、修改理由和压缩版本。
 7. 若生成论文文件，写入 `sections/00_abstract.tex`，并要求由 `mm-paper-compile` 实际检查摘要专页不超过一页。
 
+内置样式默认将“关键词：”及条目整行加粗，分问引导语和少量关键结果选择性加粗；不对整段摘要加粗。正式模板或用户另选样式时优先遵循。保留原始结果完整精度，仅对展示值按有效精度舍入；文件行数、哈希和实现计数通常移到支撑说明，但不能删去影响结论的未收敛、覆盖缺口和适用条件。详见 [论文可读性与修订](../mm-paper-structure-writer/references/paper_readability_and_revision.md)。
+
 摘要的信息顺序和禁用表达见 [abstract_patterns.md](references/abstract_patterns.md)。只允许使用已核验数值。
 
 ## Output format
@@ -64,7 +66,7 @@ description: Improve or structure a mathematical modeling abstract by summarizin
 - 所有不确定数值标注需要用户核验。
 - 摘要不得出现公式、图表、文献引用、作者、学校、英文摘要或正文中不存在的数字。
 - 摘要数字必须能回指 `RESULTS_TO_CLAIMS.md` 和 `result_evidence_map.json`。
-- 每问至少形成“问题—模型—关键数字—验证/范围”事实链；只罗列算法名、没有关键数字或用“效果显著”替代证据时不得定稿。
+- 每问形成“问题—模型—已验证答案—验证/范围”事实链；数值任务给关键数字，符号或定性任务给有证据的解析/定性产物。只罗列算法名、以“效果显著”代替证据或为凑数字编造实验时不得定稿。
 - 组合模型名称必须与实际代码和正文一致；预算内最优、局部最优、候选集最优和全局最优不能混写。
 
 ## Academic integrity boundaries

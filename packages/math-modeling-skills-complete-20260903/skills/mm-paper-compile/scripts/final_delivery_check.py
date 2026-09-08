@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import zipfile
 from pathlib import Path
@@ -26,12 +27,15 @@ def scan_text(path: Path) -> list[str]:
 def main() -> int:
     ap = argparse.ArgumentParser(description="Check CUMCM paper and support package delivery boundaries.")
     ap.add_argument("--paper-dir", type=Path, required=True)
+    ap.add_argument("--output-pdf", type=Path, help="Actual delivered PDF, relative to paper-dir or absolute; default main.pdf")
     ap.add_argument("--support-zip", type=Path)
     ap.add_argument("--output", type=Path, default=Path("FINAL_CHECK.json"))
     args = ap.parse_args()
     paper = args.paper_dir.resolve()
     checks: list[dict] = []
-    pdf = paper / "main.pdf"
+    selected = args.output_pdf if args.output_pdf is not None else Path("main.pdf")
+    pdf = (selected if selected.is_absolute() else paper / selected).resolve()
+    checks.append({"check": "output_pdf_filename", "passed": pdf.suffix.lower() == ".pdf"})
     checks.append({"check": "main_pdf_exists", "passed": pdf.is_file()})
     if pdf.is_file():
         checks.append({"check": "main_pdf_size_le_20mb", "passed": pdf.stat().st_size <= MAX_BYTES, "bytes": pdf.stat().st_size})
@@ -56,7 +60,13 @@ def main() -> int:
             {"check": "support_zip_reopens", "passed": can_open},
             {"check": "support_zip_nonempty", "passed": bool(members), "members": members},
         ])
-    report = {"status": "PASS" if all(c["passed"] for c in checks) else "FAIL", "checks": checks}
+    report = {"status": "PASS" if all(c["passed"] for c in checks) else "FAIL", "checks": checks,
+              "verification_scope": "structural_delivery_checks_only",
+              "pdf_path": str(pdf),
+              "pdf_sha256": hashlib.sha256(pdf.read_bytes()).hexdigest() if pdf.is_file() else None,
+              "support_zip_verification": "container_readability_only" if args.support_zip else "not_requested",
+              "source_package_recompiled": False,
+              "experiment_reproduced": False}
     args.output.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     return 0 if report["status"] == "PASS" else 2
 

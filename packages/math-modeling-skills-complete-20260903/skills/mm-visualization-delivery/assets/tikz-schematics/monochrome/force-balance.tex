@@ -1,0 +1,60 @@
+% Default monochrome derivative; historical colored source remains unchanged.
+% Original schematic; display geometry only, not a contest numerical result.
+% Uniform rigid bar AB, pin at A. Horizontal force F at B, weight G at C.
+% Static equilibrium requires F*y_B-G*x_C=0; force arrows are not to scale.
+\documentclass[tikz,border=7pt]{standalone}
+\usepackage[UTF8,fontset=windows]{ctex}
+\usepackage{amsmath}
+\usetikzlibrary{arrows.meta,calc,patterns,angles,quotes}
+\colorlet{ink}{black}
+\colorlet{blue}{black}
+\colorlet{warm}{black}
+\colorlet{guide}{black}
+\begin{document}
+\begin{tikzpicture}[x=1.45cm,y=1.45cm,font=\small,
+ line cap=round,line join=round,>=Latex,
+ force/.style={-{Latex[length=2.6mm,width=1.6mm]},line width=.95pt,blue},
+ aux/.style={densely dashed,guide,line width=.45pt},
+ dim/.style={<->,>=Latex,ink,line width=.5pt},
+ every node/.style={text=ink,inner sep=2pt}]
+\coordinate (A) at (0,0);
+\coordinate (B) at (5.2,3.5);
+\coordinate (C) at ($(A)!.5!(B)$);
+\pgfmathsetmacro{\barangle}{atan2(3.5,5.2)}
+\pgfmathsetmacro{\normalY}{.85*5.2/3.5}
+% Model relations use named coordinates. Dimension offsets are layout only.
+\draw[aux] (A)--(5.9,0);
+\draw[aux] (B)--(5.9,3.5);
+\draw[aux] (C)--(2.6,-.87);
+\draw[aux] (B)--(5.2,0);
+% Pin support, distinct from a clamped support.
+\path[pattern=north east lines,pattern color=guide] (-.45,-.46) rectangle (.45,-.58);
+\draw[ink,line width=.6pt] (-.45,-.46)--(.45,-.46);
+\path[fill=white,draw=ink,line width=.7pt] (A)--(-.29,-.43)--(.29,-.43)--cycle;
+\draw[ink,line width=10pt] (A)--(B);
+\draw[white,line width=8pt] (A)--(B);
+\draw[ink,line width=.4pt,dash pattern=on 5pt off 2pt on 1pt off 2pt] (A)--(B);
+\filldraw[fill=white,draw=ink,line width=.8pt] (A) circle (2.1pt);
+\fill[ink] (B) circle (1.7pt) node[above right=2pt] {$B$};
+\fill[ink] (C) circle (1.7pt) node[above left=2pt] {$C$};
+\node[above left=3pt] at (A) {$A$};
+% Forces are applied at their actual attachment/centroid points.
+\draw[force] (B)--++(-1.65,0) node[midway,above=4pt,text=blue] {$F$};
+\draw[force,warm] (C)--++(0,-1.35) node[midway,right=5pt,text=warm] {$G=mg$};
+\draw[force] (A)--(1.5,0) node[below=5pt,text=blue] {$A_x$};
+\draw[force] (A)--(0,1.55) node[right=4pt,text=blue] {$A_y$};
+\draw[ink,line width=.6pt] (.83,0) arc[start angle=0,end angle=\barangle,radius=.83];
+\node at (1.04,.31) {$\theta$};
+% Length dimension offset normal to the rod, not an arbitrary screen slope.
+\coordinate (LA) at ($(A)+(-.85,\normalY)$);
+\coordinate (LB) at ($(B)+(-.85,\normalY)$);
+\draw[guide,line width=.4pt] ($(A)+(-.23,.342)$)--($(LA)+(-.1,.15)$);
+\draw[guide,line width=.4pt] ($(B)+(-.23,.342)$)--($(LB)+(-.1,.15)$);
+\draw[dim] (LA)--(LB) node[midway,above=3pt,sloped] {$L$};
+\draw[dim] (5.75,0)--(5.75,3.5) node[midway,right=5pt] {$L\sin\theta$};
+\draw[guide,line width=.4pt] (0,-.65)--(0,-1.03);
+\draw[dim] (0,-.87)--(2.6,-.87) node[midway,below=4pt] {$\dfrac{L}{2}\cos\theta$};
+\path (A)--(B) node[pos=.72,below=7pt,sloped,text=ink,font=\footnotesize] {均匀刚杆};
+\node[anchor=east,text=ink,font=\footnotesize] at (6.42,-1.15) {力箭头长度不表示大小};
+\end{tikzpicture}
+\end{document}

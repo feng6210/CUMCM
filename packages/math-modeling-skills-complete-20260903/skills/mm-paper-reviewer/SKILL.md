@@ -37,7 +37,7 @@ description: Review a mathematical modeling paper draft for target-semantic mism
 3. 检查模型前提、变量、单位、约束和信息时序；检查是否加入题面没有的限制并忘记标为假设。
 4. 对优化强声明检查最小基线、正式 evaluator 重算、求解器预算、最优性边界和外部挑战。多种子相近不能单独支持“已覆盖主要盆地”。如果用户提供更优外部可行解，要求在当前 evaluator 下复算；领先超过容差时把“最佳/稳定最优”按 P1 处理。
 5. 检查 `NARRATIVE_MAP.yaml`：分问依赖、共享内核、继承对象、模型增量、精确结果、必要检验和声明边界是否闭合；问题分析是否说明数学对象和难点而不是重述原题。
-6. 检查 `FIGURE_PLAN.yaml` 与正文：每张图有没有不可替代读者任务；复杂几何/机理是否缺解释图；算法/验证图是否反而过量；能用二维解释时是否强行 3D。
+6. 先清点当前 `FIGURE_PLAN.yaml` 与 PDF 实际图表，再判断缺图；每张图有没有读者任务，复杂几何/机理是否缺解释图。二维、三维及组合按真实坐标/参数维度和用户风格选择，不把已有热图/曲面误报为缺失，也不强制凑图数。
 7. 检查 `reporting_profile`：
    - `competition_compact`：大量 gate 名、hash、backend report、旧版本 FAIL 谱系、全部随机种子、微小数值差如未改变科学判断，按“审计泄漏/正文过工程化”记录 P2/P3，并建议移附录；
    - `research_audit`：可保留，但仍要求叙事层级清楚。
@@ -54,6 +54,10 @@ description: Review a mathematical modeling paper draft for target-semantic mism
 13. 汇总 P0--P3。P0/P1 未解决时阻止最终交付；正文、图表、目标或结果变化后对应报告 stale。
 
 审查维度和风险分级见 [review_checklist.md](references/review_checklist.md)。题意语义与外部挑战规则见总控 `references/problem_semantics_and_benchmark_protocol.md`。
+
+完整终稿修订同时读取 [读者任务与修订闭环](../mm-paper-structure-writer/references/paper_readability_and_revision.md)：检查图后“现象—模型内解释—意义—边界”、计算时间窗/聚合口径、选择性强调及真实 PDF 版面。审查线不是固定 agent 人数；平台不能新建 fresh agent 时可用未参与被审工件生成的既有 agent，记录 `same-family-cross-review`、`zero_context: false` 和既有作者角色。不能把作者自检、同族交叉复核与外部独立认证混写。
+
+源/图/PDF 变化后保留旧报告，逐项判定受影响范围。仅图注所在全文变化而图和实际图注未变时，需要重读语境并形成新的限定复核；不能只把旧报告哈希刷新为 PASS。关键争议由另一 agent 直接读取原图或原始结果，修复后交原审者复查。
 
 ## Output format
 
