@@ -20,9 +20,13 @@
     "competition_name": {"type": "string", "minLength": 1},
     "stage": {"enum": ["training", "live_contest", "coursework", "research"]},
     "ai_allowed": {"enum": ["allowed", "forbidden", "restricted", "unknown"]},
+    "ai_scope": {"type": "string", "minLength": 8},
     "web_allowed": {"enum": ["allowed", "forbidden", "restricted", "unknown"]},
+    "web_scope": {"type": "string", "minLength": 8},
     "external_papers_allowed": {"enum": ["allowed", "forbidden", "restricted", "unknown"]},
+    "external_papers_scope": {"type": "string", "minLength": 8},
     "benchmark_answers_allowed": {"enum": ["allowed", "forbidden", "restricted", "unknown"]},
+    "benchmark_answers_scope": {"type": "string", "minLength": 8},
     "team_collaboration_scope": {"type": "string", "minLength": 1},
     "citation_requirement": {"type": "string", "minLength": 1},
     "source": {
@@ -61,6 +65,22 @@
           ]
         }
       }
+    },
+    {
+      "if": {"properties": {"ai_allowed": {"const": "restricted"}}, "required": ["ai_allowed"]},
+      "then": {"required": ["ai_scope"]}
+    },
+    {
+      "if": {"properties": {"web_allowed": {"const": "restricted"}}, "required": ["web_allowed"]},
+      "then": {"required": ["web_scope"]}
+    },
+    {
+      "if": {"properties": {"external_papers_allowed": {"const": "restricted"}}, "required": ["external_papers_allowed"]},
+      "then": {"required": ["external_papers_scope"]}
+    },
+    {
+      "if": {"properties": {"benchmark_answers_allowed": {"const": "restricted"}}, "required": ["benchmark_answers_allowed"]},
+      "then": {"required": ["benchmark_answers_scope"]}
     }
   ],
   "additionalProperties": true
