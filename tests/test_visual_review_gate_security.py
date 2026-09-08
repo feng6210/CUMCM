@@ -8,6 +8,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = (
@@ -60,14 +61,42 @@ class VisualReviewGateSecurityTests(unittest.TestCase):
             encoding="utf-8",
         )
 
-    def prepare_args(self):
+    def prepare_args(self, binding: str = "VISUAL_REVIEW_BINDING.json"):
         return argparse.Namespace(
             command="prepare",
             paper_dir=self.paper,
             compile_report=Path("compile_report.json"),
             output_pdf=Path("main.pdf"),
-            binding=Path("VISUAL_REVIEW_BINDING.json"),
+            binding=Path(binding),
         )
+
+    def verify_args(self, visual: Path, report: Path | str = "visual_verification_report.json"):
+        return argparse.Namespace(
+            command="verify",
+            paper_dir=self.paper,
+            compile_report=Path("compile_report.json"),
+            output_pdf=Path("main.pdf"),
+            binding=Path("VISUAL_REVIEW_BINDING.json"),
+            visual_report=visual,
+            report=Path(report),
+        )
+
+    def write_visual(self, path: Path | None = None, **extra) -> Path:
+        path = path or (self.paper / "PDF_VISUAL_CHECK.json")
+        payload = {
+            "status": "PASSED",
+            "paper_pdf": "main.pdf",
+            "paper_sha256": digest(PDF),
+            "page_count": 1,
+            "rendered_pages": [1],
+            "reviewed_pages": [1],
+            "reviewer_id": "reviewer",
+            "reviewer_role": "author self-review; not independent",
+        }
+        payload.update(extra)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(payload), encoding="utf-8")
+        return path
 
     def test_symlinked_paper_input_is_rejected_instead_of_omitted(self):
         target = self.paper / "actual-section.tex"
@@ -80,39 +109,55 @@ class VisualReviewGateSecurityTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "symlinked paper input"):
             gate.prepare(self.prepare_args())
 
-    def test_verification_report_cannot_overwrite_evidence_inputs(self):
+    def test_binding_cannot_overwrite_existing_paper_input(self):
+        main = self.paper / "main.tex"
+        before = main.read_bytes()
+        with self.assertRaisesRegex(ValueError, "collides with an existing non-binding"):
+            gate.prepare(self.prepare_args("main.tex"))
+        self.assertEqual(main.read_bytes(), before)
+
+    def test_verification_report_cannot_overwrite_primary_evidence_inputs(self):
         code, _ = gate.prepare(self.prepare_args())
         self.assertEqual(code, 0)
-        visual = self.paper / "PDF_VISUAL_CHECK.json"
-        visual.write_text(
-            json.dumps(
-                {
-                    "status": "PASSED",
-                    "paper_pdf": "main.pdf",
-                    "paper_sha256": digest(PDF),
-                    "page_count": 1,
-                    "rendered_pages": [1],
-                    "reviewed_pages": [1],
-                    "reviewer_id": "reviewer",
-                    "reviewer_role": "author self-review; not independent",
-                }
-            ),
-            encoding="utf-8",
-        )
+        visual = self.write_visual()
         before = self.compile_report.read_bytes()
-        args = argparse.Namespace(
-            command="verify",
-            paper_dir=self.paper,
-            compile_report=Path("compile_report.json"),
-            output_pdf=Path("main.pdf"),
-            binding=Path("VISUAL_REVIEW_BINDING.json"),
-            visual_report=visual,
-            report=Path("compile_report.json"),
-        )
-        code, result = gate.verify(args)
+        code, result = gate.verify(self.verify_args(visual, "compile_report.json"))
         self.assertEqual(code, 2)
         self.assertEqual(result["visual_check_status"], "OUTPUT_REPORT_PATH_CONFLICT")
         self.assertEqual(self.compile_report.read_bytes(), before)
+
+    def test_review_page_reference_cannot_hide_an_existing_paper_png(self):
+        figure = self.paper / "figure.png"
+        figure.write_bytes(b"paper figure v1")
+        visual = self.write_visual(
+            page_images=[{"page": 1, "file": "figure.png", "sha256": digest(figure.read_bytes())}]
+        )
+        code, binding = gate.prepare(self.prepare_args())
+        self.assertEqual(code, 0)
+        self.assertIn("figure.png", {row["path"] for row in binding["source_snapshot"]["files"]})
+
+        figure.write_bytes(b"paper figure v2")
+        # Even if the review JSON is rewritten to carry the new exact hash, the
+        # bound source identity prevents the paper figure from becoming an exclusion.
+        payload = json.loads(visual.read_text(encoding="utf-8"))
+        payload["page_images"][0]["sha256"] = digest(figure.read_bytes())
+        visual.write_text(json.dumps(payload), encoding="utf-8")
+        code, result = gate.verify(self.verify_args(visual))
+        self.assertEqual(code, 2)
+        self.assertEqual(result["visual_check_status"], "SOURCE_SNAPSHOT_CHANGED")
+
+    def test_verification_report_cannot_overwrite_inherited_review_json(self):
+        code, _ = gate.prepare(self.prepare_args())
+        self.assertEqual(code, 0)
+        prior = self.write_visual(self.paper / "prior-review.json")
+        visual = self.write_visual(
+            previous_report={"file": "prior-review.json", "sha256": digest(prior.read_bytes())}
+        )
+        prior_before = prior.read_bytes()
+        code, result = gate.verify(self.verify_args(visual, "prior-review.json"))
+        self.assertEqual(code, 2)
+        self.assertEqual(result["visual_check_status"], "OUTPUT_REPORT_PATH_CONFLICT")
+        self.assertEqual(prior.read_bytes(), prior_before)
 
 
 if __name__ == "__main__":
