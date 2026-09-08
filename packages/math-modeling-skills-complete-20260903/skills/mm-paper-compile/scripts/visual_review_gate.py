@@ -186,7 +186,7 @@ def bound_review_artifacts(
     """Read only review artifacts explicitly recorded by an earlier gate run.
 
     No directory scan or content signature can promote an ordinary paper input to
-    review evidence.  Prepare may normalize changed retained review evidence from
+    review evidence. Prepare may normalize changed retained review evidence from
     a prior cycle; verify is strict except for the current visual/report paths that
     the same invocation is intentionally replacing.
     """
@@ -208,8 +208,6 @@ def bound_review_artifacts(
         if path in superseded:
             continue
         if not path.exists():
-            # Deleting old review evidence does not change the paper source, but it
-            # can no longer support inheritance and therefore is not carried onward.
             continue
         if not path.is_file() or path.is_symlink():
             raise ValueError("bound review artifact is no longer a regular file")
@@ -399,7 +397,7 @@ def prepare(args) -> tuple[int, dict]:
         "review_artifacts": [prior_reviews[path] for path in sorted(prior_reviews, key=lambda item: str(item))],
         "review_artifact_policy": {
             "classification": "gate_recorded_paths_only",
-            "new_transitive_visual_evidence_is_not_excluded_from_source_snapshot",
+            "new_transitive_visual_evidence_is_not_excluded_from_source_snapshot": True,
             "binding": binding_path.name,
         },
         "scope": "Binds the already published PDF and paper inputs for later no-recompile visual verification.",
@@ -461,7 +459,6 @@ def verify(args) -> tuple[int, dict]:
     current_visual_evidence = visual_evidence_paths({visual_path})
     prior_report_paths = {path for path, row in prior_reviews.items() if row["role"] == "verification_report"}
     protected_outputs = {compile_report_path, pdf, binding_path} | source_guard | current_visual_evidence | set(prior_reviews)
-    # A gate-owned verification report may be refreshed at the same path.
     if output_report in prior_report_paths:
         protected_outputs.discard(output_report)
     try:
@@ -504,10 +501,6 @@ def verify(args) -> tuple[int, dict]:
     if recorded_pdf != pdf or sha256(pdf) != pdf_binding.get("sha256"):
         return finish(2, status="VISUAL_VERIFICATION_REQUIRES_RECOMPILE", visual_check_status="PUBLISHED_PDF_CHANGED")
 
-    # Only artifacts already recorded by the gate, plus this invocation's direct
-    # visual/report files, are excluded. New page images or previous-report files
-    # outside build/ remain visible to the source snapshot and therefore force a
-    # recompile before they can become review evidence.
     excluded = {compile_report_path, pdf, binding_path, visual_path, output_report} | set(prior_reviews)
     current_snapshot = source_snapshot(paper, excluded)
     result["source_snapshot"] = {"expected": source_binding.get("sha256"), "current": current_snapshot["sha256"]}
