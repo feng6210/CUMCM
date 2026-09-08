@@ -16,6 +16,7 @@ DEFAULT_VERIFICATION_REPORT = "visual_verification_report.json"
 DEFAULT_BINDING = "VISUAL_REVIEW_BINDING.json"
 VERIFICATION_MODE = "existing_published_artifact_no_recompile"
 SHA256_RE = re.compile(r"^[0-9a-fA-F]{64}$")
+REVIEW_ROLES = {"visual_report", "previous_visual_report", "page_image", "verification_report"}
 
 
 def _load_compile_module():
@@ -92,6 +93,7 @@ def _looks_like_binding(payload: dict) -> bool:
         and isinstance(payload.get("paper_pdf"), dict)
         and isinstance(payload.get("source_snapshot"), dict)
         and isinstance(payload.get("source_snapshot", {}).get("files"), list)
+        and isinstance(payload.get("review_artifacts", []), list)
     )
 
 
@@ -101,7 +103,7 @@ def _validated_reference(
     suffix: str,
     payload_kind: str | None = None,
 ) -> Path | None:
-    """Resolve a hash-bound review reference; invalid references are not exclusions."""
+    """Resolve a hash-bound review reference; invalid references are not trusted."""
     if not isinstance(row, dict) or not _is_sha256(row.get("sha256")):
         return None
     path = _optional_artifact(base, row.get("file"))
@@ -129,8 +131,6 @@ def visual_evidence_paths(roots: set[Path]) -> set[Path]:
         current = pending.pop()
         if current in seen:
             continue
-        # A root is an explicitly designated visual-review artifact. Transitive
-        # references are added only after type/role/hash validation below.
         seen.add(current)
         if current.suffix.lower() != ".json" or not current.is_file() or current.is_symlink():
             continue
@@ -140,54 +140,14 @@ def visual_evidence_paths(roots: set[Path]) -> set[Path]:
             continue
         if not _looks_like_visual_report(payload):
             continue
-
         for row in payload.get("page_images", []):
             image = _validated_reference(current.parent, row, ".png")
             if image is not None:
                 seen.add(image)
-
         previous = _validated_reference(current.parent, payload.get("previous_report"), ".json", "visual")
         if previous is not None:
             pending.append(previous)
     return seen
-
-
-def discover_verification_reports(
-    paper: Path,
-    explicit_output: Path | None = None,
-) -> tuple[set[Path], set[Path]]:
-    """Find gate-owned verification reports and their validated visual reports."""
-    reports: set[Path] = {(paper / DEFAULT_VERIFICATION_REPORT).resolve()}
-    if explicit_output is not None:
-        reports.add(explicit_output.resolve())
-
-    for candidate in paper.rglob("*.json"):
-        rel = candidate.relative_to(paper)
-        if rel.parts and rel.parts[0] == "build":
-            continue
-        if not candidate.is_file() or candidate.is_symlink():
-            continue
-        try:
-            payload = read_json(candidate)
-        except (OSError, ValueError, json.JSONDecodeError, UnicodeError):
-            continue
-        if _looks_like_verification_report(payload):
-            reports.add(candidate.resolve())
-
-    visual_roots: set[Path] = set()
-    for report_path in list(reports):
-        if not report_path.is_file() or report_path.is_symlink():
-            continue
-        try:
-            payload = read_json(report_path)
-        except (OSError, ValueError, json.JSONDecodeError, UnicodeError):
-            continue
-        if not _looks_like_verification_report(payload):
-            continue
-        visual = _validated_reference(report_path.parent, payload.get("visual_report"), ".json", "visual")
-        if visual is not None:
-            visual_roots.add(visual)
-    return reports, visual_roots
 
 
 def bound_source_paths(paper: Path, binding: dict) -> set[Path]:
@@ -210,48 +170,76 @@ def bound_source_paths(paper: Path, binding: dict) -> set[Path]:
     return result
 
 
-def review_artifact_paths(
+def _review_role_ok(path: Path, role: str) -> bool:
+    if role in {"visual_report", "previous_visual_report", "verification_report"}:
+        return path.suffix.lower() == ".json"
+    return role == "page_image" and path.suffix.lower() == ".png"
+
+
+def bound_review_artifacts(
     paper: Path,
-    binding_path: Path,
-    visual_path: Path | None = None,
-    output_report: Path | None = None,
-    follow_transitive: bool = True,
-    source_guard: set[Path] | None = None,
-) -> set[Path]:
-    """Return gate/review evidence that may be excluded from a paper-source hash.
+    binding: dict | None,
+    *,
+    allow_hash_drift: bool = False,
+    superseded_paths: set[Path] | None = None,
+) -> dict[Path, dict]:
+    """Read only review artifacts explicitly recorded by an earlier gate run.
 
-    Any candidate already classified as a paper input by the prior/current binding
-    is retained as source, even if a review JSON tries to reference it.
+    No directory scan or content signature can promote an ordinary paper input to
+    review evidence.  Prepare may normalize changed retained review evidence from
+    a prior cycle; verify is strict except for the current visual/report paths that
+    the same invocation is intentionally replacing.
     """
-    reports, report_visual_roots = discover_verification_reports(paper, output_report)
-    roots: set[Path] = {(paper / DEFAULT_VISUAL_REPORT).resolve()} | report_visual_roots
-    if visual_path is not None:
-        roots.add(visual_path.resolve())
-
-    artifacts: set[Path] = {binding_path.resolve()} | reports | roots
-    if follow_transitive:
-        artifacts |= visual_evidence_paths(roots)
-    if source_guard:
-        guarded = {path.resolve() for path in source_guard}
-        artifacts = {path for path in artifacts if path.resolve() not in guarded}
-    return artifacts
+    if binding is None:
+        return {}
+    rows = binding.get("review_artifacts", [])
+    if not isinstance(rows, list):
+        raise ValueError("binding review_artifacts must be an array")
+    superseded = {path.resolve() for path in (superseded_paths or set())}
+    result: dict[Path, dict] = {}
+    for row in rows:
+        if not isinstance(row, dict) or row.get("role") not in REVIEW_ROLES or not _is_sha256(row.get("sha256")):
+            raise ValueError("binding contains an invalid review artifact record")
+        path = _artifact(paper, row.get("file"))
+        if path in result:
+            raise ValueError("binding contains duplicate review artifact paths")
+        if not _review_role_ok(path, str(row["role"])):
+            raise ValueError("binding review artifact suffix conflicts with its role")
+        if path in superseded:
+            continue
+        if not path.exists():
+            # Deleting old review evidence does not change the paper source, but it
+            # can no longer support inheritance and therefore is not carried onward.
+            continue
+        if not path.is_file() or path.is_symlink():
+            raise ValueError("bound review artifact is no longer a regular file")
+        current_hash = sha256(path)
+        if current_hash.lower() != str(row["sha256"]).lower() and not allow_hash_drift:
+            raise ValueError("bound review artifact changed after visual-review binding")
+        if row["role"] in {"visual_report", "previous_visual_report"}:
+            if not _looks_like_visual_report(read_json(path)):
+                raise ValueError("bound visual-review artifact no longer has visual-report structure")
+        elif row["role"] == "verification_report":
+            if not _looks_like_verification_report(read_json(path)):
+                raise ValueError("bound verification artifact no longer has gate-report structure")
+        result[path] = {"file": str(path), "sha256": current_hash, "role": row["role"]}
+    return result
 
 
 def source_snapshot(paper: Path, excluded: set[Path]) -> dict:
-    """Hash paper inputs while excluding compiler outputs and validated review evidence.
+    """Hash paper inputs while excluding only explicit compiler/gate artifacts.
 
-    Symlinked paper inputs are rejected rather than silently omitted: otherwise a
-    target change after binding could evade the source snapshot.
+    Compiler intermediates are already isolated under build/. Root-level .bbl,
+    .aux, .log and similar files are therefore treated as potential paper inputs;
+    a paper may explicitly input them. Symlinks are rejected before any resolved
+    path exclusion so aliases cannot bypass the snapshot.
     """
     excluded = {path.resolve() for path in excluded}
-    generated_suffixes = {".aux", ".log", ".out", ".toc", ".blg", ".bbl", ".fls", ".fdb_latexmk"}
     files: list[dict] = []
     for path in sorted(paper.rglob("*"), key=lambda item: item.relative_to(paper).as_posix()):
         rel = path.relative_to(paper)
         if rel.parts and rel.parts[0] == "build":
             continue
-        # Check the paper-relative object itself before resolving exclusions. A
-        # symlink to a review/gate artifact is still a mutable paper input alias.
         if path.is_symlink():
             raise ValueError(f"symlinked paper input is not supported by visual review snapshot: {rel.as_posix()}")
         resolved = path.resolve()
@@ -259,7 +247,7 @@ def source_snapshot(paper: Path, excluded: set[Path]) -> dict:
             continue
         if not path.is_file():
             continue
-        if path.name == "compile.log" or path.name.endswith(".synctex.gz") or path.suffix.lower() in generated_suffixes:
+        if path.name == "compile.log" or path.name.endswith(".synctex.gz"):
             continue
         files.append({"path": rel.as_posix(), "bytes": path.stat().st_size, "sha256": sha256(path)})
     canonical = json.dumps(files, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
@@ -311,6 +299,7 @@ def validate_verification_destination(
     paper: Path,
     output_report: Path,
     protected: set[Path],
+    prior_report_paths: set[Path],
 ) -> None:
     if output_report.suffix.lower() != ".json":
         raise ValueError("visual verification report must be a .json file")
@@ -325,16 +314,60 @@ def validate_verification_destination(
     if not output_report.is_file():
         raise ValueError("visual verification report destination is not a regular file")
     payload = read_json(output_report)
-    if not _looks_like_verification_report(payload):
+    if output_report.resolve() not in {path.resolve() for path in prior_report_paths} and not _looks_like_verification_report(payload):
         raise ValueError("visual verification report destination collides with an existing non-verification paper artifact")
+    if not _looks_like_verification_report(payload):
+        raise ValueError("existing gate-owned verification report has invalid structure")
+
+
+def _artifact_row(path: Path, role: str) -> dict:
+    return {"file": str(path.resolve()), "sha256": sha256(path), "role": role}
+
+
+def _current_visual_artifacts(visual_path: Path, source_guard: set[Path]) -> dict[Path, dict]:
+    result: dict[Path, dict] = {}
+    if visual_path.is_file() and not visual_path.is_symlink():
+        try:
+            payload = read_json(visual_path)
+        except (OSError, ValueError, json.JSONDecodeError, UnicodeError):
+            payload = None
+        if isinstance(payload, dict) and _looks_like_visual_report(payload) and visual_path.resolve() not in source_guard:
+            result[visual_path.resolve()] = _artifact_row(visual_path, "visual_report")
+    for path in visual_evidence_paths({visual_path}):
+        path = path.resolve()
+        if path == visual_path.resolve() or path in source_guard or not path.is_file() or path.is_symlink():
+            continue
+        role = "page_image" if path.suffix.lower() == ".png" else "previous_visual_report"
+        result[path] = _artifact_row(path, role)
+    return result
+
+
+def _record_review_provenance(
+    binding_path: Path,
+    binding: dict,
+    prior_artifacts: dict[Path, dict],
+    visual_path: Path,
+    output_report: Path,
+    source_guard: set[Path],
+) -> None:
+    artifacts = dict(prior_artifacts)
+    artifacts.update(_current_visual_artifacts(visual_path, source_guard))
+    if output_report.is_file() and not output_report.is_symlink() and output_report.resolve() not in source_guard:
+        artifacts[output_report.resolve()] = _artifact_row(output_report, "verification_report")
+    binding = dict(binding)
+    binding["review_artifacts"] = [artifacts[path] for path in sorted(artifacts, key=lambda item: str(item))]
+    write_json(binding_path, binding)
 
 
 def prepare(args) -> tuple[int, dict]:
     paper, compile_report_path, pdf, binding_path = resolve_paths(args)
     prior_binding = validate_binding_destination(paper, binding_path, compile_report_path, pdf)
     prior_source = bound_source_paths(paper, prior_binding) if prior_binding is not None else set()
+    prior_reviews = bound_review_artifacts(paper, prior_binding, allow_hash_drift=True)
     if binding_path in prior_source:
         raise ValueError("binding destination was previously classified as a paper input")
+    if prior_source & set(prior_reviews):
+        raise ValueError("binding classifies the same path as both paper source and review evidence")
 
     if not compile_report_path.is_file():
         return 2, {"status": "COMPILE_REPORT_MISSING", "compile_report": str(compile_report_path)}
@@ -354,12 +387,7 @@ def prepare(args) -> tuple[int, dict]:
         return 2, {"status": "PUBLISHED_PDF_CHANGED", "pdf": str(pdf)}
 
     pages = compile_paper.pdf_page_count(pdf)
-    excluded = {compile_report_path, pdf} | review_artifact_paths(
-        paper,
-        binding_path,
-        follow_transitive=prior_binding is not None,
-        source_guard=prior_source,
-    )
+    excluded = {compile_report_path, pdf, binding_path} | set(prior_reviews)
     snapshot = source_snapshot(paper, excluded)
     binding = {
         "schema_version": "1.0",
@@ -368,11 +396,11 @@ def prepare(args) -> tuple[int, dict]:
         "compile_report": {"file": str(compile_report_path), "sha256": sha256(compile_report_path)},
         "paper_pdf": {"file": str(pdf), "sha256": current_pdf_hash, "page_count": pages},
         "source_snapshot": snapshot,
+        "review_artifacts": [prior_reviews[path] for path in sorted(prior_reviews, key=lambda item: str(item))],
         "review_artifact_policy": {
-            "default_visual_report": DEFAULT_VISUAL_REPORT,
-            "default_verification_report": DEFAULT_VERIFICATION_REPORT,
+            "classification": "gate_recorded_paths_only",
+            "new_transitive_visual_evidence_is_not_excluded_from_source_snapshot",
             "binding": binding_path.name,
-            "transitive_references_require_type_role_and_hash": True,
         },
         "scope": "Binds the already published PDF and paper inputs for later no-recompile visual verification.",
     }
@@ -392,11 +420,9 @@ def verify(args) -> tuple[int, dict]:
     }
 
     if not binding_path.is_file() or binding_path.is_symlink():
-        # The destination is not yet trusted, so only a safe verification-report
-        # path may receive this failure result.
         protected = {compile_report_path, pdf, binding_path, visual_path}
         try:
-            validate_verification_destination(paper, output_report, protected)
+            validate_verification_destination(paper, output_report, protected, set())
         except (OSError, ValueError, json.JSONDecodeError, UnicodeError) as exc:
             result.update(status="VISUAL_VERIFICATION_REQUIRES_RECOMPILE", visual_check_status="BINDING_MISSING", report_error=str(exc))
             return 2, result
@@ -415,7 +441,7 @@ def verify(args) -> tuple[int, dict]:
     if not isinstance(binding, dict) or not _looks_like_binding(binding):
         protected = {compile_report_path, pdf, binding_path, visual_path}
         try:
-            validate_verification_destination(paper, output_report, protected)
+            validate_verification_destination(paper, output_report, protected, set())
         except (OSError, ValueError, json.JSONDecodeError, UnicodeError) as exc:
             result.update(status="VISUAL_VERIFICATION_REQUIRES_RECOMPILE", visual_check_status="BINDING_INVALID", error=binding_error, report_error=str(exc))
             return 2, result
@@ -424,19 +450,36 @@ def verify(args) -> tuple[int, dict]:
         return 2, result
 
     source_guard = bound_source_paths(paper, binding)
-    # Protect the current visual report, every validated inherited report/page
-    # image, every bound paper source, and the primary compile/PDF/binding inputs.
-    review_inputs = visual_evidence_paths({visual_path, (paper / DEFAULT_VISUAL_REPORT).resolve()})
-    protected_outputs = {compile_report_path, pdf, binding_path} | review_inputs | source_guard
+    prior_reviews = bound_review_artifacts(
+        paper,
+        binding,
+        superseded_paths={visual_path, output_report},
+    )
+    if source_guard & set(prior_reviews):
+        return 2, {**result, "status": "VISUAL_VERIFICATION_REQUIRES_RECOMPILE", "visual_check_status": "BINDING_INVALID"}
+
+    current_visual_evidence = visual_evidence_paths({visual_path})
+    prior_report_paths = {path for path, row in prior_reviews.items() if row["role"] == "verification_report"}
+    protected_outputs = {compile_report_path, pdf, binding_path} | source_guard | current_visual_evidence | set(prior_reviews)
+    # A gate-owned verification report may be refreshed at the same path.
+    if output_report in prior_report_paths:
+        protected_outputs.discard(output_report)
     try:
-        validate_verification_destination(paper, output_report, protected_outputs)
+        validate_verification_destination(paper, output_report, protected_outputs, prior_report_paths)
     except (OSError, ValueError, json.JSONDecodeError, UnicodeError) as exc:
         result.update(status="VISUAL_VERIFICATION_REQUIRES_RECOMPILE", visual_check_status="OUTPUT_REPORT_PATH_CONFLICT", error=str(exc))
         return 2, result
 
-    def finish(code: int, **updates) -> tuple[int, dict]:
+    def finish(code: int, *, record_provenance: bool = False, **updates) -> tuple[int, dict]:
         result.update(updates)
         write_json(output_report, result)
+        if record_provenance:
+            try:
+                _record_review_provenance(binding_path, binding, prior_reviews, visual_path, output_report, source_guard)
+            except (OSError, ValueError, json.JSONDecodeError, UnicodeError, TypeError) as exc:
+                result.update(status="VISUAL_GATE_PROVENANCE_FAILED", visual_check_status="PROVENANCE_WRITE_FAILED", provenance_error=str(exc))
+                write_json(output_report, result)
+                return 2, result
         return code, result
 
     compile_binding = binding.get("compile_report")
@@ -461,14 +504,11 @@ def verify(args) -> tuple[int, dict]:
     if recorded_pdf != pdf or sha256(pdf) != pdf_binding.get("sha256"):
         return finish(2, status="VISUAL_VERIFICATION_REQUIRES_RECOMPILE", visual_check_status="PUBLISHED_PDF_CHANGED")
 
-    excluded = {compile_report_path, pdf} | review_artifact_paths(
-        paper,
-        binding_path,
-        visual_path=visual_path,
-        output_report=output_report,
-        follow_transitive=True,
-        source_guard=source_guard,
-    )
+    # Only artifacts already recorded by the gate, plus this invocation's direct
+    # visual/report files, are excluded. New page images or previous-report files
+    # outside build/ remain visible to the source snapshot and therefore force a
+    # recompile before they can become review evidence.
+    excluded = {compile_report_path, pdf, binding_path, visual_path, output_report} | set(prior_reviews)
     current_snapshot = source_snapshot(paper, excluded)
     result["source_snapshot"] = {"expected": source_binding.get("sha256"), "current": current_snapshot["sha256"]}
     if current_snapshot["sha256"] != source_binding.get("sha256"):
@@ -485,10 +525,10 @@ def verify(args) -> tuple[int, dict]:
     result["visual_check_details"] = visual_check
     result["visual_check_status"] = visual_check["status"]
     if visual_check["status"] == "PASSED":
-        return finish(0, status="PASSED", visual_check_status=f"PASSED_ALL_{pages}_PAGES")
+        return finish(0, record_provenance=True, status="PASSED", visual_check_status=f"PASSED_ALL_{pages}_PAGES")
     if visual_check["status"] == "REVIEW_REQUIRED":
-        return finish(0, status="COMPILED_PENDING_VISUAL_CHECK")
-    return finish(2, status="VISUAL_CHECK_FAILED")
+        return finish(0, record_provenance=True, status="COMPILED_PENDING_VISUAL_CHECK")
+    return finish(2, record_provenance=True, status="VISUAL_CHECK_FAILED")
 
 
 def parser() -> argparse.ArgumentParser:
