@@ -1,6 +1,7 @@
 """Regression for compile -> visual review -> verify without rebuilding."""
 from __future__ import annotations
 
+import argparse
 import hashlib
 import importlib.util
 import json
@@ -17,30 +18,29 @@ SCRIPT = (
     / "skills"
     / "mm-paper-compile"
     / "scripts"
-    / "compile_paper.py"
+    / "visual_review_gate.py"
 )
 
 
-def load_compiler():
-    spec = importlib.util.spec_from_file_location("compile_paper_visual_verify_test", SCRIPT)
+def load_gate():
+    spec = importlib.util.spec_from_file_location("visual_review_gate_under_test", SCRIPT)
     assert spec and spec.loader
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
 
 
-compiler = load_compiler()
-FRESH = b"%PDF-1.7\nfresh mocked build, not a real TeX document\n"
-OLD = b"%PDF-1.7\nold sentinel delivery\n"
+gate = load_gate()
+PDF = b"%PDF-1.7\nreviewed mocked artifact\n"
 
 
 def digest(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
-class VisualVerificationNoRecompileTests(unittest.TestCase):
+class VisualReviewNoRecompileTests(unittest.TestCase):
     def setUp(self):
-        self.temporary = tempfile.TemporaryDirectory(prefix="visual-verify-no-recompile-")
+        self.temporary = tempfile.TemporaryDirectory(prefix="visual-review-gate-")
         self.addCleanup(self.temporary.cleanup)
         self.paper = Path(self.temporary.name) / "paper"
         self.paper.mkdir()
@@ -48,31 +48,36 @@ class VisualVerificationNoRecompileTests(unittest.TestCase):
             "\\documentclass{mm-cumcm}\n\\mmBodyStart\nBody\n\\mmAppendixStart\n",
             encoding="utf-8",
         )
-        (self.paper / "main.pdf").write_bytes(OLD)
-
-    def fake_backend(self, paper: Path, *args):
-        build = paper / "build"
-        build.mkdir(exist_ok=True)
-        (build / "main.pdf").write_bytes(FRESH)
-        (build / "main.log").write_text("", encoding="utf-8")
-        (build / "main.aux").write_text(
-            "\\newlabel{mm:body-start}{{}{2}}\n\\newlabel{mm:appendix-start}{{}{3}}\n",
+        self.pdf = self.paper / "main.pdf"
+        self.pdf.write_bytes(PDF)
+        self.compile_report = self.paper / "compile_report.json"
+        self.compile_report.write_text(
+            json.dumps(
+                {
+                    "status": "COMPILED_PENDING_VISUAL_CHECK",
+                    "pdf_published": True,
+                    "pdf_path": str(self.pdf.resolve()),
+                    "pdf_sha256": digest(PDF),
+                    "pdf_pages": 3,
+                }
+            ),
             encoding="utf-8",
         )
-        return 0, "mock backend completed", "mock"
+        self.binding = self.paper / "VISUAL_REVIEW_BINDING.json"
+        self.verify_report = self.paper / "visual_verification_report.json"
 
-    def invoke(self, *args, backend=None):
-        argv = ["compile_paper.py", "--paper-dir", str(self.paper), *map(str, args)]
-        with (
-            patch("sys.argv", argv),
-            patch.object(compiler, "find_binary", side_effect=lambda name: name),
-            patch.object(compiler, "run_compile", side_effect=backend or self.fake_backend),
-            patch.object(compiler, "pdf_page_count", return_value=3),
-            patch.object(compiler, "render_preview", return_value=[]),
-        ):
-            code = compiler.main()
-        report = json.loads((self.paper / "compile_report.json").read_text(encoding="utf-8"))
-        return code, report
+    def args(self, command: str, visual: Path | None = None):
+        data = {
+            "command": command,
+            "paper_dir": self.paper,
+            "compile_report": Path("compile_report.json"),
+            "output_pdf": Path("main.pdf"),
+            "binding": Path("VISUAL_REVIEW_BINDING.json"),
+        }
+        if command == "verify":
+            data["visual_report"] = visual
+            data["report"] = Path("visual_verification_report.json")
+        return argparse.Namespace(**data)
 
     def visual_report(self) -> Path:
         path = self.paper / "PDF_VISUAL_CHECK.json"
@@ -81,7 +86,7 @@ class VisualVerificationNoRecompileTests(unittest.TestCase):
                 {
                     "status": "PASSED",
                     "paper_pdf": "main.pdf",
-                    "paper_sha256": digest(FRESH),
+                    "paper_sha256": digest(PDF),
                     "page_count": 3,
                     "rendered_pages": [1, 2, 3],
                     "reviewed_pages": [1, 2, 3],
@@ -93,52 +98,58 @@ class VisualVerificationNoRecompileTests(unittest.TestCase):
         )
         return path
 
-    def test_second_visual_verification_does_not_recompile_reviewed_pdf(self):
-        code, compile_report = self.invoke()
+    def prepare_binding(self):
+        with patch.object(gate.compile_paper, "pdf_page_count", return_value=3):
+            code, binding = gate.prepare(self.args("prepare"))
         self.assertEqual(code, 0)
-        self.assertIn("source_snapshot", compile_report)
-        reviewed_hash = digest((self.paper / "main.pdf").read_bytes())
-        visual = self.visual_report()
+        self.assertEqual(binding["status"], "READY_FOR_VISUAL_REVIEW")
+        self.assertTrue(self.binding.is_file())
+        return binding
 
-        code, report = self.invoke(
-            "--visual-report",
-            visual,
-            backend=lambda *args: self.fail("visual verification must not invoke the compiler"),
-        )
+    def test_visual_verification_uses_existing_pdf_without_compiler(self):
+        self.prepare_binding()
+        visual = self.visual_report()
+        with (
+            patch.object(gate.compile_paper, "pdf_page_count", return_value=3),
+            patch.object(gate.compile_paper, "run_compile", side_effect=AssertionError("must not compile")),
+        ):
+            code, report = gate.verify(self.args("verify", visual))
         self.assertEqual(code, 0)
         self.assertEqual(report["status"], "PASSED")
         self.assertEqual(report["verification_mode"], "existing_published_artifact_no_recompile")
-        self.assertEqual(digest((self.paper / "main.pdf").read_bytes()), reviewed_hash)
         self.assertEqual(report["visual_check_status"], "PASSED_ALL_3_PAGES")
+        self.assertEqual(self.pdf.read_bytes(), PDF)
 
-    def test_source_change_requires_recompile_instead_of_rebuilding_during_verification(self):
-        self.invoke()
+    def test_source_change_requires_recompile(self):
+        self.prepare_binding()
         visual = self.visual_report()
         main = self.paper / "main.tex"
-        main.write_text(main.read_text(encoding="utf-8") + "% source changed after review\n", encoding="utf-8")
-
-        code, report = self.invoke(
-            "--visual-report",
-            visual,
-            backend=lambda *args: self.fail("stale visual verification must not silently recompile"),
-        )
+        main.write_text(main.read_text(encoding="utf-8") + "% changed after review\n", encoding="utf-8")
+        with patch.object(gate.compile_paper, "run_compile", side_effect=AssertionError("must not compile")):
+            code, report = gate.verify(self.args("verify", visual))
         self.assertEqual(code, 2)
         self.assertEqual(report["status"], "VISUAL_VERIFICATION_REQUIRES_RECOMPILE")
         self.assertEqual(report["visual_check_status"], "SOURCE_SNAPSHOT_CHANGED")
 
     def test_published_pdf_change_requires_recompile_and_rereview(self):
-        self.invoke()
+        self.prepare_binding()
         visual = self.visual_report()
-        (self.paper / "main.pdf").write_bytes(FRESH + b"changed after review")
-
-        code, report = self.invoke(
-            "--visual-report",
-            visual,
-            backend=lambda *args: self.fail("changed reviewed PDF must not be silently regenerated"),
-        )
+        self.pdf.write_bytes(PDF + b"changed")
+        with patch.object(gate.compile_paper, "run_compile", side_effect=AssertionError("must not compile")):
+            code, report = gate.verify(self.args("verify", visual))
         self.assertEqual(code, 2)
         self.assertEqual(report["status"], "VISUAL_VERIFICATION_REQUIRES_RECOMPILE")
         self.assertEqual(report["visual_check_status"], "PUBLISHED_PDF_CHANGED")
+
+    def test_compile_report_change_invalidates_binding(self):
+        self.prepare_binding()
+        visual = self.visual_report()
+        payload = json.loads(self.compile_report.read_text(encoding="utf-8"))
+        payload["note"] = "changed after binding"
+        self.compile_report.write_text(json.dumps(payload), encoding="utf-8")
+        code, report = gate.verify(self.args("verify", visual))
+        self.assertEqual(code, 2)
+        self.assertEqual(report["visual_check_status"], "COMPILE_REPORT_CHANGED")
 
 
 if __name__ == "__main__":
