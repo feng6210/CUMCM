@@ -109,8 +109,10 @@ class ContractSchemaTests(unittest.TestCase):
             "competition_name": "demo",
             "stage": "live_contest",
             "ai_allowed": "restricted",
+            "ai_scope": "AI may be used only within the explicitly permitted modeling scope",
             "web_allowed": "forbidden",
             "external_papers_allowed": "restricted",
+            "external_papers_scope": "background papers only; no external answer ingestion",
             "benchmark_answers_allowed": "forbidden",
             "team_collaboration_scope": "registered team only",
             "citation_requirement": "follow official rules",
@@ -129,6 +131,36 @@ class ContractSchemaTests(unittest.TestCase):
                 with self.assertRaises(ValidationError):
                     v.validate(invalid)
 
+    def test_restricted_permissions_require_explicit_scope(self):
+        v = validator("competition_policy.schema.json")
+        base = {
+            "schema_version": "1.0",
+            "competition_name": "demo",
+            "stage": "live_contest",
+            "ai_allowed": "allowed",
+            "web_allowed": "forbidden",
+            "external_papers_allowed": "forbidden",
+            "benchmark_answers_allowed": "forbidden",
+            "team_collaboration_scope": "registered team only",
+            "citation_requirement": "follow official rules",
+            "source": {"kind": "official_rules", "reference": "official rulebook"},
+        }
+        cases = (
+            ("ai_allowed", "ai_scope"),
+            ("web_allowed", "web_scope"),
+            ("external_papers_allowed", "external_papers_scope"),
+            ("benchmark_answers_allowed", "benchmark_answers_scope"),
+        )
+        for permission, scope in cases:
+            with self.subTest(permission=permission):
+                invalid = dict(base)
+                invalid[permission] = "restricted"
+                with self.assertRaises(ValidationError):
+                    v.validate(invalid)
+                valid = dict(invalid)
+                valid[scope] = "explicit restricted scope for this capability"
+                v.validate(valid)
+
     def test_live_contest_policy_cannot_use_user_instruction_as_rule_source(self):
         v = validator("competition_policy.schema.json")
         payload = {
@@ -136,8 +168,10 @@ class ContractSchemaTests(unittest.TestCase):
             "competition_name": "demo",
             "stage": "live_contest",
             "ai_allowed": "restricted",
+            "ai_scope": "AI permitted only for a limited modeling assistance scope",
             "web_allowed": "forbidden",
             "external_papers_allowed": "restricted",
+            "external_papers_scope": "background papers only; no public solutions",
             "benchmark_answers_allowed": "forbidden",
             "team_collaboration_scope": "registered team only",
             "citation_requirement": "follow official rules",
