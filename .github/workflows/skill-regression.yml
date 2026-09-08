@@ -4,30 +4,86 @@ on:
   pull_request:
     paths:
       - "packages/math-modeling-skills-complete-20260903/skills/**"
-      - "tests/test_skill_workflow_regressions.py"
+      - "packages/math-modeling-skills-complete-20260903/schemas/**"
+      - "packages/math-modeling-skills-complete-20260903/requirements.txt"
+      - "benchmarks/**"
+      - "tests/**"
       - ".github/workflows/skill-regression.yml"
   push:
     branches: [main]
     paths:
       - "packages/math-modeling-skills-complete-20260903/skills/**"
-      - "tests/test_skill_workflow_regressions.py"
+      - "packages/math-modeling-skills-complete-20260903/schemas/**"
+      - "packages/math-modeling-skills-complete-20260903/requirements.txt"
+      - "benchmarks/**"
+      - "tests/**"
 
 permissions:
   contents: read
 
 jobs:
-  regression:
+  workflow-contracts:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Install test dependency
-        run: python -m pip install --disable-pip-version-check PyYAML==6.0.3
-      - name: Compile modified Python workflow scripts
+      - name: Install contract dependencies
+        run: python -m pip install --disable-pip-version-check "PyYAML>=6.0" "jsonschema>=4.23"
+      - name: Compile workflow and contract checkers
         run: |
           python -m py_compile packages/math-modeling-skills-complete-20260903/skills/math-modeling-orchestrator/scripts/workflow_state.py
+          python -m py_compile packages/math-modeling-skills-complete-20260903/skills/math-modeling-orchestrator/scripts/validate_contract.py
           python -m py_compile packages/math-modeling-skills-complete-20260903/skills/mm-visualization-delivery/scripts/validate_figure_intent.py
-      - name: Run regression tests
-        run: python -m unittest tests/test_skill_workflow_regressions.py -v
+      - name: Run root workflow and schema regressions
+        run: python -m unittest discover -s tests -p "test_*.py" -v
+      - name: Validate system benchmark specs
+        run: |
+          python packages/math-modeling-skills-complete-20260903/skills/math-modeling-orchestrator/scripts/validate_contract.py \
+            --schema packages/math-modeling-skills-complete-20260903/schemas/system_benchmark.schema.json \
+            --input benchmarks/cumcm-2025a-smoke-screen/benchmark.yaml
+
+  visualization-regressions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install package dependencies
+        run: python -m pip install --disable-pip-version-check -r packages/math-modeling-skills-complete-20260903/requirements.txt
+      - name: Compile deterministic visualization scripts
+        run: |
+          python -m py_compile packages/math-modeling-skills-complete-20260903/skills/mm-visualization-delivery/scripts/geometry_diagram_from_spec.py
+          python -m py_compile packages/math-modeling-skills-complete-20260903/skills/mm-visualization-delivery/scripts/scientific_illustration.py
+          python -m py_compile packages/math-modeling-skills-complete-20260903/skills/mm-visualization-delivery/scripts/render_corpus_chart.py
+          python -m py_compile packages/math-modeling-skills-complete-20260903/skills/mm-visualization-delivery/scripts/validate_figure_intent.py
+      - name: Run visualization unit/regression tests
+        working-directory: packages/math-modeling-skills-complete-20260903/skills/mm-visualization-delivery/scripts
+        run: |
+          python -m unittest test_geometry_primitives.py -v
+          python -m unittest test_scientific_illustration.py -v
+          python -m unittest test_validate_figure_intent.py -v
+          python -m unittest test_render_corpus_chart.py -v
+          python -m unittest test_reference_templates.py -v
+
+  package-structure:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Check package entry points and no compiled caches
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f packages/math-modeling-skills-complete-20260903/README.md
+          test -f packages/math-modeling-skills-complete-20260903/schemas/README.md
+          count=$(find packages/math-modeling-skills-complete-20260903/skills -mindepth 2 -maxdepth 2 -name SKILL.md | wc -l)
+          test "$count" -eq 22
+          if find packages/math-modeling-skills-complete-20260903 -type d -name __pycache__ -o -type f -name '*.pyc' | grep -q .; then
+            echo "compiled Python cache found in package"
+            exit 1
+          fi
