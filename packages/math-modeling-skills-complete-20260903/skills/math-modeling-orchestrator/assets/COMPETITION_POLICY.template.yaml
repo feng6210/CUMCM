@@ -1,0 +1,16 @@
+schema_version: "1.0"
+competition_name: "填写赛事/课程名称"
+stage: training
+ai_allowed: allowed
+web_allowed: allowed
+external_papers_allowed: allowed
+benchmark_answers_allowed: allowed
+team_collaboration_scope: "填写团队内/外部协作边界"
+citation_requirement: "填写引用、AI 使用披露或支撑材料要求"
+source:
+  kind: user_instruction
+  reference: "训练默认模板；正式竞赛必须替换为官方规则或明确课程政策"
+  checked_at: null
+notes:
+  - "training 模板不能直接作为 live_contest 权限依据"
+unresolved: []
