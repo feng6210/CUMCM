@@ -1,0 +1,40 @@
+{
+  "status": "PENDING",
+  "competition_submission": true,
+  "author_agent_id": "replace-with-author-agent-id",
+  "reviews": [
+    {
+      "dimension": "semantics_math",
+      "reviewer_id": "replace-with-fresh-subagent-id-1",
+      "origin": "subagent",
+      "independent_of_authorship": true,
+      "status": "PENDING",
+      "blocking_findings": []
+    },
+    {
+      "dimension": "numbers_claims",
+      "reviewer_id": "replace-with-fresh-subagent-id-2",
+      "origin": "subagent",
+      "independent_of_authorship": true,
+      "status": "PENDING",
+      "blocking_findings": []
+    },
+    {
+      "dimension": "figures_evidence",
+      "reviewer_id": "replace-with-fresh-subagent-id-3",
+      "origin": "subagent",
+      "independent_of_authorship": true,
+      "status": "PENDING",
+      "blocking_findings": []
+    },
+    {
+      "dimension": "paper_delivery",
+      "reviewer_id": "replace-with-fresh-subagent-id-4",
+      "origin": "subagent",
+      "independent_of_authorship": true,
+      "status": "PENDING",
+      "blocking_findings": []
+    }
+  ],
+  "unresolved_p0_p1": []
+}
