@@ -22,7 +22,7 @@ FULL_SUBMISSION 的最终状态只有两类：
 3. `figures_evidence`：图表是否真实生成、与数据/公式一致、机制表达和最终尺寸；
 4. `paper_delivery`：论文结构、占位符、匿名性、PDF、支撑材料、最终提交完整性。
 
-四条记录必须来自四个不同的 fresh subagent。`reviewer_id` 去首尾空格并大小写归一后仍须四个唯一值；作者/主求解 agent 不能兼任。若当前平台没有 subagent 能力，FULL_SUBMISSION 必须进入 `BLOCKED_CAPABILITY`；不允许退化成作者自查后仍宣称可交付。
+四条记录必须来自四个不同的 fresh subagent。`reviewer_id` 与 `invocation.run_id` 去首尾空格并大小写归一后都必须各自保持四个唯一值；作者/主求解 agent 不能兼任。若当前平台没有 subagent 能力，FULL_SUBMISSION 必须进入 `BLOCKED_CAPABILITY`；不允许退化成作者自查后仍宣称可交付。
 
 每个 subagent 必须输出单独 JSON review artifact，至少记录：
 
@@ -34,25 +34,29 @@ FULL_SUBMISSION 的最终状态只有两类：
   "origin": "subagent",
   "independent_of_authorship": true,
   "submission_digest": "current-submission-digest",
-  "invocation": {"kind": "subagent", "run_id": "actual-run-id"},
+  "invocation": {
+    "kind": "subagent",
+    "run_id": "actual-run-id",
+    "fresh_context": true
+  },
   "blocking_findings": []
 }
 ```
 
-`SUBAGENT_REVIEW_SUMMARY.json` 必须记录非空 `author_agent_id`、当前 `submission_digest`，以及四份 review artifact 的路径和 SHA-256。最终 gate 会重新打开这些 review 文件、校验哈希、reviewer/dimension、subagent invocation、当前 submission digest 和 P0/P1 状态；不能只写四行自报 PASS。
+`SUBAGENT_REVIEW_SUMMARY.json` 必须记录非空 `author_agent_id`、当前 `submission_digest`，以及四份 review artifact 的路径和 SHA-256。最终 gate 会重新打开这些 review 文件、校验哈希、reviewer/dimension、四个不同 fresh invocation、当前 submission digest 和 P0/P1 状态；不能只写四行自报 PASS。
 
 Subagent 不接收“预期 PASS”或拟议结论，只接收当前工件、原始证据和审查维度。P0/P1 修复、论文/PDF/支撑材料变化后 submission digest 会变化，四份审查必须重跑，旧 summary 不得复用。
 
 ## 禁止交付论文骨架
 
-最终论文源和 PDF 中不得出现任何未完成标记，包括但不限于：
+最终论文源和支撑材料中不得出现任何未完成标记，包括但不限于：
 
-- `待填写`、`待补`；
+- `待填写`、`待补`、`待验证`、`待确认`；
 - `TODO / TBD / FIXME / PLACEHOLDER`；
 - 模板默认符号表、默认章节占位句；
-- “后续补图/后续补代码/待验证”等未关闭内容。
+- “后续补图/后续补代码/后续完善”等未关闭内容。
 
-发现任意占位内容，`FINAL_CHECK` 直接 FAIL。
+`paper/main.tex` 必须真实存在。正式 gate 会扫描论文目录中的文本型源码/配置/结果文件，并扫描支撑 ZIP 内可读文本成员；发现任意未完成标记直接 FAIL。
 
 ## 每个分问必须闭合
 
@@ -70,9 +74,19 @@ FULL_SUBMISSION 必须采用 `visual_review_gate.py prepare → 实际打开全�
 - `VISUAL_REVIEW_BINDING.json`；
 - 当前 `compile_report.json` 与 PDF 哈希；
 - 当前 source snapshot；
-- hash-bound visual report。
+- hash-bound visual report 是否仍满足全页 `PASSED` 语义；
+- visual report 与 verification report 是否真实登记在 binding 的 review provenance 中。
 
-手工写一个 `{"status":"PASSED"}` 或只改 PDF 哈希不能通过正式交付门。
+手工写一个 `{"status":"PASSED"}`、只改 PDF 哈希，或把失败/不完整 visual report 重新哈希，都不能通过正式交付门。
+
+## 支撑材料硬门
+
+支撑材料 ZIP 必须：
+
+- 文件存在、可重新打开、20 MB 限制内；
+- 至少包含一个非目录、非零字节的有效成员；
+- 至少包含一份真实源程序/脚本，而不是只有空目录或零字节占位文件；
+- 文本型源程序、结果、配置和清单不含未完成标记。
 
 ## 最终交付工件
 
@@ -85,8 +99,7 @@ FULL_SUBMISSION 必须采用 `visual_review_gate.py prepare → 实际打开全�
 - `visual_verification_report.json`，由 no-recompile visual gate 对同一 PDF 验证通过；
 - 四份 fresh subagent review artifact；
 - `SUBAGENT_REVIEW_SUMMARY.json`，四条独立 subagent 审查全部通过，`unresolved_p0_p1=[]`；
-- 支撑材料 ZIP，能够重新打开且非空；
-- 源程序、数据/结果表、图形与配置文件清单不含占位内容。
+- 支撑材料 ZIP，满足上述有效载荷和源码要求。
 
 对于 FULL_SUBMISSION，执行：
 
@@ -94,10 +107,22 @@ FULL_SUBMISSION 必须采用 `visual_review_gate.py prepare → 实际打开全�
 python skills/mm-paper-compile/scripts/final_delivery_check.py `
   --paper-dir paper `
   --support-zip support.zip `
-  --competition-ready
+  --competition-ready `
+  --output FINAL_CHECK.json
 ```
 
-只有返回码 0 且 `FINAL_CHECK.json.status=PASS`，才允许对用户使用“最终参赛文件/可交付论文/COMPLETE”等表述。
+`FINAL_CHECK.json` 应放在 `paper/` 目录之外，避免把终审报告误归类为论文源文件。只有返回码 0 且 `FINAL_CHECK.json.status=PASS` 后，才能运行：
+
+```powershell
+python skills/math-modeling-orchestrator/scripts/workflow_state.py `
+  record-final-delivery `
+  --state workflow_state.json `
+  --final-check FINAL_CHECK.json
+```
+
+`record-final-delivery` 会重新运行 competition-ready gate；从 `REVIEWING → COMPLETE` 时还会再次重验当前 PDF、论文 source snapshot、visual provenance、support ZIP 和四份 subagent evidence。任何工件在 FINAL_CHECK 后变化，旧 gate 立即失效，必须重跑检查和受影响的 subagent 审查。
+
+只有该状态门也通过，才允许对用户使用“最终参赛文件/可交付论文/COMPLETE”等表述。
 
 ## 与环境的关系
 
