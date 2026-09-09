@@ -187,7 +187,6 @@ def validate_competition_policy(policy_path: Path) -> dict:
         import jsonschema  # type: ignore
     except ImportError as exc:
         raise RuntimeError("competition policy validation requires jsonschema>=4.23") from exc
-
     payload = load_document(policy_path)
     if not isinstance(payload, dict):
         raise ValueError("competition policy root must be an object")
@@ -225,12 +224,7 @@ def record_competition_policy(path: Path, policy_path: Path) -> dict:
         "benchmark_answers_scope": policy.get("benchmark_answers_scope"),
         "source": policy.get("source"),
     }
-    state["history"].append({
-        "at": now(),
-        "event": "competition_policy_recorded",
-        "status": "VALIDATED",
-        "policy_sha256": state["competition_policy"]["sha256"],
-    })
+    state["history"].append({"at": now(), "event": "competition_policy_recorded", "status": "VALIDATED", "policy_sha256": state["competition_policy"]["sha256"]})
     write_json(path, state)
     return state
 
@@ -277,8 +271,9 @@ def validate_final_submission_payload(payload: dict) -> dict:
     for key in ("paper_dir", "support_zip", "compile_report", "visual_verification", "visual_binding", "subagent_review"):
         if not isinstance(competition.get(key), str) or not competition[key]:
             raise ValueError(f"FINAL_CHECK competition evidence is missing {key}")
-    if not isinstance(competition.get("submission_digest"), str) or not competition["submission_digest"]:
-        raise ValueError("FINAL_CHECK must bind the current submission digest")
+    for key in ("submission_digest", "subagent_review_sha256", "subagent_evidence_digest"):
+        if not isinstance(competition.get(key), str) or not competition[key]:
+            raise ValueError(f"FINAL_CHECK competition evidence is missing {key}")
     return payload
 
 
@@ -315,10 +310,15 @@ def revalidate_final_submission_report(report_path: Path, payload: dict) -> dict
             raise ValueError(f"competition-ready FINAL_CHECK is stale or no longer passes current artifacts: {detail}")
         fresh = validate_final_submission_payload(read_json(fresh_path))
     fresh_competition = fresh["competition_ready"]
-    if fresh.get("pdf_sha256") != payload.get("pdf_sha256"):
-        raise ValueError("delivered PDF changed after FINAL_CHECK")
-    if fresh_competition.get("submission_digest") != competition.get("submission_digest"):
-        raise ValueError("submission artifacts changed after FINAL_CHECK")
+    comparisons = (
+        (fresh.get("pdf_sha256"), payload.get("pdf_sha256"), "delivered PDF changed after FINAL_CHECK"),
+        (fresh_competition.get("submission_digest"), competition.get("submission_digest"), "submission artifacts changed after FINAL_CHECK"),
+        (fresh_competition.get("subagent_review_sha256"), competition.get("subagent_review_sha256"), "subagent review summary changed after FINAL_CHECK"),
+        (fresh_competition.get("subagent_evidence_digest"), competition.get("subagent_evidence_digest"), "subagent review evidence changed after FINAL_CHECK"),
+    )
+    for current, expected, message in comparisons:
+        if current != expected:
+            raise ValueError(message)
     return fresh
 
 
@@ -339,13 +339,10 @@ def record_final_submission_gate(path: Path, report_path: Path) -> dict:
         "status": "PASS",
         "pdf_sha256": fresh["pdf_sha256"],
         "submission_digest": competition["submission_digest"],
+        "subagent_review_sha256": competition["subagent_review_sha256"],
+        "subagent_evidence_digest": competition["subagent_evidence_digest"],
     }
-    state["history"].append({
-        "at": now(),
-        "event": "final_submission_gate_recorded",
-        "report_sha256": state["final_submission_gate"]["sha256"],
-        "submission_digest": state["final_submission_gate"]["submission_digest"],
-    })
+    state["history"].append({"at": now(), "event": "final_submission_gate_recorded", "report_sha256": state["final_submission_gate"]["sha256"], "submission_digest": state["final_submission_gate"]["submission_digest"]})
     write_json(path, state)
     return state
 
@@ -364,8 +361,14 @@ def assert_final_submission_gate_current(state: dict) -> dict:
     payload = validate_final_submission_report(report_path)
     fresh = revalidate_final_submission_report(report_path, payload)
     competition = fresh["competition_ready"]
-    if fresh.get("pdf_sha256") != binding.get("pdf_sha256") or competition.get("submission_digest") != binding.get("submission_digest"):
-        raise ValueError("recorded FINAL_CHECK no longer matches its bound submission")
+    comparisons = (
+        (fresh.get("pdf_sha256"), binding.get("pdf_sha256")),
+        (competition.get("submission_digest"), binding.get("submission_digest")),
+        (competition.get("subagent_review_sha256"), binding.get("subagent_review_sha256")),
+        (competition.get("subagent_evidence_digest"), binding.get("subagent_evidence_digest")),
+    )
+    if any(current != expected for current, expected in comparisons):
+        raise ValueError("recorded FINAL_CHECK no longer matches its bound submission and review evidence")
     return binding
 
 
@@ -375,17 +378,12 @@ def transition(path: Path, target: str, next_skill: str | None, evidence_status:
     current = state["stage"]
     if target not in ALLOWED[current]:
         raise ValueError(f"transition not allowed: {current} -> {target}")
-
     if state["task_mode"] == "live_contest" and target not in {"INPUT_REGISTERED", "BLOCKED_INPUT"}:
         assert_live_contest_ai_use_allowed(state)
-
     approval = state.get("model_approval") or {}
     if target == "USER_APPROVED" and approval.get("approved") is not True:
         raise ValueError("model approval record required before USER_APPROVED")
-    if target == "SOLVING" and current not in {
-        "USER_APPROVED", "PARTIAL", "FAIL", "RESULT_TO_CLAIM", "WRITING", "FIGURES",
-        "REVIEWING", "BENCHMARK_CHALLENGE",
-    }:
+    if target == "SOLVING" and current not in {"USER_APPROVED", "PARTIAL", "FAIL", "RESULT_TO_CLAIM", "WRITING", "FIGURES", "REVIEWING", "BENCHMARK_CHALLENGE"}:
         raise ValueError("initial main SOLVING requires USER_APPROVED; use BASELINE_SOLVING for pre-approval baselines")
     if target == "MODEL_PLANNED" and current != "BASELINE_READY":
         raise ValueError("MODEL_PLANNED requires BASELINE_READY; record an explicit not-applicable baseline when necessary")
@@ -440,10 +438,7 @@ def amend(path: Path, reason: str, affected: list[str], semantic: bool = False) 
         state["evidence_status"] = "NOT_EVALUATED"
         state["result_to_claim_status"] = "NOT_EVALUATED"
     state["stale_artifacts"] = sorted(set(state["stale_artifacts"]) | set(affected))
-    state["history"].append({
-        "at": now(), "event": "plan_amended", "reason": reason, "affected": affected,
-        "semantic": semantic,
-    })
+    state["history"].append({"at": now(), "event": "plan_amended", "reason": reason, "affected": affected, "semantic": semantic})
     write_json(path, state)
     return state
 
