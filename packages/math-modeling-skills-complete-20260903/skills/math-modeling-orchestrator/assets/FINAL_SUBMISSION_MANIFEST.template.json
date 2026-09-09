@@ -2,6 +2,11 @@
   "schema_version": "1.0",
   "status": "READY",
   "deliverable_mode": "submission_package",
+  "question_decomposition": {
+    "file": "QUESTION_DECOMPOSITION.json",
+    "sha256": "REPLACE_WITH_ACTUAL_SHA256"
+  },
+  "expected_question_ids_field": "expected_question_ids",
   "paper_pdf": {
     "file": "paper/main.pdf",
     "sha256": "REPLACE_WITH_ACTUAL_SHA256"
