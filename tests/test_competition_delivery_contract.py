@@ -34,6 +34,32 @@ def digest(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def one_page_pdf() -> bytes:
+    """Build a tiny structurally valid one-page PDF without a writer dependency."""
+    objects = [
+        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << >> /Contents 4 0 R >>",
+        b"<< /Length 0 >>\nstream\n\nendstream",
+    ]
+    payload = bytearray(b"%PDF-1.4\n%\xe2\xe3\xcf\xd3\n")
+    offsets = [0]
+    for number, obj in enumerate(objects, start=1):
+        offsets.append(len(payload))
+        payload.extend(f"{number} 0 obj\n".encode("ascii"))
+        payload.extend(obj)
+        payload.extend(b"\nendobj\n")
+    xref = len(payload)
+    payload.extend(f"xref\n0 {len(objects) + 1}\n".encode("ascii"))
+    payload.extend(b"0000000000 65535 f \n")
+    for offset in offsets[1:]:
+        payload.extend(f"{offset:010d} 00000 n \n".encode("ascii"))
+    payload.extend(
+        f"trailer\n<< /Size {len(objects) + 1} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n".encode("ascii")
+    )
+    return bytes(payload)
+
+
 class CompetitionDeliveryContractTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory(prefix="competition-delivery-")
@@ -42,7 +68,7 @@ class CompetitionDeliveryContractTests(unittest.TestCase):
         self.paper = self.root / "paper"
         self.paper.mkdir()
         self.pdf = self.paper / "main.pdf"
-        self.pdf.write_bytes(b"%PDF-1.7\ncompetition fixture\n")
+        self.pdf.write_bytes(one_page_pdf())
         self.main_tex = self.paper / "main.tex"
         self.main_tex.write_text(
             "\\section{问题一}\n模型、计算、结果、验证与结论均已完成。\n"
