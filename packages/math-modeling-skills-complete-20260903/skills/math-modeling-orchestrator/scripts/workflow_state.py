@@ -23,6 +23,7 @@ EVIDENCE = ("NOT_EVALUATED", "PASS", "PARTIAL", "FAIL")
 RESULT_TO_CLAIM = ("NOT_EVALUATED", "YES", "PARTIAL", "NO", "BLOCKED")
 TASK_MODES = ("training", "live_contest", "coursework", "research", "business", "engineering")
 DELIVERABLE_MODES = ("analysis", "code", "figures", "paper_outline", "cumcm_latex_paper", "submission_package")
+FULL_SUBMISSION_MODES = {"cumcm_latex_paper", "submission_package"}
 REPORTING_PROFILES = ("competition_compact", "research_audit")
 POLICY_STATUSES = ("NOT_REQUIRED", "PENDING", "VALIDATED", "BLOCKED")
 
@@ -51,13 +52,13 @@ ALLOWED = {
     "PASS": {"RESULT_TO_CLAIM", "DELIVERING"},
     "PARTIAL": {"RESULT_TO_CLAIM", "DELIVERING", "SOLVING", "SEMANTICS_REVIEW"},
     "FAIL": {"SOLVING", "SEMANTICS_REVIEW", "BLOCKED_CAPABILITY"},
-    "RESULT_TO_CLAIM": {"WRITING", "SOLVING", "SEMANTICS_REVIEW", "BLOCKED_INPUT"},
-    "WRITING": {"FIGURES", "REVIEWING", "SOLVING", "SEMANTICS_REVIEW"},
-    "FIGURES": {"DELIVERING", "REVIEWING", "SOLVING", "SEMANTICS_REVIEW"},
-    "DELIVERING": {"REVIEWING"},
-    "REVIEWING": {"COMPLETE", "SOLVING", "WRITING", "SEMANTICS_REVIEW"},
+    "RESULT_TO_CLAIM": {"WRITING", "SOLVING", "SEMANTICS_REVIEW", "BLOCKED_INPUT", "BLOCKED_CAPABILITY"},
+    "WRITING": {"FIGURES", "REVIEWING", "SOLVING", "SEMANTICS_REVIEW", "BLOCKED_CAPABILITY"},
+    "FIGURES": {"DELIVERING", "REVIEWING", "SOLVING", "SEMANTICS_REVIEW", "BLOCKED_CAPABILITY"},
+    "DELIVERING": {"REVIEWING", "BLOCKED_CAPABILITY"},
+    "REVIEWING": {"COMPLETE", "SOLVING", "WRITING", "SEMANTICS_REVIEW", "BLOCKED_CAPABILITY"},
     "BLOCKED_INPUT": {"INPUT_REGISTERED", "DECOMPOSED", "SEMANTICS_REVIEW", "DATA_AUDITED", "BASELINE_SOLVING", "INNOVATION_PROPOSED"},
-    "BLOCKED_CAPABILITY": {"BASELINE_SOLVING", "SOLVING"},
+    "BLOCKED_CAPABILITY": {"BASELINE_SOLVING", "SOLVING", "WRITING", "FIGURES", "DELIVERING", "REVIEWING"},
     "COMPLETE": set(),
 }
 
@@ -144,7 +145,7 @@ def initialize(path: Path, task_id: str, scope: str, task_mode: str, deliverable
     if path.exists():
         raise FileExistsError(f"state already exists: {path}")
     state = {
-        "schema_version": "3.0",
+        "schema_version": "3.1",
         "task_id": task_id,
         "scope": scope,
         "stage": "NEW",
@@ -170,6 +171,7 @@ def initialize(path: Path, task_id: str, scope: str, task_mode: str, deliverable
         "paper_claim_audit_status": "NOT_EVALUATED",
         "citation_audit_status": "NOT_EVALUATED",
         "compile_status": "NOT_EVALUATED",
+        "final_submission_gate": None,
         "result_to_claim_status": "NOT_EVALUATED",
         "evidence_status": "NOT_EVALUATED",
         "unresolved": [],
@@ -262,6 +264,67 @@ def assert_live_contest_ai_use_allowed(state: dict) -> dict:
     return binding
 
 
+def validate_final_submission_report(report_path: Path) -> dict:
+    payload = read_json(report_path)
+    if payload.get("status") != "PASS":
+        raise ValueError("FINAL_CHECK status must be PASS before a formal submission can complete")
+    if payload.get("verification_scope") != "competition_submission_gate":
+        raise ValueError("FINAL_CHECK must come from --competition-ready mode")
+    competition = payload.get("competition_ready")
+    if not isinstance(competition, dict) or competition.get("mode") != "competition_ready":
+        raise ValueError("FINAL_CHECK is missing competition-ready evidence")
+    if not isinstance(payload.get("pdf_sha256"), str) or not payload["pdf_sha256"]:
+        raise ValueError("FINAL_CHECK must bind the delivered PDF hash")
+    if not isinstance(competition.get("submission_digest"), str) or not competition["submission_digest"]:
+        raise ValueError("FINAL_CHECK must bind the current submission digest")
+    return payload
+
+
+def record_final_submission_gate(path: Path, report_path: Path) -> dict:
+    state = read_json(path)
+    validate_state(state)
+    if state["deliverable_mode"] not in FULL_SUBMISSION_MODES:
+        raise ValueError("record-final-delivery is only required for full-submission deliverables")
+    if state["stage"] not in {"DELIVERING", "REVIEWING"}:
+        raise ValueError("formal final delivery can be recorded only during DELIVERING or REVIEWING")
+    report_path = report_path.resolve()
+    payload = validate_final_submission_report(report_path)
+    competition = payload["competition_ready"]
+    state["final_submission_gate"] = {
+        "file": str(report_path),
+        "sha256": sha256_file(report_path),
+        "status": "PASS",
+        "pdf_sha256": payload["pdf_sha256"],
+        "submission_digest": competition["submission_digest"],
+    }
+    state["history"].append({
+        "at": now(),
+        "event": "final_submission_gate_recorded",
+        "report_sha256": state["final_submission_gate"]["sha256"],
+        "submission_digest": state["final_submission_gate"]["submission_digest"],
+    })
+    write_json(path, state)
+    return state
+
+
+def assert_final_submission_gate_current(state: dict) -> dict:
+    binding = state.get("final_submission_gate")
+    if not isinstance(binding, dict):
+        raise ValueError("FULL_SUBMISSION requires a recorded competition-ready FINAL_CHECK before COMPLETE")
+    file_value = binding.get("file")
+    expected_hash = binding.get("sha256")
+    if not isinstance(file_value, str) or not file_value or not isinstance(expected_hash, str):
+        raise ValueError("final submission gate binding is incomplete")
+    report_path = Path(file_value)
+    if not report_path.is_file() or sha256_file(report_path) != expected_hash:
+        raise ValueError("recorded FINAL_CHECK is missing or changed; rerun and re-record final delivery")
+    payload = validate_final_submission_report(report_path)
+    competition = payload["competition_ready"]
+    if payload.get("pdf_sha256") != binding.get("pdf_sha256") or competition.get("submission_digest") != binding.get("submission_digest"):
+        raise ValueError("recorded FINAL_CHECK no longer matches its bound submission")
+    return binding
+
+
 def transition(path: Path, target: str, next_skill: str | None, evidence_status: str | None) -> dict:
     state = read_json(path)
     validate_state(state)
@@ -288,6 +351,12 @@ def transition(path: Path, target: str, next_skill: str | None, evidence_status:
     new_evidence = evidence_status or state["evidence_status"]
     if target == "DELIVERING" and new_evidence not in {"PASS", "PARTIAL"}:
         raise ValueError("DELIVERING requires PASS or PARTIAL evidence")
+    if target == "COMPLETE" and state["deliverable_mode"] in FULL_SUBMISSION_MODES:
+        if new_evidence != "PASS":
+            raise ValueError("FULL_SUBMISSION cannot COMPLETE with PARTIAL/FAIL evidence")
+        if state.get("stale_artifacts"):
+            raise ValueError("FULL_SUBMISSION cannot COMPLETE while stale artifacts remain")
+        assert_final_submission_gate_current(state)
     state["stage"], state["next_skill"], state["evidence_status"] = target, next_skill, new_evidence
     state["history"].append({"at": now(), "event": "transition", "from": current, "to": target})
     write_json(path, state)
@@ -322,6 +391,7 @@ def amend(path: Path, reason: str, affected: list[str], semantic: bool = False) 
         raise ValueError("amendment requires a reason and affected artifacts")
     state["stage"] = "SEMANTICS_REVIEW" if semantic else "INNOVATION_PROPOSED"
     state["model_approval"] = None
+    state["final_submission_gate"] = None
     if semantic:
         state["problem_semantics"] = None
         state["baseline_result"] = None
@@ -346,6 +416,7 @@ def mark_stale(path: Path, artifacts: list[str], reason: str) -> dict:
     state["paper_claim_audit_status"] = "STALE"
     state["citation_audit_status"] = "STALE"
     state["compile_status"] = "STALE"
+    state["final_submission_gate"] = None
     state["history"].append({"at": now(), "event": "artifacts_marked_stale", "reason": reason, "artifacts": artifacts})
     write_json(path, state)
     return state
@@ -377,6 +448,9 @@ def build_parser() -> argparse.ArgumentParser:
     approval = sub.add_parser("approve-model", help="Record a valid model decision while awaiting approval.")
     approval.add_argument("--state", type=Path, required=True)
     approval.add_argument("--decision-file", type=Path, required=True)
+    final_delivery = sub.add_parser("record-final-delivery", help="Bind a PASS competition-ready FINAL_CHECK before a full submission may COMPLETE.")
+    final_delivery.add_argument("--state", type=Path, required=True)
+    final_delivery.add_argument("--final-check", type=Path, required=True)
     amendment = sub.add_parser("amend-plan", help="Invalidate approval when a material modeling plan changes.")
     amendment.add_argument("--state", type=Path, required=True)
     amendment.add_argument("--reason", required=True)
@@ -404,6 +478,8 @@ def main() -> int:
             emit(record_competition_policy(args.state, args.policy_file))
         elif args.command == "approve-model":
             emit(approve(args.state, args.decision_file))
+        elif args.command == "record-final-delivery":
+            emit(record_final_submission_gate(args.state, args.final_check))
         elif args.command == "amend-plan":
             emit(amend(args.state, args.reason, args.affected, args.semantic))
         else:
