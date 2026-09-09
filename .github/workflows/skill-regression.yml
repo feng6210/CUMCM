@@ -32,7 +32,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install contract dependencies
-        run: python -m pip install --disable-pip-version-check "PyYAML>=6.0" "jsonschema>=4.23"
+        run: python -m pip install --disable-pip-version-check "PyYAML>=6.0" "jsonschema>=4.23" "pypdf>=5.0"
       - name: Compile workflow and contract checkers
         run: |
           python -m py_compile packages/math-modeling-skills-complete-20260903/skills/math-modeling-orchestrator/scripts/workflow_state.py
