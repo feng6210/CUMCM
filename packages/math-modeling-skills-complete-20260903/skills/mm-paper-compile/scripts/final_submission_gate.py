@@ -106,24 +106,23 @@ def pdf_text_and_pages(pdf: Path) -> tuple[str, int]:
         doc.close()
 
 
-def expected_question_ids(state: dict) -> list[str]:
-    parts = state.get("problem_parts")
-    if not isinstance(parts, list) or not parts:
-        raise ValueError("submission workflow_state.problem_parts must be a non-empty list")
+def normalized_question_ids(value: object, source: str) -> list[str]:
+    if not isinstance(value, list) or not value:
+        raise ValueError(f"{source} must be a non-empty list")
     result: list[str] = []
-    for item in parts:
+    for item in value:
         if isinstance(item, str) and item.strip():
             result.append(item.strip())
         elif isinstance(item, dict):
-            value = item.get("question_id", item.get("id"))
-            if isinstance(value, str) and value.strip():
-                result.append(value.strip())
+            qid = item.get("question_id", item.get("id"))
+            if isinstance(qid, str) and qid.strip():
+                result.append(qid.strip())
             else:
-                raise ValueError("problem_parts objects require question_id or id")
+                raise ValueError(f"{source} objects require question_id or id")
         else:
-            raise ValueError("problem_parts entries must be strings or objects")
+            raise ValueError(f"{source} entries must be strings or objects")
     if len(result) != len(set(result)):
-        raise ValueError("duplicate problem_parts question ids")
+        raise ValueError(f"duplicate question ids in {source}")
     return result
 
 
@@ -152,6 +151,30 @@ def check_submission(paper: Path, state_path: Path, manifest_path: Path,
     checks.append({"check": "manifest_ready", "passed": manifest.get("schema_version") == "1.0" and manifest.get("status") == "READY" and manifest.get("deliverable_mode") == "submission_package"})
 
     manifest_base = manifest_path.parent
+    decomposition_ok, decomposition_detail = artifact_ok(manifest_base, manifest.get("question_decomposition"))
+    checks.append({"check": "question_decomposition_hash", "passed": decomposition_ok, "detail": decomposition_detail})
+    decomposition_path = resolve(manifest_base, manifest.get("question_decomposition", {}).get("file")) if decomposition_ok else None
+    authoritative_questions: list[str] = []
+    if decomposition_path is not None:
+        try:
+            decomposition = load_json(decomposition_path)
+            field = manifest.get("expected_question_ids_field")
+            authoritative_questions = normalized_question_ids(decomposition.get(field), f"QUESTION_DECOMPOSITION.{field}")
+            checks.append({"check": "authoritative_question_list", "passed": field == "expected_question_ids",
+                           "questions": authoritative_questions})
+        except (OSError, ValueError, json.JSONDecodeError) as exc:
+            checks.append({"check": "authoritative_question_list", "passed": False, "error": str(exc)})
+
+    try:
+        state_questions = normalized_question_ids(state.get("problem_parts"), "workflow_state.problem_parts")
+    except ValueError as exc:
+        state_questions = []
+        checks.append({"check": "workflow_problem_parts_match_decomposition", "passed": False, "error": str(exc)})
+    else:
+        checks.append({"check": "workflow_problem_parts_match_decomposition",
+                       "passed": bool(authoritative_questions) and state_questions == authoritative_questions,
+                       "state": state_questions, "authoritative": authoritative_questions})
+
     paper_ok, paper_value = artifact_ok(manifest_base, manifest.get("paper_pdf"))
     checks.append({"check": "manifest_paper_pdf_hash", "passed": paper_ok, "detail": paper_value})
     pdf = resolve(manifest_base, manifest.get("paper_pdf", {}).get("file")) if paper_ok else (paper / "main.pdf")
@@ -188,12 +211,12 @@ def check_submission(paper: Path, state_path: Path, manifest_path: Path,
 
     all_tex = "\n".join(path.read_text(encoding="utf-8", errors="replace")
                         for path in paper.rglob("*.tex") if "build" not in path.parts)
-    expected = expected_question_ids(state)
     completion = manifest.get("question_completion"); completion = completion if isinstance(completion, list) else []
     by_id = {row.get("question_id"): row for row in completion if isinstance(row, dict) and isinstance(row.get("question_id"), str)}
-    checks.append({"check": "all_problem_parts_declared_complete", "passed": set(by_id) == set(expected),
-                   "expected": expected, "declared": sorted(by_id)})
-    for qid in expected:
+    checks.append({"check": "all_problem_parts_declared_complete",
+                   "passed": bool(authoritative_questions) and set(by_id) == set(authoritative_questions),
+                   "expected": authoritative_questions, "declared": sorted(by_id)})
+    for qid in authoritative_questions:
         row = by_id.get(qid, {}); label = row.get("paper_label")
         label_count = len(re.findall(r"\\label\{" + re.escape(str(label)) + r"\}", all_tex)) if isinstance(label, str) and label else 0
         result_rows = row.get("result_artifacts") if isinstance(row.get("result_artifacts"), list) else []
@@ -217,10 +240,17 @@ def check_submission(paper: Path, state_path: Path, manifest_path: Path,
 
     visual = load_json(visual_report_path); visual_pdf = visual.get("paper_pdf") if isinstance(visual.get("paper_pdf"), dict) else {}
     visual_hash = visual_pdf.get("sha256", visual.get("paper_sha256"))
+    visual_compile = visual.get("compile_report") if isinstance(visual.get("compile_report"), dict) else {}
+    try:
+        visual_compile_path = resolve(visual_report_path.parent, visual_compile.get("file"))
+    except ValueError:
+        visual_compile_path = None
     checks.extend([
         {"check": "visual_verification_pass", "passed": visual.get("status") == "PASSED"},
         {"check": "visual_verification_bound_to_final_pdf", "passed": pdf.is_file() and str(visual_hash or "").lower() == sha256(pdf).lower()},
         {"check": "visual_verification_no_recompile_mode", "passed": visual.get("verification_mode") == "existing_published_artifact_no_recompile"},
+        {"check": "visual_verification_bound_to_compile_report",
+         "passed": visual_compile_path == compile_report_path and str(visual_compile.get("sha256", "")).lower() == sha256(compile_report_path).lower()},
     ])
 
     try:
@@ -235,9 +265,12 @@ def check_submission(paper: Path, state_path: Path, manifest_path: Path,
     return {
         "schema_version": "1.0", "status": "PASS" if passed else "FAIL", "competition_ready": passed,
         "checks": checks,
+        "paper_dir": str(paper),
         "paper_pdf": str(pdf), "paper_pdf_sha256": sha256(pdf) if pdf.is_file() else None,
         "support_zip": str(support_zip), "support_zip_sha256": sha256(support_zip) if support_zip.is_file() else None,
         "workflow_state": str(state_path), "workflow_state_sha256_at_gate": sha256(state_path),
+        "question_decomposition": str(decomposition_path) if decomposition_path else None,
+        "question_decomposition_sha256": sha256(decomposition_path) if decomposition_path and decomposition_path.is_file() else None,
         "submission_manifest": str(manifest_path), "submission_manifest_sha256": sha256(manifest_path),
         "subagent_manifest": str(subagent_manifest_path), "subagent_manifest_sha256": sha256(subagent_manifest_path),
         "compile_report": str(compile_report_path), "compile_report_sha256": sha256(compile_report_path),
