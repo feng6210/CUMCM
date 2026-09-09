@@ -13,9 +13,9 @@ python scripts/workflow_state.py set-environment-preflight --state workflow_stat
 python scripts/workflow_state.py transition --state workflow_state.json --to INPUT_REGISTERED
 ```
 
-`ENVIRONMENT_PREFLIGHT.json` 必须 `status=PASS` 且 `full_submission_ready=true`。`workflow_state.py` 在绑定报告和关键状态转换时还会重新探测**当前主机**，所以手写一个假的 PASS JSON 不能替代真实环境。缺 Python 科学栈、确定性绘图依赖、XeLaTeX/latexmk/BibTeX 或 pdftoppm 时直接 `BLOCKED_CAPABILITY`，不得先跑半套流程再把 Markdown/骨架 PDF 当交付。
+`ENVIRONMENT_PREFLIGHT.json` 必须 `status=PASS` 且 `full_submission_ready=true`。`workflow_state.py` 在绑定报告和关键状态转换时还会重新探测**当前主机**，所以手写一个假的 PASS JSON 不能替代真实环境。submission preflight 除了检查 Python ≥3.10、科学计算/绘图包的最低版本和 CJK 字体，还实际在临时目录编译一份 `ctex + TikZ` 中文 XeLaTeX fixture，并用 `pdftoppm` 重开第一页。缺少任一必需能力直接 `BLOCKED_CAPABILITY`，不得先跑半套流程再把 Markdown/骨架 PDF 当交付。
 
-环境检查只读，不自动安装。需要安装时明确报告缺项，完成后重新 preflight。
+环境检查不安装软件、不改变主机配置。需要安装时明确报告缺项，完成后重新 preflight。
 
 ## 1. 完整论文而不是模板骨架
 
@@ -48,9 +48,19 @@ python scripts/workflow_state.py transition --state workflow_state.json --to INP
 4. `paper_structure`：摘要、正文闭环、引用、叙事和 CUMCM 结构；
 5. `final_submission`：最终 PDF 和支撑包的整体验收。
 
-每次 subagent 调用必须保留实际 invocation receipt，并在 `SUBAGENT_REVIEW_MANIFEST.json` 中 hash 绑定。五个角色必须使用五个不同 `agent_id` 和五个不同 `invocation_id`，全部 `decision=PASS` 且无 unresolved blocking finding。不得为了过 gate 伪造 receipt；当前静态包只能校验回执与工件的一致性，若运行平台能提供原生调用记录，应把该真实记录作为 receipt 来源。
+每个角色不能只“看过一个文件”就算完成。`SUBAGENT_REVIEW_MANIFEST.json` 对下面这些实际工件做类型化 hash 绑定：
 
-若运行平台没有 subagent 能力，`submission_package` 必须 `BLOCKED_CAPABILITY`；不得降级为主 agent 自查后继续 `COMPLETE`。
+| subagent 角色 | 最少必须审阅的当前工件 |
+|---|---|
+| `semantics_math` | `QUESTION_DECOMPOSITION`、`PROBLEM_SEMANTICS`、最终 PDF |
+| `numerical_claims` | 最终 PDF、`result_evidence_map` |
+| `figure_visual` | 最终 PDF、`FIGURE_PLAN`、最终 visual verification |
+| `paper_structure` | 最终 PDF、当前论文源文件 |
+| `final_submission` | 最终 PDF、支撑 ZIP、`FINAL_SUBMISSION_MANIFEST`、compile report、visual verification |
+
+每次 subagent 调用必须保留实际 invocation receipt，并在 manifest 中 hash 绑定。五个角色必须使用五个不同 `agent_id` 和五个不同 `invocation_id`，全部 `decision=PASS` 且无 unresolved blocking finding。receipt 必须声明 `receipt_kind=runtime_subagent_invocation`，并与本次 `task_id`、`review_batch_id`、角色、agent/invocation 身份、fresh_context、PASS decision、所审工件的规范化摘要以及带时区的开始/结束时间一致。
+
+不得为了过 gate 伪造 receipt。静态仓库本身不能凭空生成可信的运行时调用证明；运行平台必须提供实际 subagent 调用并保存其回执。若平台能提供原生或签名调用记录，优先把该记录作为 receipt 来源。没有实际 subagent 能力或拿不到可绑定的真实调用记录时，`submission_package` 必须 `BLOCKED_CAPABILITY`，不得降级为主 agent 自查后继续 `COMPLETE`。
 
 正式竞赛中，subagent 仍属于 AI 使用。`COMPETITION_POLICY.yaml` 未明确允许 AI/相应范围时先阻塞，不得借本硬门绕过赛事规则。
 
@@ -99,7 +109,7 @@ python scripts/workflow_state.py transition --state workflow_state.json --to COM
 - TeX/Bib 和实际 PDF 中占位符为零；
 - PDF 与 compile report、无二次编译视觉报告 hash 一致；
 - 支撑 ZIP 存在、非空、可重开且 hash 一致；
-- 五个 fresh subagent 审查均绑定当前工件；
+- 五个 fresh subagent 审查均绑定当前、角色匹配的工件；
 - submission manifest、subagent manifest、compile report、visual verification、最终 PDF、支撑 ZIP 与拆题文件没有在 gate 后漂移。
 
 ## 5. COMPLETE 的唯一语义
@@ -113,7 +123,7 @@ python scripts/workflow_state.py transition --state workflow_state.json --to COM
 - `evidence_status` 不是 PASS；
 - `result_to_claim_status` 不是 YES；
 - 最终 PDF 未编译或未全页审查；
-- subagent 不可用、数量不足、角色重复或存在 P0/P1 blocking finding；
+- subagent 不可用、数量不足、角色重复、回执无法绑定当前工件或存在 P0/P1 blocking finding；
 - 最终支撑包缺失或 gate 失败；
 - 任何已绑定的最终工件在 gate 后发生变化而未重新审查。
 
