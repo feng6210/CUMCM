@@ -244,9 +244,7 @@ def _load_local_module(filename: str, module_name: str):
     spec = importlib.util.spec_from_file_location(module_name, script)
     if spec is None or spec.loader is None:
         raise RuntimeError(f"cannot load {filename}")
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
+    module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module); return module
 
 
 def _probe_submission_environment() -> dict:
@@ -263,9 +261,7 @@ def _load_final_submission_gate():
     spec = importlib.util.spec_from_file_location("workflow_final_submission_gate", script)
     if spec is None or spec.loader is None:
         raise RuntimeError("cannot load final_submission_gate.py")
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
+    module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module); return module
 
 
 def _bind_report(report_path: Path, status_field: str, binding_field: str, state: dict, validator) -> dict:
@@ -309,9 +305,12 @@ def record_subagent_review(path: Path, manifest_path: Path) -> dict:
     manifest_path = manifest_path.resolve(); report = _load_subagent_gate().validate_manifest(manifest_path)
     if report.get("status") != "PASS" or report.get("distinct_subagents", 0) < 5:
         raise ValueError("five distinct fresh subagent reviews are required")
+    if report.get("task_id") != state.get("task_id"):
+        raise ValueError("subagent review manifest task_id does not match workflow task_id")
     state["subagent_review_status"] = "PASS"
     state["subagent_review_manifest"] = {"file": str(manifest_path), "sha256": sha256_file(manifest_path),
-                                         "status": "PASS", "distinct_subagents": report["distinct_subagents"]}
+                                         "status": "PASS", "distinct_subagents": report["distinct_subagents"],
+                                         "review_batch_id": report.get("review_batch_id")}
     state["history"].append({"at": now(), "event": "subagent_review_manifest_recorded",
                              "sha256": state["subagent_review_manifest"]["sha256"],
                              "distinct_subagents": report["distinct_subagents"]})
@@ -386,11 +385,18 @@ def assert_submission_complete(state: dict) -> None:
     subagent_report = _load_subagent_gate().validate_manifest(manifest_path)
     if subagent_report.get("status") != "PASS" or subagent_report.get("distinct_subagents", 0) < 5:
         raise ValueError("subagent review manifest no longer passes")
+    if subagent_report.get("task_id") != state.get("task_id"):
+        raise ValueError("subagent review manifest no longer belongs to this workflow task")
     if state.get("final_submission_status") != "PASS":
         raise ValueError("submission_package COMPLETE requires PASS FINAL_SUBMISSION_GATE")
     gate_path = _assert_bound_file_current(state.get("final_submission_gate"), "final submission gate")
-    gate = read_json(gate_path)
-    _validate_final_submission_report(gate)
+    _validate_final_submission_report(read_json(gate_path))
+
+
+def _invalidate_submission_evidence(state: dict) -> None:
+    if state.get("deliverable_mode") == "submission_package":
+        if state.get("subagent_review_status") == "PASS": state["subagent_review_status"] = "STALE"
+        if state.get("final_submission_status") == "PASS": state["final_submission_status"] = "STALE"
 
 
 def transition(path: Path, target: str, next_skill: str | None, evidence_status: str | None) -> dict:
@@ -413,6 +419,8 @@ def transition(path: Path, target: str, next_skill: str | None, evidence_status:
         raise ValueError("DELIVERING requires PASS or PARTIAL evidence")
     if target == "COMPLETE" and state["deliverable_mode"] == "submission_package":
         assert_submission_complete(state)
+    elif state["deliverable_mode"] == "submission_package" and current == "REVIEWING":
+        _invalidate_submission_evidence(state)
     state["stage"], state["next_skill"], state["evidence_status"] = target, next_skill, new_evidence
     state["history"].append({"at": now(), "event": "transition", "from": current, "to": target})
     write_json(path, state); return state
@@ -432,12 +440,6 @@ def approve(path: Path, decision_path: Path) -> dict:
     decision = dict(decision); decision.setdefault("decided_at", now()); state["model_approval"] = decision
     state["history"].append({"at": now(), "event": "model_approval_recorded", "routes": routes})
     write_json(path, state); return state
-
-
-def _invalidate_submission_evidence(state: dict) -> None:
-    if state.get("deliverable_mode") == "submission_package":
-        if state.get("subagent_review_status") == "PASS": state["subagent_review_status"] = "STALE"
-        if state.get("final_submission_status") == "PASS": state["final_submission_status"] = "STALE"
 
 
 def amend(path: Path, reason: str, affected: list[str], semantic: bool = False) -> dict:
