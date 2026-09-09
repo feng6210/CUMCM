@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/cumcm/subagent_review_manifest.schema.json",
+  "title": "CUMCM Submission Subagent Review Manifest",
+  "type": "object",
+  "required": ["schema_version", "status", "reviews"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "status": {"const": "PASS"},
+    "reviews": {
+      "type": "array",
+      "minItems": 5,
+      "items": {
+        "type": "object",
+        "required": [
+          "role", "agent_id", "agent_kind", "fresh_context", "invocation_id",
+          "decision", "reviewed_artifacts", "blocking_findings", "receipt"
+        ],
+        "properties": {
+          "role": {
+            "enum": [
+              "semantics_math", "numerical_claims", "figure_visual",
+              "paper_structure", "final_submission"
+            ]
+          },
+          "agent_id": {"type": "string", "minLength": 1},
+          "agent_kind": {"const": "subagent"},
+          "fresh_context": {"const": true},
+          "invocation_id": {"type": "string", "minLength": 1},
+          "decision": {"const": "PASS"},
+          "reviewed_artifacts": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": ["file", "sha256"],
+              "properties": {
+                "file": {"type": "string", "minLength": 1},
+                "sha256": {"type": "string", "pattern": "^[0-9a-fA-F]{64}$"}
+              },
+              "additionalProperties": true
+            }
+          },
+          "blocking_findings": {"type": "array", "maxItems": 0},
+          "receipt": {
+            "type": "object",
+            "required": ["file", "sha256"],
+            "properties": {
+              "file": {"type": "string", "minLength": 1},
+              "sha256": {"type": "string", "pattern": "^[0-9a-fA-F]{64}$"}
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": true
+}
