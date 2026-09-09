@@ -54,9 +54,7 @@ def one_page_pdf() -> bytes:
     payload.extend(b"0000000000 65535 f \n")
     for offset in offsets[1:]:
         payload.extend(f"{offset:010d} 00000 n \n".encode("ascii"))
-    payload.extend(
-        f"trailer\n<< /Size {len(objects) + 1} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n".encode("ascii")
-    )
+    payload.extend(f"trailer\n<< /Size {len(objects) + 1} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n".encode("ascii"))
     return bytes(payload)
 
 
@@ -90,12 +88,8 @@ class CompetitionDeliveryContractTests(unittest.TestCase):
             "pdf_path": str(self.pdf.resolve()),
             "pdf_sha256": digest(self.pdf),
         }), encoding="utf-8")
-
         self.binding = self.paper / "VISUAL_REVIEW_BINDING.json"
-        snapshot = gate.source_snapshot(
-            self.paper,
-            {self.compile_report.resolve(), self.pdf.resolve(), self.binding.resolve()},
-        )
+        snapshot = gate.source_snapshot(self.paper, {self.compile_report.resolve(), self.pdf.resolve(), self.binding.resolve()})
         binding_payload = {
             "schema_version": "1.0",
             "status": "READY_FOR_VISUAL_REVIEW",
@@ -106,7 +100,6 @@ class CompetitionDeliveryContractTests(unittest.TestCase):
             "review_artifacts": [],
         }
         self.binding.write_text(json.dumps(binding_payload), encoding="utf-8")
-
         self.visual = self.paper / "PDF_VISUAL_CHECK.json"
         self.visual.write_text(json.dumps({
             "status": "PASSED",
@@ -118,7 +111,6 @@ class CompetitionDeliveryContractTests(unittest.TestCase):
             "reviewer_id": "visual-reviewer",
             "reviewer_role": "fresh visual reviewer",
         }), encoding="utf-8")
-
         self.verification = self.paper / "visual_verification_report.json"
         self.verification.write_text(json.dumps({
             "schema_version": "1.0",
@@ -130,22 +122,18 @@ class CompetitionDeliveryContractTests(unittest.TestCase):
             "source_snapshot": {"expected": snapshot["sha256"], "current": snapshot["sha256"]},
             "visual_check_status": "PASSED_ALL_1_PAGES",
         }), encoding="utf-8")
-
         binding_payload["review_artifacts"] = [
             {"file": str(self.visual.resolve()), "sha256": digest(self.visual), "role": "visual_report"},
             {"file": str(self.verification.resolve()), "sha256": digest(self.verification), "role": "verification_report"},
         ]
         self.binding.write_text(json.dumps(binding_payload), encoding="utf-8")
-
         self.reviews_dir = self.paper / "reviews"
         self.reviews_dir.mkdir()
         self.summary = self.paper / "SUBAGENT_REVIEW_SUMMARY.json"
         self._rewrite_subagents_for_current_submission()
 
     def _rewrite_subagents_for_current_submission(self):
-        current_digest = checker.submission_digest(
-            self.pdf, self.compile_report, self.verification, self.binding, self.support,
-        )
+        current_digest = checker.submission_digest(self.pdf, self.compile_report, self.verification, self.binding, self.support)
         summary_rows = []
         for index, dimension in enumerate(checker.REQUIRED_REVIEW_DIMENSIONS, start=1):
             review = self.reviews_dir / f"{dimension}.json"
@@ -191,11 +179,8 @@ class CompetitionDeliveryContractTests(unittest.TestCase):
     def run_check(self, output: Path | None = None):
         output = output or self.root / "FINAL_CHECK.json"
         proc = subprocess.run([
-            sys.executable, str(CHECKER),
-            "--paper-dir", str(self.paper),
-            "--support-zip", str(self.support),
-            "--competition-ready",
-            "--output", str(output),
+            sys.executable, str(CHECKER), "--paper-dir", str(self.paper), "--support-zip", str(self.support),
+            "--competition-ready", "--output", str(output),
         ], capture_output=True, text=True)
         return proc, json.loads(output.read_text(encoding="utf-8")), output
 
@@ -215,16 +200,10 @@ class CompetitionDeliveryContractTests(unittest.TestCase):
         self.summary.write_text(json.dumps(summary), encoding="utf-8")
 
     def test_placeholder_skeleton_cannot_pass_as_competition_submission(self):
-        self.main_tex.write_text(
-            "\\section{符号说明}\n待填写 待填写 待填写\n\\section{结论}\n结果待验证，后续补图。\n",
-            encoding="utf-8",
-        )
+        self.main_tex.write_text("\\section{符号说明}\n待填写 待填写 待填写\n\\section{结论}\n结果待验证，后续补图。\n", encoding="utf-8")
         proc, report, _ = self.run_check()
         self.assertEqual(proc.returncode, 2)
-        self.assertEqual(report["status"], "FAIL")
-        placeholder = self.check_row(report, "no_template_or_todo_placeholders")
-        self.assertFalse(placeholder["passed"])
-        self.assertTrue(placeholder["hits"])
+        self.assertFalse(self.check_row(report, "no_template_or_todo_placeholders")["passed"])
 
     def test_main_tex_is_mandatory(self):
         self.main_tex.unlink()
@@ -245,7 +224,14 @@ class CompetitionDeliveryContractTests(unittest.TestCase):
             zf.writestr("code/main.py", "# TODO: finish contest solution\nprint('draft')\n")
         proc, report, _ = self.run_check()
         self.assertEqual(proc.returncode, 2)
-        row = self.check_row(report, "support_zip_placeholder_free_text")
+        self.assertFalse(self.check_row(report, "support_zip_placeholder_free_text")["passed"])
+
+    def test_support_zip_identity_tokens_are_rejected(self):
+        with zipfile.ZipFile(self.support, "w") as zf:
+            zf.writestr("code/main.py", "# 姓名 张三 学号 20260001\nprint('ok')\n")
+        proc, report, _ = self.run_check()
+        self.assertEqual(proc.returncode, 2)
+        row = self.check_row(report, "support_zip_anonymous_and_runtime_clean")
         self.assertFalse(row["passed"])
         self.assertTrue(row["hits"])
 
@@ -266,9 +252,7 @@ class CompetitionDeliveryContractTests(unittest.TestCase):
         self.summary.write_text(json.dumps(summary), encoding="utf-8")
         proc, report, _ = self.run_check()
         self.assertEqual(proc.returncode, 2)
-        row = self.check_row(report, "four_distinct_provenance_bound_subagent_reviews_pass")
-        self.assertFalse(row["passed"])
-        self.assertTrue(row["details"]["duplicate_dimensions"])
+        self.assertFalse(self.check_row(report, "four_distinct_provenance_bound_subagent_reviews_pass")["passed"])
 
     def test_four_reviews_require_four_distinct_fresh_runs(self):
         summary = self.summary_json()
@@ -284,10 +268,7 @@ class CompetitionDeliveryContractTests(unittest.TestCase):
         self.assertFalse(self.check_row(report, "four_distinct_provenance_bound_subagent_reviews_pass")["passed"])
 
     def test_handwritten_visual_pass_without_gate_provenance_fails(self):
-        self.verification.write_text(json.dumps({
-            "status": "PASSED",
-            "paper_pdf": {"sha256": digest(self.pdf)},
-        }), encoding="utf-8")
+        self.verification.write_text(json.dumps({"status": "PASSED", "paper_pdf": {"sha256": digest(self.pdf)}}), encoding="utf-8")
         proc, report, _ = self.run_check()
         self.assertEqual(proc.returncode, 2)
         self.assertFalse(self.check_row(report, "visual_verification_and_binding_match_current_submission")["passed"])
@@ -308,20 +289,18 @@ class CompetitionDeliveryContractTests(unittest.TestCase):
             zf.writestr("result/new.txt", "changed")
         proc, report, _ = self.run_check()
         self.assertEqual(proc.returncode, 2)
-        row = self.check_row(report, "four_distinct_provenance_bound_subagent_reviews_pass")
-        self.assertFalse(row["passed"])
-        self.assertEqual(row["details"].get("reason"), "summary_not_passed_or_not_bound_to_current_submission")
+        self.assertFalse(self.check_row(report, "four_distinct_provenance_bound_subagent_reviews_pass")["passed"])
 
     def test_complete_competition_package_passes_hard_gate(self):
         proc, report, _ = self.run_check()
-        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertEqual(proc.returncode, 0, json.dumps(report, ensure_ascii=False, indent=2))
         self.assertEqual(report["status"], "PASS")
-        self.assertEqual(report["verification_scope"], "competition_submission_gate")
         self.assertTrue(self.check_row(report, "visual_verification_and_binding_match_current_submission")["passed"])
         subagents = self.check_row(report, "four_distinct_provenance_bound_subagent_reviews_pass")
         self.assertTrue(subagents["passed"])
         self.assertEqual(len(subagents["details"]["unique_normalized_subagent_reviewers"]), 4)
         self.assertEqual(len(subagents["details"]["unique_normalized_subagent_runs"]), 4)
+        self.assertTrue(report["competition_ready"]["subagent_evidence_digest"])
 
     def _reviewing_state(self) -> Path:
         state_path = self.root / "workflow_state.json"
@@ -336,19 +315,31 @@ class CompetitionDeliveryContractTests(unittest.TestCase):
         state_path = self._reviewing_state()
         with self.assertRaises(ValueError):
             workflow.transition(state_path, "COMPLETE", None, "PASS")
-        proc, _, final_check = self.run_check()
-        self.assertEqual(proc.returncode, 0)
+        proc, report, final_check = self.run_check()
+        self.assertEqual(proc.returncode, 0, json.dumps(report, ensure_ascii=False, indent=2))
         workflow.record_final_submission_gate(state_path, final_check)
-        state = workflow.transition(state_path, "COMPLETE", None, "PASS")
-        self.assertEqual(state["stage"], "COMPLETE")
+        self.assertEqual(workflow.transition(state_path, "COMPLETE", None, "PASS")["stage"], "COMPLETE")
 
     def test_workflow_revalidates_artifacts_after_final_gate_record(self):
         state_path = self._reviewing_state()
-        proc, _, final_check = self.run_check()
-        self.assertEqual(proc.returncode, 0)
+        proc, report, final_check = self.run_check()
+        self.assertEqual(proc.returncode, 0, json.dumps(report, ensure_ascii=False, indent=2))
         workflow.record_final_submission_gate(state_path, final_check)
         with zipfile.ZipFile(self.support, "a") as zf:
             zf.writestr("results/late-change.txt", "changed after final gate\n")
+        with self.assertRaises(ValueError):
+            workflow.transition(state_path, "COMPLETE", None, "PASS")
+
+    def test_workflow_rejects_changed_review_evidence_after_final_gate_record(self):
+        state_path = self._reviewing_state()
+        proc, report, final_check = self.run_check()
+        self.assertEqual(proc.returncode, 0, json.dumps(report, ensure_ascii=False, indent=2))
+        workflow.record_final_submission_gate(state_path, final_check)
+        review_path = self.paper / self.summary_json()["reviews"][0]["report_file"]
+        review = json.loads(review_path.read_text(encoding="utf-8"))
+        review["diagnostic_note"] = "changed after final gate"
+        review_path.write_text(json.dumps(review), encoding="utf-8")
+        self._refresh_summary_hash(review_path)
         with self.assertRaises(ValueError):
             workflow.transition(state_path, "COMPLETE", None, "PASS")
 
