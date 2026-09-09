@@ -35,8 +35,15 @@
             "minItems": 1,
             "items": {
               "type": "object",
-              "required": ["file", "sha256"],
+              "required": ["kind", "file", "sha256"],
               "properties": {
+                "kind": {
+                  "enum": [
+                    "question_decomposition", "problem_semantics", "paper_pdf",
+                    "result_evidence_map", "figure_plan", "visual_verification",
+                    "paper_source", "support_zip", "submission_manifest", "compile_report"
+                  ]
+                },
                 "file": {"type": "string", "minLength": 1},
                 "sha256": {"type": "string", "pattern": "^[0-9a-fA-F]{64}$"}
               },
