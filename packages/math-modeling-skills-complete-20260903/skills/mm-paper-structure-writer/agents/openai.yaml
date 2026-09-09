@@ -2,6 +2,6 @@ interface:
   display_name: "数学建模：论文结构"
   short_description: "按题意、共享内核和读者任务组织紧凑的 CUMCM LaTeX 论文。"
   brand_color: "#2563EB"
-  default_prompt: "请使用 $mm-paper-structure-writer 先核对 PROBLEM_SEMANTICS 与结果口径，再建立 NARRATIVE_MAP 和 FIGURE_PLAN。论文默认中文 CUMCM LaTeX、competition_compact，按本题数学结构组织叙事，不固定段落链；工程日志和完整版本记录进入支撑材料，科学失败和适用范围不能隐藏。关键词默认整行加粗，正式模板优先。先清点已有图表，不设固定图数；示意图黑线黑字白底，结果图可采用鲜明配色与有真实坐标的二维/三维组合。修订后重查声明、图注和实际 PDF，旧审查不得直接换哈希续用。"
+  default_prompt: "请使用 $mm-paper-structure-writer 先核对 PROBLEM_SEMANTICS 与结果口径，再建立 NARRATIVE_MAP 和 FIGURE_PLAN。论文默认中文 CUMCM LaTeX、competition_compact，按本题数学结构组织叙事，不固定段落链；工程日志和完整版本记录进入支撑材料，科学失败和适用范围不能隐藏。关键词默认整行加粗，正式模板优先。先清点已有图表，不设固定图数；示意图黑线黑字白底，结果图可采用鲜明配色与有真实坐标的二维/三维组合。若用户要求最终论文、参赛文件、正式提交或 deliverable_mode=cumcm_latex_paper/submission_package，则禁止仅输出 PAPER_PLAN、骨架或带占位符 PDF：必须填写完整正文、符号表、逐问结果与结论、图表和支撑材料清单，并交给总控执行 FULL_SUBMISSION 契约。待填写/TODO/TBD/FIXME/PLACEHOLDER 任一残留都不是可交付论文。最终审查必须由 fresh subagent 执行，不允许作者自查代替；平台没有 subagent 时应 BLOCKED_CAPABILITY。修订后重查声明、图注和实际 PDF，旧审查不得直接换哈希续用。"
 policy:
   allow_implicit_invocation: true
