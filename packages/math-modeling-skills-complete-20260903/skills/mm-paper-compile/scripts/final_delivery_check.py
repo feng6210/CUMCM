@@ -7,6 +7,7 @@ package must not be reported as a final submission.
 from __future__ import annotations
 
 import argparse
+import ast
 import hashlib
 import importlib.util
 import json
@@ -16,6 +17,7 @@ from pathlib import Path
 
 
 MAX_BYTES = 20 * 1024 * 1024
+MAX_INSPECTED_TEXT_BYTES = 8 * 1024 * 1024
 IDENTITY_TOKENS = ("学号", "姓名", "school", "university", "logo")
 FORBIDDEN_TOKENS = ("aris_repo",)
 PLACEHOLDER_PATTERNS = (
@@ -85,6 +87,72 @@ def placeholder_patterns_in_text(text: str, *, tex_like: bool = False) -> list[s
     return [pattern for pattern in PLACEHOLDER_PATTERNS if re.search(pattern, text, flags=re.IGNORECASE)]
 
 
+def source_program_is_substantive(filename: str, text: str) -> bool:
+    """Reject whitespace/comment-only source and require Python/notebook parseability."""
+    suffix = Path(filename).suffix.lower()
+    if not text.strip():
+        return False
+    if suffix == ".py":
+        try:
+            tree = ast.parse(text)
+        except SyntaxError:
+            return False
+        meaningful = (
+            ast.Assign, ast.AnnAssign, ast.AugAssign, ast.FunctionDef, ast.AsyncFunctionDef,
+            ast.ClassDef, ast.Import, ast.ImportFrom, ast.For, ast.AsyncFor, ast.While,
+            ast.If, ast.With, ast.AsyncWith, ast.Try, ast.Return, ast.Raise, ast.Assert,
+        )
+        for node in tree.body:
+            if isinstance(node, meaningful):
+                return True
+            if isinstance(node, ast.Expr) and not isinstance(node.value, ast.Constant):
+                return True
+        return False
+    if suffix == ".ipynb":
+        try:
+            payload = json.loads(text)
+        except json.JSONDecodeError:
+            return False
+        if not isinstance(payload, dict) or not isinstance(payload.get("cells"), list):
+            return False
+        for cell in payload["cells"]:
+            if not isinstance(cell, dict) or cell.get("cell_type") != "code":
+                continue
+            source = cell.get("source", "")
+            code = "".join(source) if isinstance(source, list) else source if isinstance(source, str) else ""
+            if substantive_generic_source(code):
+                return True
+        return False
+    return substantive_generic_source(text)
+
+
+def substantive_generic_source(text: str) -> bool:
+    in_block_comment = False
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+        if in_block_comment:
+            if "*/" in line:
+                in_block_comment = False
+                line = line.split("*/", 1)[1].strip()
+                if not line:
+                    continue
+            else:
+                continue
+        if line.startswith("/*"):
+            if "*/" not in line[2:]:
+                in_block_comment = True
+                continue
+            line = line.split("*/", 1)[1].strip()
+            if not line:
+                continue
+        if line.startswith(("#", "%", "//", "*")):
+            continue
+        return len(re.sub(r"\s+", "", line)) >= 3
+    return False
+
+
 def placeholder_hits(paper: Path, excluded: set[Path] | None = None) -> list[dict]:
     excluded_resolved = {path.resolve() for path in (excluded or set())}
     hits: list[dict] = []
@@ -116,6 +184,7 @@ def inspect_support_zip(archive: Path | None) -> dict:
         "source_program_members": [],
         "placeholder_hits": [],
         "identity_hits": [],
+        "uninspected_text_members": [],
     }
     if archive is None or not archive.is_file():
         return result
@@ -128,18 +197,22 @@ def inspect_support_zip(archive: Path | None) -> dict:
                     continue
                 result["meaningful_members"].append(info.filename)
                 suffix = Path(info.filename).suffix.lower()
-                if suffix in SOURCE_PROGRAM_SUFFIXES:
+                if suffix not in TEXT_SUFFIXES:
+                    continue
+                if info.file_size > MAX_INSPECTED_TEXT_BYTES:
+                    result["uninspected_text_members"].append({"path": info.filename, "bytes": info.file_size})
+                    continue
+                try:
+                    text = zf.read(info).decode("utf-8", errors="replace")
+                except (KeyError, OSError, RuntimeError):
+                    result["uninspected_text_members"].append({"path": info.filename, "reason": "unreadable"})
+                    continue
+                if suffix in SOURCE_PROGRAM_SUFFIXES and source_program_is_substantive(info.filename, text):
                     result["source_program_members"].append(info.filename)
-                if suffix in TEXT_SUFFIXES and info.file_size <= 8 * 1024 * 1024:
-                    try:
-                        text = zf.read(info).decode("utf-8", errors="replace")
-                    except (KeyError, OSError, RuntimeError):
-                        result["placeholder_hits"].append({"path": info.filename, "pattern": "unreadable"})
-                        continue
-                    for pattern in placeholder_patterns_in_text(text, tex_like=suffix in TEX_LIKE_SUFFIXES):
-                        result["placeholder_hits"].append({"path": info.filename, "pattern": pattern})
-                    for token in identity_tokens_in_text(text):
-                        result["identity_hits"].append({"path": info.filename, "token": token})
+                for pattern in placeholder_patterns_in_text(text, tex_like=suffix in TEX_LIKE_SUFFIXES):
+                    result["placeholder_hits"].append({"path": info.filename, "pattern": pattern})
+                for token in identity_tokens_in_text(text):
+                    result["identity_hits"].append({"path": info.filename, "token": token})
     except (OSError, zipfile.BadZipFile):
         return result
     return result
@@ -345,7 +418,7 @@ def validate_subagent_review(path: Path, paper: Path, expected_digest: str) -> t
             and report.get("origin") == "subagent"
             and report.get("independent_of_authorship") is True
             and report.get("submission_digest") == expected_digest
-            and report.get("blocking_findings") in ([], None)
+            and report.get("blocking_findings") == []
             and invocation.get("kind") == "subagent"
             and invocation.get("fresh_context") is True
             and bool(run_norm)
@@ -406,7 +479,8 @@ def main() -> int:
         checks.append({"check": "main_tex_required", "passed": main_tex.is_file() and not main_tex.is_symlink()})
         checks.append({"check": "final_check_output_outside_paper", "passed": not output_path.is_relative_to(paper)})
         checks.append({"check": "support_zip_required_for_competition", "passed": archive is not None and support["exists"] and support["reopens"] and bool(support["meaningful_members"])})
-        checks.append({"check": "support_zip_contains_source_program", "passed": bool(support["source_program_members"]), "members": support["source_program_members"]})
+        checks.append({"check": "support_zip_contains_substantive_source_program", "passed": bool(support["source_program_members"]), "members": support["source_program_members"]})
+        checks.append({"check": "support_zip_text_fully_inspected", "passed": not support["uninspected_text_members"], "uninspected": support["uninspected_text_members"]})
         checks.append({"check": "support_zip_placeholder_free_text", "passed": not support["placeholder_hits"], "hits": support["placeholder_hits"]})
         checks.append({"check": "support_zip_anonymous_and_runtime_clean", "passed": not support["identity_hits"], "hits": support["identity_hits"]})
 
@@ -481,7 +555,7 @@ def main() -> int:
         "verification_scope": "competition_submission_gate" if args.competition_ready else "structural_delivery_checks_only",
         "pdf_path": str(pdf),
         "pdf_sha256": sha256(pdf) if pdf.is_file() else None,
-        "support_zip_verification": "meaningful_payload_placeholder_and_anonymity_scan" if args.competition_ready and archive else "container_readability_only" if archive else "not_requested",
+        "support_zip_verification": "substantive_source_full_text_placeholder_and_anonymity_scan" if args.competition_ready and archive else "container_readability_only" if archive else "not_requested",
         "source_package_recompiled": False,
         "experiment_reproduced": False,
         "competition_ready": competition_details,
