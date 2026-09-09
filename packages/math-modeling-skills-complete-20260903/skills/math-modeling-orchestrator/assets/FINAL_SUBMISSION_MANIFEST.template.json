@@ -11,6 +11,10 @@
     "file": "paper/main.pdf",
     "sha256": "REPLACE_WITH_ACTUAL_SHA256"
   },
+  "visual_binding": {
+    "file": "paper/VISUAL_REVIEW_BINDING.json",
+    "sha256": "REPLACE_WITH_ACTUAL_SHA256"
+  },
   "support_zip": {
     "file": "submission/support.zip",
     "sha256": "REPLACE_WITH_ACTUAL_SHA256"
