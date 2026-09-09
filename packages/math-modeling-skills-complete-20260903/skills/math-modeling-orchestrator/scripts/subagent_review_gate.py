@@ -15,6 +15,18 @@ REQUIRED_ROLES = {
     "paper_structure",
     "final_submission",
 }
+ARTIFACT_KINDS = {
+    "question_decomposition", "problem_semantics", "paper_pdf", "result_evidence_map",
+    "figure_plan", "visual_verification", "paper_source", "support_zip",
+    "submission_manifest", "compile_report",
+}
+REQUIRED_ARTIFACT_KINDS = {
+    "semantics_math": {"question_decomposition", "problem_semantics", "paper_pdf"},
+    "numerical_claims": {"paper_pdf", "result_evidence_map"},
+    "figure_visual": {"paper_pdf", "figure_plan", "visual_verification"},
+    "paper_structure": {"paper_pdf", "paper_source"},
+    "final_submission": {"paper_pdf", "support_zip", "submission_manifest", "compile_report", "visual_verification"},
+}
 
 
 def sha256(path: Path) -> str:
@@ -40,9 +52,10 @@ def load_json(path: Path) -> dict:
 def reviewed_artifacts_digest(artifacts: list[dict]) -> str:
     normalized = []
     for row in artifacts:
-        if not isinstance(row, dict) or not isinstance(row.get("file"), str) or not isinstance(row.get("sha256"), str):
+        if (not isinstance(row, dict) or not isinstance(row.get("kind"), str)
+                or not isinstance(row.get("file"), str) or not isinstance(row.get("sha256"), str)):
             raise ValueError("invalid reviewed artifact record for digest")
-        normalized.append({"file": row["file"], "sha256": row["sha256"].lower()})
+        normalized.append({"kind": row["kind"], "file": row["file"], "sha256": row["sha256"].lower()})
     raw = json.dumps(normalized, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
     return hashlib.sha256(raw).hexdigest()
 
@@ -129,14 +142,25 @@ def validate_manifest(manifest_path: Path) -> dict:
         artifacts = review.get("reviewed_artifacts")
         if not isinstance(artifacts, list) or not artifacts:
             raise ValueError(f"{role}: at least one reviewed artifact is required")
+        kinds: set[str] = set()
         for row in artifacts:
-            if not isinstance(row, dict) or not isinstance(row.get("file"), str):
+            if (not isinstance(row, dict) or not isinstance(row.get("kind"), str)
+                    or not isinstance(row.get("file"), str)):
                 raise ValueError(f"{role}: invalid reviewed artifact record")
+            kind = row["kind"]
+            if kind not in ARTIFACT_KINDS:
+                raise ValueError(f"{role}: unknown reviewed artifact kind: {kind}")
+            if kind in kinds:
+                raise ValueError(f"{role}: duplicate reviewed artifact kind: {kind}")
+            kinds.add(kind)
             artifact = resolve(base, row["file"])
             if not artifact.is_file() or artifact.is_symlink():
                 raise ValueError(f"{role}: reviewed artifact missing: {artifact}")
             if sha256(artifact).lower() != str(row.get("sha256", "")).lower():
                 raise ValueError(f"{role}: reviewed artifact hash mismatch: {artifact.name}")
+        missing_kinds = REQUIRED_ARTIFACT_KINDS[role] - kinds
+        if missing_kinds:
+            raise ValueError(f"{role}: missing required reviewed artifact kinds: " + ", ".join(sorted(missing_kinds)))
 
         receipt = review.get("receipt")
         if not isinstance(receipt, dict) or not isinstance(receipt.get("file"), str):
@@ -150,12 +174,6 @@ def validate_manifest(manifest_path: Path) -> dict:
     if missing:
         raise ValueError("missing mandatory subagent roles: " + ", ".join(sorted(missing)))
 
-    final_artifacts = by_role["final_submission"]["reviewed_artifacts"]
-    if not any(str(row.get("file", "")).lower().endswith(".pdf") for row in final_artifacts):
-        raise ValueError("final_submission subagent must review the actual final PDF")
-    if not any(str(row.get("file", "")).lower().endswith(".zip") for row in final_artifacts):
-        raise ValueError("final_submission subagent must review the actual support ZIP")
-
     return {
         "schema_version": "1.0",
         "status": "PASS",
@@ -164,6 +182,7 @@ def validate_manifest(manifest_path: Path) -> dict:
         "manifest": str(manifest_path),
         "manifest_sha256": sha256(manifest_path),
         "required_roles": sorted(REQUIRED_ROLES),
+        "required_artifact_kinds": {role: sorted(kinds) for role, kinds in REQUIRED_ARTIFACT_KINDS.items()},
         "distinct_subagents": len(agent_ids),
         "self_review_accepted": False,
         "same_family_cross_review_accepted": False,
