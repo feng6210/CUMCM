@@ -147,12 +147,8 @@ def initialize(path: Path, task_id: str, scope: str, task_mode: str, deliverable
         raise FileExistsError(f"state already exists: {path}")
     submission = deliverable_mode == "submission_package"
     state = {
-        "schema_version": "3.1",
-        "task_id": task_id,
-        "scope": scope,
-        "stage": "NEW",
-        "task_mode": task_mode,
-        "deliverable_mode": deliverable_mode,
+        "schema_version": "3.1", "task_id": task_id, "scope": scope, "stage": "NEW",
+        "task_mode": task_mode, "deliverable_mode": deliverable_mode,
         "reporting_profile": default_reporting_profile(task_mode),
         "competition_policy_status": "PENDING" if task_mode == "live_contest" else "NOT_REQUIRED",
         "competition_policy": None,
@@ -162,27 +158,14 @@ def initialize(path: Path, task_id: str, scope: str, task_mode: str, deliverable
         "subagent_review_manifest": None,
         "final_submission_status": "PENDING" if submission else "NOT_REQUIRED",
         "final_submission_gate": None,
-        "output_language": "zh-CN",
-        "paper_profile": "cumcm-2026-electronic",
-        "paper_format": "latex",
-        "latex_engine": "xelatex",
-        "problem_parts": [],
-        "inputs": [],
-        "assumptions": [],
-        "claims": [],
-        "artifacts": [],
-        "problem_semantics": None,
-        "baseline_result": None,
-        "benchmark_challenge": None,
-        "experiment_plan": None,
-        "run_manifest": None,
-        "paper_claim_audit_status": "NOT_EVALUATED",
-        "citation_audit_status": "NOT_EVALUATED",
-        "compile_status": "NOT_EVALUATED",
-        "result_to_claim_status": "NOT_EVALUATED",
-        "evidence_status": "NOT_EVALUATED",
-        "unresolved": [],
-        "stale_artifacts": [],
+        "output_language": "zh-CN", "paper_profile": "cumcm-2026-electronic",
+        "paper_format": "latex", "latex_engine": "xelatex", "problem_parts": [],
+        "inputs": [], "assumptions": [], "claims": [], "artifacts": [],
+        "problem_semantics": None, "baseline_result": None, "benchmark_challenge": None,
+        "experiment_plan": None, "run_manifest": None,
+        "paper_claim_audit_status": "NOT_EVALUATED", "citation_audit_status": "NOT_EVALUATED",
+        "compile_status": "NOT_EVALUATED", "result_to_claim_status": "NOT_EVALUATED",
+        "evidence_status": "NOT_EVALUATED", "unresolved": [], "stale_artifacts": [],
         "next_skill": "environment_preflight" if submission else "mm-problem-decomposer",
         "model_approval": None,
         "history": [{"at": now(), "event": "initialized", "stage": "NEW"}],
@@ -212,9 +195,7 @@ def validate_competition_policy(policy_path: Path) -> dict:
 
 
 def record_competition_policy(path: Path, policy_path: Path) -> dict:
-    state = read_json(path)
-    validate_state(state)
-    policy_path = policy_path.resolve()
+    state = read_json(path); validate_state(state); policy_path = policy_path.resolve()
     policy = validate_competition_policy(policy_path)
     if state["task_mode"] == "live_contest" and policy.get("stage") != "live_contest":
         raise ValueError("live_contest workflow requires a live_contest competition policy")
@@ -229,8 +210,7 @@ def record_competition_policy(path: Path, policy_path: Path) -> dict:
     }
     state["history"].append({"at": now(), "event": "competition_policy_recorded", "status": "VALIDATED",
                              "policy_sha256": state["competition_policy"]["sha256"]})
-    write_json(path, state)
-    return state
+    write_json(path, state); return state
 
 
 def assert_competition_policy_current(state: dict) -> dict:
@@ -243,8 +223,10 @@ def assert_competition_policy_current(state: dict) -> dict:
     if not isinstance(file_value, str) or not file_value or not isinstance(expected_hash, str):
         raise ValueError("validated competition policy binding is incomplete")
     policy_path = Path(file_value)
-    if not policy_path.is_file() or sha256_file(policy_path) != expected_hash:
-        raise ValueError("bound COMPETITION_POLICY is missing or changed; revalidate before continuing")
+    if not policy_path.is_file():
+        raise ValueError("bound COMPETITION_POLICY file is missing; revalidate policy before continuing")
+    if sha256_file(policy_path) != expected_hash:
+        raise ValueError("bound COMPETITION_POLICY changed after validation; revalidate policy before continuing")
     return binding
 
 
@@ -258,9 +240,7 @@ def assert_live_contest_ai_use_allowed(state: dict) -> dict:
 
 
 def _bind_report(report_path: Path, status_field: str, binding_field: str, state: dict, validator) -> dict:
-    report_path = report_path.resolve()
-    report = read_json(report_path)
-    validator(report)
+    report_path = report_path.resolve(); report = read_json(report_path); validator(report)
     state[status_field] = "PASS"
     state[binding_field] = {"file": str(report_path), "sha256": sha256_file(report_path), "status": "PASS"}
     state["history"].append({"at": now(), "event": binding_field + "_recorded", "sha256": state[binding_field]["sha256"]})
@@ -268,8 +248,7 @@ def _bind_report(report_path: Path, status_field: str, binding_field: str, state
 
 
 def record_environment_preflight(path: Path, report_path: Path) -> dict:
-    state = read_json(path)
-    validate_state(state)
+    state = read_json(path); validate_state(state)
     if state["deliverable_mode"] != "submission_package":
         raise ValueError("environment preflight binding is mandatory only for submission_package")
     def validate(report: dict) -> None:
@@ -278,9 +257,7 @@ def record_environment_preflight(path: Path, report_path: Path) -> dict:
         if report.get("installation_performed") is not False:
             raise ValueError("preflight report must be read-only; install separately then rerun")
     state = _bind_report(report_path, "environment_preflight_status", "environment_preflight", state, validate)
-    state["next_skill"] = "mm-problem-decomposer"
-    write_json(path, state)
-    return state
+    state["next_skill"] = "mm-problem-decomposer"; write_json(path, state); return state
 
 
 def _load_subagent_gate():
@@ -288,20 +265,16 @@ def _load_subagent_gate():
     spec = importlib.util.spec_from_file_location("workflow_subagent_gate", script)
     if spec is None or spec.loader is None:
         raise RuntimeError("cannot load subagent_review_gate.py")
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
+    module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module); return module
 
 
 def record_subagent_review(path: Path, manifest_path: Path) -> dict:
-    state = read_json(path)
-    validate_state(state)
+    state = read_json(path); validate_state(state)
     if state["deliverable_mode"] != "submission_package":
         raise ValueError("mandatory subagent manifest applies to submission_package")
     if state["task_mode"] == "live_contest":
         assert_live_contest_ai_use_allowed(state)
-    manifest_path = manifest_path.resolve()
-    report = _load_subagent_gate().validate_manifest(manifest_path)
+    manifest_path = manifest_path.resolve(); report = _load_subagent_gate().validate_manifest(manifest_path)
     if report.get("status") != "PASS" or report.get("distinct_subagents", 0) < 5:
         raise ValueError("five distinct fresh subagent reviews are required")
     state["subagent_review_status"] = "PASS"
@@ -310,21 +283,18 @@ def record_subagent_review(path: Path, manifest_path: Path) -> dict:
     state["history"].append({"at": now(), "event": "subagent_review_manifest_recorded",
                              "sha256": state["subagent_review_manifest"]["sha256"],
                              "distinct_subagents": report["distinct_subagents"]})
-    write_json(path, state)
-    return state
+    write_json(path, state); return state
 
 
 def record_final_submission(path: Path, report_path: Path) -> dict:
-    state = read_json(path)
-    validate_state(state)
+    state = read_json(path); validate_state(state)
     if state["deliverable_mode"] != "submission_package":
         raise ValueError("final submission gate binding applies to submission_package")
     def validate(report: dict) -> None:
         if report.get("status") != "PASS" or report.get("competition_ready") is not True:
             raise ValueError("FINAL_SUBMISSION_GATE must PASS with competition_ready=true")
     state = _bind_report(report_path, "final_submission_status", "final_submission_gate", state, validate)
-    write_json(path, state)
-    return state
+    write_json(path, state); return state
 
 
 def _assert_bound_file_current(binding: object, name: str) -> Path:
@@ -363,20 +333,16 @@ def assert_submission_complete(state: dict) -> None:
     gate = read_json(gate_path)
     if gate.get("status") != "PASS" or gate.get("competition_ready") is not True:
         raise ValueError("final submission gate no longer passes")
-    pdf_path = Path(str(gate.get("paper_pdf", "")))
-    expected_pdf_hash = gate.get("paper_pdf_sha256")
+    pdf_path = Path(str(gate.get("paper_pdf", ""))); expected_pdf_hash = gate.get("paper_pdf_sha256")
     if not pdf_path.is_file() or not isinstance(expected_pdf_hash, str) or sha256_file(pdf_path) != expected_pdf_hash:
         raise ValueError("final competition PDF changed after final submission gate")
-    zip_path = Path(str(gate.get("support_zip", "")))
-    expected_zip_hash = gate.get("support_zip_sha256")
+    zip_path = Path(str(gate.get("support_zip", ""))); expected_zip_hash = gate.get("support_zip_sha256")
     if not zip_path.is_file() or not isinstance(expected_zip_hash, str) or sha256_file(zip_path) != expected_zip_hash:
         raise ValueError("support ZIP changed after final submission gate")
 
 
 def transition(path: Path, target: str, next_skill: str | None, evidence_status: str | None) -> dict:
-    state = read_json(path)
-    validate_state(state)
-    current = state["stage"]
+    state = read_json(path); validate_state(state); current = state["stage"]
     if target not in ALLOWED[current]:
         raise ValueError(f"transition not allowed: {current} -> {target}")
     if state["deliverable_mode"] == "submission_package" and target == "INPUT_REGISTERED":
@@ -397,72 +363,53 @@ def transition(path: Path, target: str, next_skill: str | None, evidence_status:
         assert_submission_complete(state)
     state["stage"], state["next_skill"], state["evidence_status"] = target, next_skill, new_evidence
     state["history"].append({"at": now(), "event": "transition", "from": current, "to": target})
-    write_json(path, state)
-    return state
+    write_json(path, state); return state
 
 
 def approve(path: Path, decision_path: Path) -> dict:
-    state = read_json(path)
-    validate_state(state)
+    state = read_json(path); validate_state(state)
     if state["stage"] != "AWAITING_MODEL_APPROVAL":
         raise ValueError("approval is accepted only at AWAITING_MODEL_APPROVAL")
-    decision = read_json(decision_path)
-    routes, claims = decision.get("selected_routes"), decision.get("approved_claim_scope")
+    decision = read_json(decision_path); routes, claims = decision.get("selected_routes"), decision.get("approved_claim_scope")
     if decision.get("approved") is not True:
         raise ValueError("decision.approved must be true")
     if not isinstance(routes, dict) or not routes or not all(isinstance(k, str) and isinstance(v, str) and v for k, v in routes.items()):
         raise ValueError("selected_routes must be a non-empty object of non-empty strings")
     if not isinstance(claims, list) or not claims or not all(isinstance(item, str) and item for item in claims):
         raise ValueError("approved_claim_scope must be a non-empty string array")
-    decision = dict(decision)
-    decision.setdefault("decided_at", now())
-    state["model_approval"] = decision
+    decision = dict(decision); decision.setdefault("decided_at", now()); state["model_approval"] = decision
     state["history"].append({"at": now(), "event": "model_approval_recorded", "routes": routes})
-    write_json(path, state)
-    return state
+    write_json(path, state); return state
 
 
 def _invalidate_submission_evidence(state: dict) -> None:
     if state.get("deliverable_mode") == "submission_package":
-        if state.get("subagent_review_status") == "PASS":
-            state["subagent_review_status"] = "STALE"
-        if state.get("final_submission_status") == "PASS":
-            state["final_submission_status"] = "STALE"
+        if state.get("subagent_review_status") == "PASS": state["subagent_review_status"] = "STALE"
+        if state.get("final_submission_status") == "PASS": state["final_submission_status"] = "STALE"
 
 
 def amend(path: Path, reason: str, affected: list[str], semantic: bool = False) -> dict:
-    state = read_json(path)
-    validate_state(state)
+    state = read_json(path); validate_state(state)
     if not reason.strip() or not affected:
         raise ValueError("amendment requires a reason and affected artifacts")
-    state["stage"] = "SEMANTICS_REVIEW" if semantic else "INNOVATION_PROPOSED"
-    state["model_approval"] = None
+    state["stage"] = "SEMANTICS_REVIEW" if semantic else "INNOVATION_PROPOSED"; state["model_approval"] = None
     if semantic:
-        state["problem_semantics"] = None
-        state["baseline_result"] = None
-        state["benchmark_challenge"] = None
-        state["evidence_status"] = "NOT_EVALUATED"
-        state["result_to_claim_status"] = "NOT_EVALUATED"
+        state["problem_semantics"] = None; state["baseline_result"] = None; state["benchmark_challenge"] = None
+        state["evidence_status"] = "NOT_EVALUATED"; state["result_to_claim_status"] = "NOT_EVALUATED"
     _invalidate_submission_evidence(state)
     state["stale_artifacts"] = sorted(set(state["stale_artifacts"]) | set(affected))
     state["history"].append({"at": now(), "event": "plan_amended", "reason": reason, "affected": affected, "semantic": semantic})
-    write_json(path, state)
-    return state
+    write_json(path, state); return state
 
 
 def mark_stale(path: Path, artifacts: list[str], reason: str) -> dict:
-    state = read_json(path)
-    validate_state(state)
-    if not artifacts:
-        raise ValueError("at least one artifact is required")
+    state = read_json(path); validate_state(state)
+    if not artifacts: raise ValueError("at least one artifact is required")
     state["stale_artifacts"] = sorted(set(state["stale_artifacts"]) | set(artifacts))
-    state["paper_claim_audit_status"] = "STALE"
-    state["citation_audit_status"] = "STALE"
-    state["compile_status"] = "STALE"
+    state["paper_claim_audit_status"] = "STALE"; state["citation_audit_status"] = "STALE"; state["compile_status"] = "STALE"
     _invalidate_submission_evidence(state)
     state["history"].append({"at": now(), "event": "artifacts_marked_stale", "reason": reason, "artifacts": artifacts})
-    write_json(path, state)
-    return state
+    write_json(path, state); return state
 
 
 def emit(value: dict) -> None:
@@ -472,73 +419,39 @@ def emit(value: dict) -> None:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Create and enforce a fail-closed mathematical-modeling workflow state.")
     sub = parser.add_subparsers(dest="command", required=True)
-    init = sub.add_parser("init")
-    init.add_argument("--state", type=Path, required=True)
-    init.add_argument("--task-id", required=True)
-    init.add_argument("--scope", default="")
-    init.add_argument("--task-mode", choices=TASK_MODES, default="training")
+    init = sub.add_parser("init"); init.add_argument("--state", type=Path, required=True); init.add_argument("--task-id", required=True)
+    init.add_argument("--scope", default=""); init.add_argument("--task-mode", choices=TASK_MODES, default="training")
     init.add_argument("--deliverable-mode", choices=DELIVERABLE_MODES, default="analysis")
-    show = sub.add_parser("show")
-    show.add_argument("--state", type=Path, required=True)
-    move = sub.add_parser("transition")
-    move.add_argument("--state", type=Path, required=True)
-    move.add_argument("--to", choices=STAGES, required=True)
-    move.add_argument("--next-skill")
-    move.add_argument("--evidence-status", choices=EVIDENCE)
-    policy = sub.add_parser("set-competition-policy")
-    policy.add_argument("--state", type=Path, required=True)
-    policy.add_argument("--policy-file", type=Path, required=True)
-    preflight = sub.add_parser("set-environment-preflight")
-    preflight.add_argument("--state", type=Path, required=True)
-    preflight.add_argument("--report-file", type=Path, required=True)
-    subagents = sub.add_parser("set-subagent-review")
-    subagents.add_argument("--state", type=Path, required=True)
-    subagents.add_argument("--manifest-file", type=Path, required=True)
-    final = sub.add_parser("set-final-submission")
-    final.add_argument("--state", type=Path, required=True)
-    final.add_argument("--report-file", type=Path, required=True)
-    approval = sub.add_parser("approve-model")
-    approval.add_argument("--state", type=Path, required=True)
-    approval.add_argument("--decision-file", type=Path, required=True)
-    amendment = sub.add_parser("amend-plan")
-    amendment.add_argument("--state", type=Path, required=True)
-    amendment.add_argument("--reason", required=True)
-    amendment.add_argument("--affected", nargs="+", required=True)
-    amendment.add_argument("--semantic", action="store_true")
-    stale = sub.add_parser("mark-stale")
-    stale.add_argument("--state", type=Path, required=True)
-    stale.add_argument("--reason", required=True)
-    stale.add_argument("--artifacts", nargs="+", required=True)
+    show = sub.add_parser("show"); show.add_argument("--state", type=Path, required=True)
+    move = sub.add_parser("transition"); move.add_argument("--state", type=Path, required=True); move.add_argument("--to", choices=STAGES, required=True)
+    move.add_argument("--next-skill"); move.add_argument("--evidence-status", choices=EVIDENCE)
+    policy = sub.add_parser("set-competition-policy"); policy.add_argument("--state", type=Path, required=True); policy.add_argument("--policy-file", type=Path, required=True)
+    preflight = sub.add_parser("set-environment-preflight"); preflight.add_argument("--state", type=Path, required=True); preflight.add_argument("--report-file", type=Path, required=True)
+    subagents = sub.add_parser("set-subagent-review"); subagents.add_argument("--state", type=Path, required=True); subagents.add_argument("--manifest-file", type=Path, required=True)
+    final = sub.add_parser("set-final-submission"); final.add_argument("--state", type=Path, required=True); final.add_argument("--report-file", type=Path, required=True)
+    approval = sub.add_parser("approve-model"); approval.add_argument("--state", type=Path, required=True); approval.add_argument("--decision-file", type=Path, required=True)
+    amendment = sub.add_parser("amend-plan"); amendment.add_argument("--state", type=Path, required=True); amendment.add_argument("--reason", required=True)
+    amendment.add_argument("--affected", nargs="+", required=True); amendment.add_argument("--semantic", action="store_true")
+    stale = sub.add_parser("mark-stale"); stale.add_argument("--state", type=Path, required=True); stale.add_argument("--reason", required=True); stale.add_argument("--artifacts", nargs="+", required=True)
     return parser
 
 
 def main() -> int:
     args = build_parser().parse_args()
     try:
-        if args.command == "init":
-            emit(initialize(args.state, args.task_id, args.scope, args.task_mode, args.deliverable_mode))
-        elif args.command == "show":
-            state = read_json(args.state); validate_state(state); emit(state)
-        elif args.command == "transition":
-            emit(transition(args.state, args.to, args.next_skill, args.evidence_status))
-        elif args.command == "set-competition-policy":
-            emit(record_competition_policy(args.state, args.policy_file))
-        elif args.command == "set-environment-preflight":
-            emit(record_environment_preflight(args.state, args.report_file))
-        elif args.command == "set-subagent-review":
-            emit(record_subagent_review(args.state, args.manifest_file))
-        elif args.command == "set-final-submission":
-            emit(record_final_submission(args.state, args.report_file))
-        elif args.command == "approve-model":
-            emit(approve(args.state, args.decision_file))
-        elif args.command == "amend-plan":
-            emit(amend(args.state, args.reason, args.affected, args.semantic))
-        else:
-            emit(mark_stale(args.state, args.artifacts, args.reason))
+        if args.command == "init": emit(initialize(args.state, args.task_id, args.scope, args.task_mode, args.deliverable_mode))
+        elif args.command == "show": state = read_json(args.state); validate_state(state); emit(state)
+        elif args.command == "transition": emit(transition(args.state, args.to, args.next_skill, args.evidence_status))
+        elif args.command == "set-competition-policy": emit(record_competition_policy(args.state, args.policy_file))
+        elif args.command == "set-environment-preflight": emit(record_environment_preflight(args.state, args.report_file))
+        elif args.command == "set-subagent-review": emit(record_subagent_review(args.state, args.manifest_file))
+        elif args.command == "set-final-submission": emit(record_final_submission(args.state, args.report_file))
+        elif args.command == "approve-model": emit(approve(args.state, args.decision_file))
+        elif args.command == "amend-plan": emit(amend(args.state, args.reason, args.affected, args.semantic))
+        else: emit(mark_stale(args.state, args.artifacts, args.reason))
         return 0
     except (OSError, ValueError, RuntimeError, json.JSONDecodeError) as error:
-        print(f"workflow state error: {error}", file=os.sys.stderr)
-        return 2
+        print(f"workflow state error: {error}", file=os.sys.stderr); return 2
 
 
 if __name__ == "__main__":
