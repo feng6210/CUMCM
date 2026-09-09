@@ -4,13 +4,15 @@
   "title": "CUMCM Final Submission Manifest",
   "type": "object",
   "required": [
-    "schema_version", "status", "deliverable_mode", "paper_pdf", "support_zip",
-    "question_completion"
+    "schema_version", "status", "deliverable_mode", "question_decomposition",
+    "expected_question_ids_field", "paper_pdf", "support_zip", "question_completion"
   ],
   "properties": {
     "schema_version": {"const": "1.0"},
     "status": {"const": "READY"},
     "deliverable_mode": {"const": "submission_package"},
+    "question_decomposition": {"$ref": "#/$defs/artifact"},
+    "expected_question_ids_field": {"const": "expected_question_ids"},
     "paper_pdf": {"$ref": "#/$defs/artifact"},
     "support_zip": {"$ref": "#/$defs/artifact"},
     "question_completion": {
