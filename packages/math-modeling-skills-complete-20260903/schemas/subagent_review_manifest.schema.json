@@ -3,10 +3,12 @@
   "$id": "https://example.local/cumcm/subagent_review_manifest.schema.json",
   "title": "CUMCM Submission Subagent Review Manifest",
   "type": "object",
-  "required": ["schema_version", "status", "reviews"],
+  "required": ["schema_version", "status", "task_id", "review_batch_id", "reviews"],
   "properties": {
     "schema_version": {"const": "1.0"},
     "status": {"const": "PASS"},
+    "task_id": {"type": "string", "minLength": 1},
+    "review_batch_id": {"type": "string", "minLength": 1},
     "reviews": {
       "type": "array",
       "minItems": 5,
