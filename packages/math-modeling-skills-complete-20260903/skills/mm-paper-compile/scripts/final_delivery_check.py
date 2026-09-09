@@ -55,12 +55,16 @@ def load_visual_gate():
     return module
 
 
+def identity_tokens_in_text(text: str) -> list[str]:
+    lowered = text.lower()
+    return [token for token in IDENTITY_TOKENS + FORBIDDEN_TOKENS if token.lower() in lowered]
+
+
 def scan_text(path: Path) -> list[str]:
     try:
-        text = path.read_text(encoding="utf-8", errors="replace").lower()
+        return identity_tokens_in_text(path.read_text(encoding="utf-8", errors="replace"))
     except OSError:
         return ["unreadable"]
-    return [token for token in IDENTITY_TOKENS + FORBIDDEN_TOKENS if token.lower() in text]
 
 
 def strip_tex_comments(text: str) -> str:
@@ -111,6 +115,7 @@ def inspect_support_zip(archive: Path | None) -> dict:
         "meaningful_members": [],
         "source_program_members": [],
         "placeholder_hits": [],
+        "identity_hits": [],
     }
     if archive is None or not archive.is_file():
         return result
@@ -133,6 +138,8 @@ def inspect_support_zip(archive: Path | None) -> dict:
                         continue
                     for pattern in placeholder_patterns_in_text(text, tex_like=suffix in TEX_LIKE_SUFFIXES):
                         result["placeholder_hits"].append({"path": info.filename, "pattern": pattern})
+                    for token in identity_tokens_in_text(text):
+                        result["identity_hits"].append({"path": info.filename, "token": token})
     except (OSError, zipfile.BadZipFile):
         return result
     return result
@@ -253,6 +260,21 @@ def submission_digest(pdf: Path, compile_report: Path, visual_verification: Path
         "support_zip_sha256": sha256(support_zip),
     }
     canonical = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return hashlib.sha256(canonical).hexdigest()
+
+
+def artifact_set_digest(paths: set[Path], base: Path) -> str | None:
+    rows: list[dict] = []
+    base = base.resolve()
+    for path in sorted({p.resolve() for p in paths}, key=str):
+        if not path.is_file() or path.is_symlink():
+            return None
+        try:
+            name = path.relative_to(base).as_posix()
+        except ValueError:
+            name = str(path)
+        rows.append({"path": name, "sha256": sha256(path)})
+    canonical = json.dumps(rows, sort_keys=True, separators=(",", ":")).encode("utf-8")
     return hashlib.sha256(canonical).hexdigest()
 
 
@@ -382,9 +404,11 @@ def main() -> int:
     if args.competition_ready:
         main_tex = paper / "main.tex"
         checks.append({"check": "main_tex_required", "passed": main_tex.is_file() and not main_tex.is_symlink()})
+        checks.append({"check": "final_check_output_outside_paper", "passed": not output_path.is_relative_to(paper)})
         checks.append({"check": "support_zip_required_for_competition", "passed": archive is not None and support["exists"] and support["reopens"] and bool(support["meaningful_members"])})
         checks.append({"check": "support_zip_contains_source_program", "passed": bool(support["source_program_members"]), "members": support["source_program_members"]})
         checks.append({"check": "support_zip_placeholder_free_text", "passed": not support["placeholder_hits"], "hits": support["placeholder_hits"]})
+        checks.append({"check": "support_zip_anonymous_and_runtime_clean", "passed": not support["identity_hits"], "hits": support["identity_hits"]})
 
         compile_report = (args.compile_report if args.compile_report.is_absolute() else paper / args.compile_report).resolve()
         visual_report = (args.visual_verification if args.visual_verification.is_absolute() else paper / args.visual_verification).resolve()
@@ -400,6 +424,13 @@ def main() -> int:
             validate_subagent_review(subagent_report, paper, digest) if isinstance(digest, str)
             else (False, {"reason": "submission_digest_inputs_missing"}, {subagent_report})
         )
+        subagent_evidence_digest = artifact_set_digest(subagent_paths, paper)
+        if subagent_evidence_digest is None:
+            subagent_ok = False
+            subagent_details = dict(subagent_details)
+            subagent_details["evidence_digest_error"] = "one or more review evidence files are missing, symlinked, or unreadable"
+        subagent_details = dict(subagent_details)
+        subagent_details["subagent_evidence_digest"] = subagent_evidence_digest
 
         verification_payload = load_json(visual_report) or {}
         visual_row = verification_payload.get("visual_report") if isinstance(verification_payload.get("visual_report"), dict) else {}
@@ -437,6 +468,7 @@ def main() -> int:
             "visual_binding_sha256": sha256(binding) if binding.is_file() else None,
             "subagent_review": str(subagent_report),
             "subagent_review_sha256": sha256(subagent_report) if subagent_report.is_file() else None,
+            "subagent_evidence_digest": subagent_evidence_digest,
             "source_snapshot_sha256": visual_details.get("source_snapshot_sha256") if isinstance(visual_details, dict) else None,
             "submission_digest": digest,
             "skeleton_or_placeholder_delivery_allowed": False,
@@ -449,7 +481,7 @@ def main() -> int:
         "verification_scope": "competition_submission_gate" if args.competition_ready else "structural_delivery_checks_only",
         "pdf_path": str(pdf),
         "pdf_sha256": sha256(pdf) if pdf.is_file() else None,
-        "support_zip_verification": "meaningful_payload_and_placeholder_scan" if args.competition_ready and archive else "container_readability_only" if archive else "not_requested",
+        "support_zip_verification": "meaningful_payload_placeholder_and_anonymity_scan" if args.competition_ready and archive else "container_readability_only" if archive else "not_requested",
         "source_package_recompiled": False,
         "experiment_reproduced": False,
         "competition_ready": competition_details,
