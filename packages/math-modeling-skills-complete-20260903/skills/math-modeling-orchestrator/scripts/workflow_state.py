@@ -239,6 +239,35 @@ def assert_live_contest_ai_use_allowed(state: dict) -> dict:
     return binding
 
 
+def _load_local_module(filename: str, module_name: str):
+    script = Path(__file__).resolve().parent / filename
+    spec = importlib.util.spec_from_file_location(module_name, script)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"cannot load {filename}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def _probe_submission_environment() -> dict:
+    return _load_local_module("environment_preflight.py", "workflow_environment_preflight").probe("submission_package")
+
+
+def _load_subagent_gate():
+    return _load_local_module("subagent_review_gate.py", "workflow_subagent_gate")
+
+
+def _load_final_submission_gate():
+    package = Path(__file__).resolve().parents[3]
+    script = package / "skills" / "mm-paper-compile" / "scripts" / "final_submission_gate.py"
+    spec = importlib.util.spec_from_file_location("workflow_final_submission_gate", script)
+    if spec is None or spec.loader is None:
+        raise RuntimeError("cannot load final_submission_gate.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 def _bind_report(report_path: Path, status_field: str, binding_field: str, state: dict, validator) -> dict:
     report_path = report_path.resolve(); report = read_json(report_path); validator(report)
     state[status_field] = "PASS"
@@ -247,25 +276,28 @@ def _bind_report(report_path: Path, status_field: str, binding_field: str, state
     return state
 
 
+def _validate_submission_preflight_report(report: dict) -> None:
+    if report.get("status") != "PASS" or report.get("profile") != "submission_package" or report.get("full_submission_ready") is not True:
+        raise ValueError("submission_package requires PASS full_submission_ready environment preflight")
+    if report.get("installation_performed") is not False:
+        raise ValueError("preflight report must be read-only; install separately then rerun")
+
+
+def _assert_host_submission_environment() -> None:
+    current = _probe_submission_environment()
+    if current.get("status") != "PASS" or current.get("full_submission_ready") is not True:
+        missing = current.get("missing", [])
+        raise ValueError("current host is not full-submission-ready; rerun environment preflight after resolving: " + ", ".join(map(str, missing)))
+
+
 def record_environment_preflight(path: Path, report_path: Path) -> dict:
     state = read_json(path); validate_state(state)
     if state["deliverable_mode"] != "submission_package":
         raise ValueError("environment preflight binding is mandatory only for submission_package")
-    def validate(report: dict) -> None:
-        if report.get("status") != "PASS" or report.get("profile") != "submission_package" or report.get("full_submission_ready") is not True:
-            raise ValueError("submission_package requires PASS full_submission_ready environment preflight")
-        if report.get("installation_performed") is not False:
-            raise ValueError("preflight report must be read-only; install separately then rerun")
-    state = _bind_report(report_path, "environment_preflight_status", "environment_preflight", state, validate)
+    _assert_host_submission_environment()
+    state = _bind_report(report_path, "environment_preflight_status", "environment_preflight", state,
+                         _validate_submission_preflight_report)
     state["next_skill"] = "mm-problem-decomposer"; write_json(path, state); return state
-
-
-def _load_subagent_gate():
-    script = Path(__file__).resolve().parent / "subagent_review_gate.py"
-    spec = importlib.util.spec_from_file_location("workflow_subagent_gate", script)
-    if spec is None or spec.loader is None:
-        raise RuntimeError("cannot load subagent_review_gate.py")
-    module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module); return module
 
 
 def record_subagent_review(path: Path, manifest_path: Path) -> dict:
@@ -286,14 +318,42 @@ def record_subagent_review(path: Path, manifest_path: Path) -> dict:
     write_json(path, state); return state
 
 
+def _recompute_final_submission(report: dict) -> dict:
+    required_paths = (
+        "paper_dir", "workflow_state", "submission_manifest", "subagent_manifest",
+        "compile_report", "visual_verification_report", "support_zip",
+    )
+    missing = [name for name in required_paths if not isinstance(report.get(name), str) or not report[name]]
+    if missing:
+        raise ValueError("FINAL_SUBMISSION_GATE is missing revalidation paths: " + ", ".join(missing))
+    recomputed = _load_final_submission_gate().check_submission(
+        Path(report["paper_dir"]), Path(report["workflow_state"]), Path(report["submission_manifest"]),
+        Path(report["subagent_manifest"]), Path(report["compile_report"]),
+        Path(report["visual_verification_report"]), Path(report["support_zip"]),
+    )
+    if recomputed.get("status") != "PASS" or recomputed.get("competition_ready") is not True:
+        raise ValueError("FINAL_SUBMISSION_GATE recomputation failed; current artifacts are not competition-ready")
+    return recomputed
+
+
+def _validate_final_submission_report(report: dict) -> None:
+    if report.get("status") != "PASS" or report.get("competition_ready") is not True:
+        raise ValueError("FINAL_SUBMISSION_GATE must PASS with competition_ready=true")
+    recomputed = _recompute_final_submission(report)
+    for key in ("paper_pdf_sha256", "support_zip_sha256", "submission_manifest_sha256",
+                "subagent_manifest_sha256", "compile_report_sha256", "visual_verification_report_sha256",
+                "question_decomposition_sha256"):
+        if report.get(key) != recomputed.get(key):
+            raise ValueError(f"FINAL_SUBMISSION_GATE {key} does not match current recomputation")
+
+
 def record_final_submission(path: Path, report_path: Path) -> dict:
     state = read_json(path); validate_state(state)
     if state["deliverable_mode"] != "submission_package":
         raise ValueError("final submission gate binding applies to submission_package")
-    def validate(report: dict) -> None:
-        if report.get("status") != "PASS" or report.get("competition_ready") is not True:
-            raise ValueError("FINAL_SUBMISSION_GATE must PASS with competition_ready=true")
-    state = _bind_report(report_path, "final_submission_status", "final_submission_gate", state, validate)
+    _assert_host_submission_environment()
+    state = _bind_report(report_path, "final_submission_status", "final_submission_gate", state,
+                         _validate_final_submission_report)
     write_json(path, state); return state
 
 
@@ -310,9 +370,8 @@ def assert_submission_ready(state: dict) -> None:
     if state.get("environment_preflight_status") != "PASS":
         raise ValueError("submission_package cannot start without PASS environment preflight")
     preflight_path = _assert_bound_file_current(state.get("environment_preflight"), "environment preflight")
-    preflight = read_json(preflight_path)
-    if preflight.get("status") != "PASS" or preflight.get("full_submission_ready") is not True:
-        raise ValueError("environment preflight no longer supports full submission")
+    _validate_submission_preflight_report(read_json(preflight_path))
+    _assert_host_submission_environment()
 
 
 def assert_submission_complete(state: dict) -> None:
@@ -324,21 +383,14 @@ def assert_submission_complete(state: dict) -> None:
     if state.get("subagent_review_status") != "PASS":
         raise ValueError("submission_package COMPLETE requires five fresh subagent reviews")
     manifest_path = _assert_bound_file_current(state.get("subagent_review_manifest"), "subagent review manifest")
-    report = _load_subagent_gate().validate_manifest(manifest_path)
-    if report.get("status") != "PASS" or report.get("distinct_subagents", 0) < 5:
+    subagent_report = _load_subagent_gate().validate_manifest(manifest_path)
+    if subagent_report.get("status") != "PASS" or subagent_report.get("distinct_subagents", 0) < 5:
         raise ValueError("subagent review manifest no longer passes")
     if state.get("final_submission_status") != "PASS":
         raise ValueError("submission_package COMPLETE requires PASS FINAL_SUBMISSION_GATE")
     gate_path = _assert_bound_file_current(state.get("final_submission_gate"), "final submission gate")
     gate = read_json(gate_path)
-    if gate.get("status") != "PASS" or gate.get("competition_ready") is not True:
-        raise ValueError("final submission gate no longer passes")
-    pdf_path = Path(str(gate.get("paper_pdf", ""))); expected_pdf_hash = gate.get("paper_pdf_sha256")
-    if not pdf_path.is_file() or not isinstance(expected_pdf_hash, str) or sha256_file(pdf_path) != expected_pdf_hash:
-        raise ValueError("final competition PDF changed after final submission gate")
-    zip_path = Path(str(gate.get("support_zip", ""))); expected_zip_hash = gate.get("support_zip_sha256")
-    if not zip_path.is_file() or not isinstance(expected_zip_hash, str) or sha256_file(zip_path) != expected_zip_hash:
-        raise ValueError("support ZIP changed after final submission gate")
+    _validate_final_submission_report(gate)
 
 
 def transition(path: Path, target: str, next_skill: str | None, evidence_status: str | None) -> dict:
