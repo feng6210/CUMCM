@@ -1,7 +1,7 @@
 interface:
   display_name: "数学建模：赛题拆解"
-  short_description: "拆解目标、条件、约束，并先审查关键题意歧义。"
+  short_description: "拆解全部分问、目标、条件、约束，并先审查关键题意歧义。"
   brand_color: "#2563EB"
-  default_prompt: "请使用 $mm-problem-decomposer 分析题目：除分问、输入输出和约束外，重点识别会改变数学问题的语义歧义（总和/同时、并集/交集、资源复用、一对一指派、多目标聚合、信息时序），生成 PROBLEM_SEMANTICS 草案和最小正确基线建议。若两种合理解释会改变可行域或最优解结构，不要静默选择，先标记 SEMANTICS_REVIEW。figure_intents 只描述读者哪里需要机制/几何/协同解释，不规定固定图量。"
+  default_prompt: "请使用 $mm-problem-decomposer 分析题目：除分问、输入输出和约束外，重点识别会改变数学问题的语义歧义（总和/同时、并集/交集、资源复用、一对一指派、多目标聚合、信息时序），生成 PROBLEM_SEMANTICS 草案和最小正确基线建议。QUESTION_DECOMPOSITION.json 顶层必须写完整 expected_question_ids，且与 questions[].question_id 无重复、无漏问；若 deliverable_mode=submission_package，这个列表是最终论文逐问覆盖的权威输入，后续不得通过删 question_id 隐藏未完成分问。若两种合理解释会改变可行域或最优解结构，不要静默选择，先标记 SEMANTICS_REVIEW。figure_intents 只描述读者哪里需要机制/几何/协同解释，不规定固定图量。"
 policy:
   allow_implicit_invocation: true
