@@ -3,17 +3,21 @@
 
 The preflight is read-only with respect to installed software: it never installs
 packages or mutates application settings. It may compile a tiny disposable TeX
-fixture inside a temporary directory to prove the current host can actually
-render the Chinese/TikZ paper stack required by ``submission_package``.
+fixture inside a temporary directory. ``submission_package`` also requires an
+externally provisioned Ed25519 public-key trust store for runtime subagent
+receipts; without that external trust anchor the run must block rather than
+self-certify subagent calls.
 """
 from __future__ import annotations
 
 import argparse
+import base64
+import hashlib
 import importlib.metadata
 import importlib.util
 import json
+import os
 import platform
-import re
 import shutil
 import subprocess
 import sys
@@ -23,6 +27,8 @@ from pathlib import Path
 PYTHON_REQUIREMENTS = {
     "yaml": ("PyYAML", "6.0"),
     "jsonschema": ("jsonschema", "4.23"),
+    "packaging": ("packaging", "24.0"),
+    "cryptography": ("cryptography", "43.0"),
     "numpy": ("numpy", "1.26"),
     "pandas": ("pandas", "2.0"),
     "matplotlib": ("matplotlib", "3.8"),
@@ -39,19 +45,26 @@ CJK_FONT_CANDIDATES = (
     "Noto Sans CJK SC", "Noto Serif CJK SC", "Source Han Sans SC", "Source Han Serif SC",
     "Microsoft YaHei", "SimHei", "SimSun", "PingFang SC", "WenQuanYi Zen Hei",
 )
+TRUST_STORE_ENV = "CUMCM_SUBAGENT_TRUST_STORE"
 
 
-def _release_tuple(value: str) -> tuple[int, ...]:
-    """Compare stable minimum versions without adding a packaging dependency."""
-    numbers = re.findall(r"\d+", value)
-    return tuple(int(part) for part in numbers[:4]) if numbers else (0,)
+def sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 def _version_at_least(actual: str, minimum: str) -> bool:
-    left = _release_tuple(actual)
-    right = _release_tuple(minimum)
-    width = max(len(left), len(right))
-    return left + (0,) * (width - len(left)) >= right + (0,) * (width - len(right))
+    try:
+        from packaging.version import InvalidVersion, Version
+    except ImportError:
+        return False
+    try:
+        return Version(actual) >= Version(minimum)
+    except InvalidVersion:
+        return False
 
 
 def module_probe(module_name: str, distribution: str, minimum: str) -> dict:
@@ -75,13 +88,48 @@ def module_probe(module_name: str, distribution: str, minimum: str) -> dict:
     }
 
 
+def trusted_subagent_receipt_probe() -> dict:
+    value = os.environ.get(TRUST_STORE_ENV, "").strip()
+    if not value:
+        return {
+            "ready": False, "file": None, "sha256": None, "issuers": [],
+            "reason": f"{TRUST_STORE_ENV} is not configured by the runtime/user environment",
+        }
+    path = Path(value).expanduser().resolve()
+    if not path.is_file() or path.is_symlink():
+        return {"ready": False, "file": str(path), "sha256": None, "issuers": [],
+                "reason": "trusted subagent receipt store is missing, not regular, or is a symlink"}
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8-sig"))
+        issuers = payload.get("issuers") if isinstance(payload, dict) else None
+        if payload.get("schema_version") != "1.0" or not isinstance(issuers, dict) or not issuers:
+            raise ValueError("trust store needs schema_version 1.0 and non-empty issuers object")
+        valid: list[str] = []
+        from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+        for issuer, row in issuers.items():
+            if not isinstance(issuer, str) or not issuer or not isinstance(row, dict):
+                raise ValueError("invalid issuer record")
+            if row.get("algorithm") != "ed25519" or not isinstance(row.get("public_key_base64"), str):
+                raise ValueError(f"issuer {issuer}: Ed25519 public key required")
+            raw = base64.b64decode(row["public_key_base64"], validate=True)
+            if len(raw) != 32:
+                raise ValueError(f"issuer {issuer}: Ed25519 public key must be 32 bytes")
+            Ed25519PublicKey.from_public_bytes(raw)
+            valid.append(issuer)
+        return {"ready": True, "file": str(path), "sha256": sha256(path), "issuers": sorted(valid),
+                "reason": None, "private_key_expected_in_workspace": False}
+    except (OSError, ValueError, json.JSONDecodeError, ImportError, TypeError) as exc:
+        return {"ready": False, "file": str(path), "sha256": sha256(path) if path.is_file() else None,
+                "issuers": [], "reason": f"trust store invalid: {type(exc).__name__}: {exc}"}
+
+
 def cjk_font_probe(modules: dict[str, dict]) -> dict:
     if not modules.get("matplotlib", {}).get("ready"):
         return {"ready": False, "font": None, "reason": "matplotlib unavailable"}
     try:
         from matplotlib import font_manager
         installed = {font.name for font in font_manager.fontManager.ttflist}
-    except Exception as exc:  # backend/font-cache failures must fail closed for submission rendering
+    except Exception as exc:
         return {"ready": False, "font": None, "reason": f"font probe failed: {type(exc).__name__}: {exc}"}
     for candidate in CJK_FONT_CANDIDATES:
         if candidate in installed:
@@ -90,20 +138,12 @@ def cjk_font_probe(modules: dict[str, dict]) -> dict:
 
 
 def _run(command: list[str], cwd: Path, timeout: int = 45) -> subprocess.CompletedProcess:
-    return subprocess.run(
-        command,
-        cwd=cwd,
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-        timeout=timeout,
-    )
+    return subprocess.run(command, cwd=cwd, capture_output=True, text=True, encoding="utf-8",
+                          errors="replace", timeout=timeout)
 
 
 def latex_smoke_probe(binaries: dict[str, str | None]) -> dict:
-    xelatex = binaries.get("xelatex")
-    pdftoppm = binaries.get("pdftoppm")
+    xelatex = binaries.get("xelatex"); pdftoppm = binaries.get("pdftoppm")
     if not xelatex:
         return {"ready": False, "compiled": False, "page_rendered": False, "reason": "xelatex missing"}
     fixture = r"""\documentclass[UTF8,a4paper]{ctexart}
@@ -114,18 +154,14 @@ def latex_smoke_probe(binaries: dict[str, str | None]) -> dict:
 \end{document}
 """
     with tempfile.TemporaryDirectory(prefix="cumcm-preflight-") as tmp:
-        root = Path(tmp)
-        (root / "preflight.tex").write_text(fixture, encoding="utf-8")
+        root = Path(tmp); (root / "preflight.tex").write_text(fixture, encoding="utf-8")
         try:
             version_proc = _run([xelatex, "--version"], root, timeout=20)
             version_text = (version_proc.stdout + version_proc.stderr)[:1200]
             command = [xelatex]
             if "MiKTeX" in version_text:
                 command.append("--disable-installer")
-            command.extend([
-                "-no-shell-escape", "-interaction=nonstopmode", "-halt-on-error",
-                "preflight.tex",
-            ])
+            command.extend(["-no-shell-escape", "-interaction=nonstopmode", "-halt-on-error", "preflight.tex"])
             compiled = _run(command, root)
         except (OSError, subprocess.TimeoutExpired) as exc:
             return {"ready": False, "compiled": False, "page_rendered": False,
@@ -135,15 +171,11 @@ def latex_smoke_probe(binaries: dict[str, str | None]) -> dict:
             tail = (compiled.stdout + "\n" + compiled.stderr)[-1600:]
             return {"ready": False, "compiled": False, "page_rendered": False,
                     "reason": "XeLaTeX Chinese/TikZ fixture did not compile", "log_tail": tail}
-
-        page_rendered = False
-        render_reason = None
+        page_rendered = False; render_reason = None
         if pdftoppm:
             try:
-                rendered = _run([
-                    pdftoppm, "-f", "1", "-singlefile", "-png", "-r", "72",
-                    str(pdf), str(root / "preview"),
-                ], root)
+                rendered = _run([pdftoppm, "-f", "1", "-singlefile", "-png", "-r", "72",
+                                 str(pdf), str(root / "preview")], root)
                 page_rendered = rendered.returncode == 0 and (root / "preview.png").is_file()
                 if not page_rendered:
                     render_reason = (rendered.stdout + "\n" + rendered.stderr)[-800:]
@@ -151,29 +183,26 @@ def latex_smoke_probe(binaries: dict[str, str | None]) -> dict:
                 render_reason = f"pdftoppm smoke test failed: {type(exc).__name__}: {exc}"
         else:
             render_reason = "pdftoppm missing"
-        return {
-            "ready": bool(page_rendered),
-            "compiled": True,
-            "page_rendered": page_rendered,
-            "xelatex_version": version_text.splitlines()[0] if version_text.strip() else None,
-            "reason": render_reason,
-            "fixture": "ctexart + amsmath + booktabs + longtable + graphicx + tikz",
-            "automatic_installation": False,
-        }
+        return {"ready": bool(page_rendered), "compiled": True, "page_rendered": page_rendered,
+                "xelatex_version": version_text.splitlines()[0] if version_text.strip() else None,
+                "reason": render_reason,
+                "fixture": "ctexart + amsmath + booktabs + longtable + graphicx + tikz",
+                "automatic_installation": False}
 
 
 def probe(profile: str) -> dict:
     if profile not in PROFILES:
         raise ValueError(f"unknown profile: {profile}")
     python_ok = sys.version_info >= (3, 10)
-    modules = {
-        name: module_probe(name, distribution, minimum)
-        for name, (distribution, minimum) in PYTHON_REQUIREMENTS.items()
-    }
+    modules = {name: module_probe(name, distribution, minimum)
+               for name, (distribution, minimum) in PYTHON_REQUIREMENTS.items()}
     binaries = {name: shutil.which(name) for name in PAPER_BINARIES}
     cjk_font = cjk_font_probe(modules)
+    trust = trusted_subagent_receipt_probe() if profile == "submission_package" else {
+        "ready": None, "file": None, "sha256": None, "issuers": [], "reason": "not required for this profile"
+    }
 
-    numeric_names = ("yaml", "jsonschema", "numpy", "pandas", "scipy", "sklearn", "networkx", "openpyxl")
+    numeric_names = ("yaml", "jsonschema", "packaging", "numpy", "pandas", "scipy", "sklearn", "networkx", "openpyxl")
     numeric_ready = python_ok and all(modules[name]["ready"] for name in numeric_names)
     rendering_ready = numeric_ready and all(modules[name]["ready"] for name in ("matplotlib", "PIL", "pypdfium2")) and cjk_font["ready"]
     latex_binary_ready = all(bool(binaries[name]) for name in ("xelatex", "latexmk", "bibtex"))
@@ -183,57 +212,45 @@ def probe(profile: str) -> dict:
     latex_ready = latex_binary_ready and (latex_smoke.get("compiled") is True if need_latex else True)
     paper_review_ready = page_binary_ready and (latex_smoke.get("page_rendered") is True if need_latex else True)
 
-    if profile == "analysis":
-        required_ready = numeric_ready
-    elif profile == "figures":
-        required_ready = rendering_ready
-    elif profile == "cumcm_latex_paper":
-        required_ready = rendering_ready and latex_ready
+    if profile == "analysis": required_ready = numeric_ready
+    elif profile == "figures": required_ready = rendering_ready
+    elif profile == "cumcm_latex_paper": required_ready = rendering_ready and latex_ready
     else:
-        required_ready = rendering_ready and latex_ready and paper_review_ready and latex_smoke.get("ready") is True
+        required_ready = (rendering_ready and latex_ready and paper_review_ready
+                          and latex_smoke.get("ready") is True and modules["cryptography"]["ready"] and trust["ready"] is True)
 
     missing: list[str] = []
-    if not python_ok:
-        missing.append("python>=3.10")
+    if not python_ok: missing.append("python>=3.10")
     required_modules = set(numeric_names)
     if profile in {"figures", "cumcm_latex_paper", "submission_package"}:
         required_modules.update(("matplotlib", "PIL", "pypdfium2"))
+    if profile == "submission_package": required_modules.add("cryptography")
     for name in sorted(required_modules):
         if not modules[name]["ready"]:
-            distribution, minimum = PYTHON_REQUIREMENTS[name]
-            actual = modules[name]["version"]
+            distribution, minimum = PYTHON_REQUIREMENTS[name]; actual = modules[name]["version"]
             missing.append(f"{distribution}>={minimum}" + (f" (found {actual})" if actual else ""))
     if profile in {"figures", "cumcm_latex_paper", "submission_package"} and not cjk_font["ready"]:
         missing.append("CJK font for deterministic figures")
     if need_latex:
         missing.extend(name for name in ("xelatex", "latexmk", "bibtex") if not binaries[name])
-        if not latex_smoke.get("compiled"):
-            missing.append("working ctex/TikZ XeLaTeX stack")
+        if not latex_smoke.get("compiled"): missing.append("working ctex/TikZ XeLaTeX stack")
     if profile == "submission_package":
-        if not binaries["pdftoppm"]:
-            missing.append("pdftoppm")
-        elif not latex_smoke.get("page_rendered"):
-            missing.append("working pdftoppm PDF page rendering")
+        if not binaries["pdftoppm"]: missing.append("pdftoppm")
+        elif not latex_smoke.get("page_rendered"): missing.append("working pdftoppm PDF page rendering")
+        if not trust["ready"]: missing.append("externally provisioned trusted Ed25519 subagent receipt issuer")
 
     return {
-        "schema_version": "1.1",
-        "profile": profile,
+        "schema_version": "1.2", "profile": profile,
         "status": "PASS" if required_ready else "FAIL",
         "full_submission_ready": bool(profile == "submission_package" and required_ready),
         "python": {"version": platform.python_version(), "executable": sys.executable, "ready": python_ok},
-        "modules": modules,
-        "cjk_font": cjk_font,
-        "capabilities": {
-            "numeric": numeric_ready,
-            "deterministic_rendering": rendering_ready,
-            "latex_compile": latex_ready,
-            "paper_page_rendering": paper_review_ready,
-            "latex_smoke": latex_smoke,
-        },
-        "binaries": binaries,
-        "missing": sorted(set(missing)),
-        "installation_performed": False,
-        "note": "Read-only host preflight. Disposable fixture compilation is allowed; no package installation or host configuration is performed.",
+        "modules": modules, "cjk_font": cjk_font, "trusted_subagent_receipts": trust,
+        "capabilities": {"numeric": numeric_ready, "deterministic_rendering": rendering_ready,
+                         "latex_compile": latex_ready, "paper_page_rendering": paper_review_ready,
+                         "latex_smoke": latex_smoke,
+                         "trusted_subagent_receipts": trust["ready"]},
+        "binaries": binaries, "missing": sorted(set(missing)), "installation_performed": False,
+        "note": "Read-only host preflight. Submission mode requires a public-key trust anchor provisioned outside the review manifest; no unsigned subagent fallback is accepted.",
     }
 
 
@@ -241,12 +258,10 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--profile", choices=PROFILES, default="submission_package")
     parser.add_argument("--output", type=Path, default=Path("ENVIRONMENT_PREFLIGHT.json"))
-    args = parser.parse_args()
-    report = probe(args.profile)
+    args = parser.parse_args(); report = probe(args.profile)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    print(json.dumps(report, ensure_ascii=False, indent=2))
-    return 0 if report["status"] == "PASS" else 2
+    print(json.dumps(report, ensure_ascii=False, indent=2)); return 0 if report["status"] == "PASS" else 2
 
 
 if __name__ == "__main__":
