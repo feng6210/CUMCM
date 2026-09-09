@@ -217,7 +217,25 @@ class CompetitionDeliveryContractTests(unittest.TestCase):
         proc, report, _ = self.run_check()
         self.assertEqual(proc.returncode, 2)
         self.assertFalse(self.check_row(report, "support_zip_nonempty")["passed"])
-        self.assertFalse(self.check_row(report, "support_zip_contains_source_program")["passed"])
+        self.assertFalse(self.check_row(report, "support_zip_contains_substantive_source_program")["passed"])
+
+    def test_whitespace_source_program_is_not_substantive(self):
+        with zipfile.ZipFile(self.support, "w") as zf:
+            zf.writestr("code/main.py", " \n\t\n")
+            zf.writestr("results/summary.csv", "item,value\nscore,1\n")
+        proc, report, _ = self.run_check()
+        self.assertEqual(proc.returncode, 2)
+        self.assertFalse(self.check_row(report, "support_zip_contains_substantive_source_program")["passed"])
+
+    def test_oversized_text_member_is_rejected_instead_of_skipped(self):
+        oversized = "print('ok')\n" + ("# filler\n" * ((checker.MAX_INSPECTED_TEXT_BYTES // 9) + 2))
+        with zipfile.ZipFile(self.support, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+            zf.writestr("code/main.py", oversized)
+        proc, report, _ = self.run_check()
+        self.assertEqual(proc.returncode, 2)
+        row = self.check_row(report, "support_zip_text_fully_inspected")
+        self.assertFalse(row["passed"])
+        self.assertTrue(row["uninspected"])
 
     def test_support_zip_placeholder_text_is_rejected(self):
         with zipfile.ZipFile(self.support, "w") as zf:
@@ -263,6 +281,16 @@ class CompetitionDeliveryContractTests(unittest.TestCase):
             review_path.write_text(json.dumps(review), encoding="utf-8")
             row["report_sha256"] = digest(review_path)
         self.summary.write_text(json.dumps(summary), encoding="utf-8")
+        proc, report, _ = self.run_check()
+        self.assertEqual(proc.returncode, 2)
+        self.assertFalse(self.check_row(report, "four_distinct_provenance_bound_subagent_reviews_pass")["passed"])
+
+    def test_passing_review_requires_explicit_empty_blocking_findings(self):
+        review_path = self.paper / self.summary_json()["reviews"][0]["report_file"]
+        review = json.loads(review_path.read_text(encoding="utf-8"))
+        review.pop("blocking_findings")
+        review_path.write_text(json.dumps(review), encoding="utf-8")
+        self._refresh_summary_hash(review_path)
         proc, report, _ = self.run_check()
         self.assertEqual(proc.returncode, 2)
         self.assertFalse(self.check_row(report, "four_distinct_provenance_bound_subagent_reviews_pass")["passed"])
