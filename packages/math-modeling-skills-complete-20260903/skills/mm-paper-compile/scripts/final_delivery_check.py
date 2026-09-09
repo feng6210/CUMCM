@@ -19,9 +19,20 @@ MAX_BYTES = 20 * 1024 * 1024
 IDENTITY_TOKENS = ("学号", "姓名", "school", "university", "logo")
 FORBIDDEN_TOKENS = ("aris_repo",)
 PLACEHOLDER_PATTERNS = (
-    r"待填写", r"待补(?:充|写|全)?", r"\bTODO\b", r"\bTBD\b", r"\bFIXME\b",
-    r"\bPLACEHOLDER\b", r"\[待.*?\]",
+    r"待填写", r"待补(?:充|写|全)?", r"待验证", r"待确认", r"未完成",
+    r"后续(?:补图|补代码|补表|补充|补写|完善|验证)",
+    r"\bTODO\b", r"\bTBD\b", r"\bFIXME\b", r"\bPLACEHOLDER\b", r"\[待.*?\]",
 )
+TEXT_SUFFIXES = {
+    ".tex", ".sty", ".cls", ".bib", ".md", ".txt", ".py", ".m", ".r", ".jl",
+    ".ipynb", ".json", ".yaml", ".yml", ".toml", ".ini", ".cfg", ".csv", ".tsv",
+    ".svg", ".c", ".cc", ".cpp", ".h", ".hpp", ".java", ".js", ".ts", ".ps1", ".sh",
+}
+SOURCE_PROGRAM_SUFFIXES = {
+    ".py", ".m", ".r", ".jl", ".ipynb", ".c", ".cc", ".cpp", ".h", ".hpp",
+    ".java", ".js", ".ts", ".ps1", ".sh",
+}
+TEX_LIKE_SUFFIXES = {".tex", ".sty", ".cls", ".bib"}
 REQUIRED_REVIEW_DIMENSIONS = (
     "semantics_math",
     "numbers_claims",
@@ -64,20 +75,67 @@ def strip_tex_comments(text: str) -> str:
     return "\n".join(lines)
 
 
-def placeholder_hits(paper: Path) -> list[dict]:
+def placeholder_patterns_in_text(text: str, *, tex_like: bool = False) -> list[str]:
+    if tex_like:
+        text = strip_tex_comments(text)
+    return [pattern for pattern in PLACEHOLDER_PATTERNS if re.search(pattern, text, flags=re.IGNORECASE)]
+
+
+def placeholder_hits(paper: Path, excluded: set[Path] | None = None) -> list[dict]:
+    excluded_resolved = {path.resolve() for path in (excluded or set())}
     hits: list[dict] = []
-    for path in sorted(paper.rglob("*.tex")):
-        if "build" in path.parts:
+    for path in sorted(paper.rglob("*"), key=lambda item: item.relative_to(paper).as_posix()):
+        rel = path.relative_to(paper)
+        if rel.parts and rel.parts[0] == "build":
+            continue
+        if path.is_symlink():
+            hits.append({"path": rel.as_posix(), "pattern": "symlink_not_allowed"})
+            continue
+        if not path.is_file() or path.resolve() in excluded_resolved or path.suffix.lower() not in TEXT_SUFFIXES:
             continue
         try:
-            text = strip_tex_comments(path.read_text(encoding="utf-8", errors="replace"))
+            text = path.read_text(encoding="utf-8", errors="replace")
         except OSError:
-            hits.append({"path": str(path.relative_to(paper)), "pattern": "unreadable"})
+            hits.append({"path": rel.as_posix(), "pattern": "unreadable"})
             continue
-        for pattern in PLACEHOLDER_PATTERNS:
-            if re.search(pattern, text, flags=re.IGNORECASE):
-                hits.append({"path": str(path.relative_to(paper)), "pattern": pattern})
+        for pattern in placeholder_patterns_in_text(text, tex_like=path.suffix.lower() in TEX_LIKE_SUFFIXES):
+            hits.append({"path": rel.as_posix(), "pattern": pattern})
     return hits
+
+
+def inspect_support_zip(archive: Path | None) -> dict:
+    result = {
+        "exists": bool(archive and archive.is_file()),
+        "reopens": False,
+        "members": [],
+        "meaningful_members": [],
+        "source_program_members": [],
+        "placeholder_hits": [],
+    }
+    if archive is None or not archive.is_file():
+        return result
+    try:
+        with zipfile.ZipFile(archive) as zf:
+            result["members"] = zf.namelist()
+            result["reopens"] = zf.testzip() is None
+            for info in zf.infolist():
+                if info.is_dir() or info.file_size <= 0:
+                    continue
+                result["meaningful_members"].append(info.filename)
+                suffix = Path(info.filename).suffix.lower()
+                if suffix in SOURCE_PROGRAM_SUFFIXES:
+                    result["source_program_members"].append(info.filename)
+                if suffix in TEXT_SUFFIXES and info.file_size <= 8 * 1024 * 1024:
+                    try:
+                        text = zf.read(info).decode("utf-8", errors="replace")
+                    except (KeyError, OSError, RuntimeError):
+                        result["placeholder_hits"].append({"path": info.filename, "pattern": "unreadable"})
+                        continue
+                    for pattern in placeholder_patterns_in_text(text, tex_like=suffix in TEX_LIKE_SUFFIXES):
+                        result["placeholder_hits"].append({"path": info.filename, "pattern": pattern})
+    except (OSError, zipfile.BadZipFile):
+        return result
+    return result
 
 
 def load_json(path: Path) -> dict | None:
@@ -147,11 +205,21 @@ def validate_visual_provenance(
 
     gate = load_visual_gate()
     try:
+        page_count = gate.compile_paper.pdf_page_count(pdf)
+        semantic_visual = gate.compile_paper.check_visual_report(visual_path, pdf, page_count)
+        if semantic_visual.get("status") != "PASSED":
+            return False, {"reason": "visual_report_semantic_validation_failed", "visual_check": semantic_visual}
         source_guard = gate.bound_source_paths(paper, binding)
         normalized_post = {path.resolve() for path in post_binding_review_paths}
         if source_guard & normalized_post:
             return False, {"reason": "review_artifact_collides_with_bound_paper_source"}
         prior_reviews = gate.bound_review_artifacts(paper, binding)
+        visual_bound = prior_reviews.get(visual_path.resolve())
+        verification_bound = prior_reviews.get(verification_path.resolve())
+        if not isinstance(visual_bound, dict) or visual_bound.get("role") != "visual_report":
+            return False, {"reason": "visual_report_not_recorded_in_binding"}
+        if not isinstance(verification_bound, dict) or verification_bound.get("role") != "verification_report":
+            return False, {"reason": "verification_report_not_recorded_in_binding"}
         excluded = {
             compile_report_path.resolve(), pdf.resolve(), binding_path.resolve(), verification_path.resolve(), visual_path.resolve(),
         } | set(prior_reviews) | normalized_post
@@ -172,6 +240,7 @@ def validate_visual_provenance(
         "compile_report_sha256": compile_hash,
         "source_snapshot_sha256": expected_source,
         "visual_report_sha256": visual_row.get("sha256"),
+        "visual_check": semantic_visual,
     }
 
 
@@ -203,6 +272,7 @@ def validate_subagent_review(path: Path, paper: Path, expected_digest: str) -> t
 
     selected: dict[str, dict] = {}
     reviewer_ids: dict[str, str] = {}
+    run_ids: dict[str, str] = {}
     evidence_paths: set[Path] = {path.resolve()}
     duplicate_dimensions: set[str] = set()
     for row in reviews:
@@ -239,6 +309,12 @@ def validate_subagent_review(path: Path, paper: Path, expected_digest: str) -> t
             continue
         report = load_json(report_path)
         invocation = report.get("invocation") if isinstance(report, dict) and isinstance(report.get("invocation"), dict) else {}
+        run_id = invocation.get("run_id") if isinstance(invocation.get("run_id"), str) else ""
+        run_norm = run_id.strip().casefold()
+        if not run_norm or run_norm in run_ids:
+            valid = False
+        else:
+            run_ids[run_norm] = dimension
         if not isinstance(report, dict) or not (
             report.get("status") == "PASSED"
             and report.get("dimension") == dimension
@@ -249,8 +325,8 @@ def validate_subagent_review(path: Path, paper: Path, expected_digest: str) -> t
             and report.get("submission_digest") == expected_digest
             and report.get("blocking_findings") in ([], None)
             and invocation.get("kind") == "subagent"
-            and isinstance(invocation.get("run_id"), str)
-            and invocation.get("run_id").strip()
+            and invocation.get("fresh_context") is True
+            and bool(run_norm)
         ):
             valid = False
     if payload.get("unresolved_p0_p1") != []:
@@ -260,6 +336,7 @@ def validate_subagent_review(path: Path, paper: Path, expected_digest: str) -> t
         "required_dimensions": sorted(REQUIRED_REVIEW_DIMENSIONS),
         "duplicate_dimensions": sorted(duplicate_dimensions),
         "unique_normalized_subagent_reviewers": sorted(reviewer_ids),
+        "unique_normalized_subagent_runs": sorted(run_ids),
         "unresolved_p0_p1": payload.get("unresolved_p0_p1"),
         "submission_digest": payload.get("submission_digest"),
         "expected_submission_digest": expected_digest,
@@ -279,11 +356,12 @@ def main() -> int:
     ap.add_argument("--subagent-review", type=Path, default=Path("SUBAGENT_REVIEW_SUMMARY.json"))
     args = ap.parse_args()
     paper = args.paper_dir.resolve()
+    output_path = args.output.resolve()
     checks: list[dict] = []
     selected = args.output_pdf if args.output_pdf is not None else Path("main.pdf")
     pdf = (selected if selected.is_absolute() else paper / selected).resolve()
     checks.append({"check": "output_pdf_filename", "passed": pdf.suffix.lower() == ".pdf"})
-    checks.append({"check": "main_pdf_exists", "passed": pdf.is_file()})
+    checks.append({"check": "main_pdf_exists", "passed": pdf.is_file() and not pdf.is_symlink()})
     if pdf.is_file():
         checks.append({"check": "main_pdf_size_le_20mb", "passed": pdf.stat().st_size <= MAX_BYTES, "bytes": pdf.stat().st_size})
     for path in sorted(paper.rglob("*.tex")):
@@ -291,27 +369,22 @@ def main() -> int:
         checks.append({"check": "source_identity_and_runtime_tokens", "path": str(path.relative_to(paper)), "passed": not hits, "hits": hits})
 
     archive = args.support_zip.resolve() if args.support_zip else None
-    members: list[str] = []
+    support = inspect_support_zip(archive)
     if archive is not None:
-        can_open = False
-        try:
-            with zipfile.ZipFile(archive) as zf:
-                members = zf.namelist()
-                can_open = zf.testzip() is None
-        except (OSError, zipfile.BadZipFile):
-            pass
         checks.extend([
-            {"check": "support_zip_exists", "passed": archive.is_file()},
+            {"check": "support_zip_exists", "passed": support["exists"]},
             {"check": "support_zip_size_le_20mb", "passed": archive.is_file() and archive.stat().st_size <= MAX_BYTES, "bytes": archive.stat().st_size if archive.is_file() else None},
-            {"check": "support_zip_reopens", "passed": can_open},
-            {"check": "support_zip_nonempty", "passed": bool(members), "members": members},
+            {"check": "support_zip_reopens", "passed": support["reopens"]},
+            {"check": "support_zip_nonempty", "passed": bool(support["meaningful_members"]), "members": support["meaningful_members"]},
         ])
 
     competition_details: dict | None = None
     if args.competition_ready:
-        placeholders = placeholder_hits(paper)
-        checks.append({"check": "no_template_or_todo_placeholders", "passed": not placeholders, "hits": placeholders})
-        checks.append({"check": "support_zip_required_for_competition", "passed": archive is not None and archive.is_file() and bool(members)})
+        main_tex = paper / "main.tex"
+        checks.append({"check": "main_tex_required", "passed": main_tex.is_file() and not main_tex.is_symlink()})
+        checks.append({"check": "support_zip_required_for_competition", "passed": archive is not None and support["exists"] and support["reopens"] and bool(support["meaningful_members"])})
+        checks.append({"check": "support_zip_contains_source_program", "passed": bool(support["source_program_members"]), "members": support["source_program_members"]})
+        checks.append({"check": "support_zip_placeholder_free_text", "passed": not support["placeholder_hits"], "hits": support["placeholder_hits"]})
 
         compile_report = (args.compile_report if args.compile_report.is_absolute() else paper / args.compile_report).resolve()
         visual_report = (args.visual_verification if args.visual_verification.is_absolute() else paper / args.visual_verification).resolve()
@@ -327,8 +400,25 @@ def main() -> int:
             validate_subagent_review(subagent_report, paper, digest) if isinstance(digest, str)
             else (False, {"reason": "submission_digest_inputs_missing"}, {subagent_report})
         )
+
+        verification_payload = load_json(visual_report) or {}
+        visual_row = verification_payload.get("visual_report") if isinstance(verification_payload.get("visual_report"), dict) else {}
+        actual_visual = resolve_artifact(visual_report.parent, visual_row.get("file"))
+        excluded_from_placeholders = {
+            pdf, compile_report, visual_report, binding, subagent_report, output_path,
+        } | set(subagent_paths)
+        if actual_visual is not None:
+            excluded_from_placeholders.add(actual_visual)
+        if archive is not None:
+            excluded_from_placeholders.add(archive)
+        placeholders = placeholder_hits(paper, excluded_from_placeholders)
+        checks.append({"check": "no_template_or_todo_placeholders", "passed": not placeholders, "hits": placeholders})
+
+        post_binding_paths = set(subagent_paths) | {output_path}
+        if archive is not None:
+            post_binding_paths.add(archive)
         visual_ok, visual_details = validate_visual_provenance(
-            paper, visual_report, binding, compile_report, pdf, subagent_paths,
+            paper, visual_report, binding, compile_report, pdf, post_binding_paths,
         ) if compile_ok else (False, {"reason": "compile_report_not_valid"})
         checks.extend([
             {"check": "visual_verification_and_binding_match_current_submission", "passed": visual_ok, "details": visual_details},
@@ -336,10 +426,18 @@ def main() -> int:
         ])
         competition_details = {
             "mode": "competition_ready",
+            "paper_dir": str(paper),
+            "support_zip": str(archive) if archive is not None else None,
+            "support_zip_sha256": sha256(archive) if archive is not None and archive.is_file() else None,
             "compile_report": str(compile_report),
+            "compile_report_sha256": sha256(compile_report) if compile_report.is_file() else None,
             "visual_verification": str(visual_report),
+            "visual_verification_sha256": sha256(visual_report) if visual_report.is_file() else None,
             "visual_binding": str(binding),
+            "visual_binding_sha256": sha256(binding) if binding.is_file() else None,
             "subagent_review": str(subagent_report),
+            "subagent_review_sha256": sha256(subagent_report) if subagent_report.is_file() else None,
+            "source_snapshot_sha256": visual_details.get("source_snapshot_sha256") if isinstance(visual_details, dict) else None,
             "submission_digest": digest,
             "skeleton_or_placeholder_delivery_allowed": False,
             "author_only_self_review_allowed": False,
@@ -351,12 +449,13 @@ def main() -> int:
         "verification_scope": "competition_submission_gate" if args.competition_ready else "structural_delivery_checks_only",
         "pdf_path": str(pdf),
         "pdf_sha256": sha256(pdf) if pdf.is_file() else None,
-        "support_zip_verification": "container_readability_only" if archive else "not_requested",
+        "support_zip_verification": "meaningful_payload_and_placeholder_scan" if args.competition_ready and archive else "container_readability_only" if archive else "not_requested",
         "source_package_recompiled": False,
         "experiment_reproduced": False,
         "competition_ready": competition_details,
     }
-    args.output.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     return 0 if report["status"] == "PASS" else 2
 
 
