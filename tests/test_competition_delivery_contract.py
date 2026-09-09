@@ -202,7 +202,7 @@ class CompetitionDeliveryContractTests(unittest.TestCase):
         self.assertEqual(proc.returncode, 2)
         row = self.check_row(report, "four_distinct_provenance_bound_subagent_reviews_pass")
         self.assertFalse(row["passed"])
-        self.assertNotEqual(row["details"].get("submission_digest"), row["details"].get("expected_submission_digest"))
+        self.assertEqual(row["details"].get("reason"), "summary_not_passed_or_not_bound_to_current_submission")
 
     def test_complete_competition_package_passes_hard_gate(self):
         proc, report = self.run_check()
