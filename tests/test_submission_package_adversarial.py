@@ -13,6 +13,13 @@ PKG = ROOT / "packages" / "math-modeling-skills-complete-20260903"
 WORKFLOW = PKG / "skills" / "math-modeling-orchestrator" / "scripts" / "workflow_state.py"
 SUBAGENT = PKG / "skills" / "math-modeling-orchestrator" / "scripts" / "subagent_review_gate.py"
 ROLES = ["semantics_math", "numerical_claims", "figure_visual", "paper_structure", "final_submission"]
+ROLE_KINDS = {
+    "semantics_math": ["question_decomposition", "problem_semantics", "paper_pdf"],
+    "numerical_claims": ["paper_pdf", "result_evidence_map"],
+    "figure_visual": ["paper_pdf", "figure_plan", "visual_verification"],
+    "paper_structure": ["paper_pdf", "paper_source"],
+    "final_submission": ["paper_pdf", "support_zip", "submission_manifest", "compile_report", "visual_verification"],
+}
 
 
 def load_module(name: str, path: Path):
@@ -28,11 +35,12 @@ def digest(path: Path) -> str:
 
 
 def write_json(path: Path, payload: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
 def artifact_digest(rows: list[dict]) -> str:
-    normalized = [{"file": row["file"], "sha256": row["sha256"].lower()} for row in rows]
+    normalized = [{"kind": row["kind"], "file": row["file"], "sha256": row["sha256"].lower()} for row in rows]
     raw = json.dumps(normalized, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
     return hashlib.sha256(raw).hexdigest()
 
@@ -41,11 +49,34 @@ def make_manifest(root: Path, pdf: Path) -> Path:
     support = root / "support.zip"
     with zipfile.ZipFile(support, "w") as archive:
         archive.writestr("README.txt", "support")
+    paper = root / "paper"; paper.mkdir(exist_ok=True)
+    sources = {
+        "question_decomposition": root / "QUESTION_DECOMPOSITION.json",
+        "problem_semantics": root / "PROBLEM_SEMANTICS.yaml",
+        "paper_pdf": pdf,
+        "result_evidence_map": root / "result_evidence_map.json",
+        "figure_plan": root / "FIGURE_PLAN.yaml",
+        "visual_verification": paper / "visual_verification_report.json",
+        "paper_source": paper / "main.tex",
+        "support_zip": support,
+        "submission_manifest": root / "FINAL_SUBMISSION_MANIFEST.json",
+        "compile_report": paper / "compile_report.json",
+    }
+    write_json(sources["question_decomposition"], {"expected_question_ids": ["Q1"]})
+    sources["problem_semantics"].write_text("question_id: Q1\nselected_interpretation: S1\n", encoding="utf-8")
+    write_json(sources["result_evidence_map"], {"Q1": {"status": "PASS"}})
+    sources["figure_plan"].write_text("schema_version: '1.0'\nfigures: []\n", encoding="utf-8")
+    write_json(sources["visual_verification"], {"status": "PASSED"})
+    sources["paper_source"].write_text("\\documentclass{article}\n\\begin{document}完整稿\\end{document}\n", encoding="utf-8")
+    write_json(sources["submission_manifest"], {"status": "READY"})
+    write_json(sources["compile_report"], {"status": "COMPILED_PENDING_VISUAL_CHECK"})
+
     reviews = []
     for index, role in enumerate(ROLES, start=1):
-        artifacts = [{"file": str(pdf), "sha256": digest(pdf)}]
-        if role == "final_submission":
-            artifacts.append({"file": str(support), "sha256": digest(support)})
+        artifacts = [
+            {"kind": kind, "file": str(sources[kind]), "sha256": digest(sources[kind])}
+            for kind in ROLE_KINDS[role]
+        ]
         receipt = root / f"receipt-{index}.json"
         write_json(receipt, {
             "receipt_kind": "runtime_subagent_invocation",
