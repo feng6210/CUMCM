@@ -1,0 +1,26 @@
+{
+  "schema_version": "1.0",
+  "status": "READY",
+  "deliverable_mode": "submission_package",
+  "paper_pdf": {
+    "file": "paper/main.pdf",
+    "sha256": "REPLACE_WITH_ACTUAL_SHA256"
+  },
+  "support_zip": {
+    "file": "submission/support.zip",
+    "sha256": "REPLACE_WITH_ACTUAL_SHA256"
+  },
+  "question_completion": [
+    {
+      "question_id": "Q1",
+      "status": "PASS",
+      "paper_label": "sec:q1",
+      "result_artifacts": [
+        {"file": "results/q1.json", "sha256": "REPLACE_WITH_ACTUAL_SHA256"}
+      ],
+      "validation_artifacts": [
+        {"file": "validation/q1.json", "sha256": "REPLACE_WITH_ACTUAL_SHA256"}
+      ]
+    }
+  ]
+}
