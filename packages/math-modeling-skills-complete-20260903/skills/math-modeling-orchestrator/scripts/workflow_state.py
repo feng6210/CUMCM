@@ -5,6 +5,8 @@ import argparse
 import hashlib
 import json
 import os
+import subprocess
+import sys
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
@@ -27,10 +29,6 @@ FULL_SUBMISSION_MODES = {"cumcm_latex_paper", "submission_package"}
 REPORTING_PROFILES = ("competition_compact", "research_audit")
 POLICY_STATUSES = ("NOT_REQUIRED", "PENDING", "VALIDATED", "BLOCKED")
 
-# The minimum-baseline stage is deliberately mandatory. A task whose baseline is
-# genuinely not applicable still passes through BASELINE_SOLVING -> BASELINE_READY
-# with an explicit not-applicable baseline record; it must not jump directly from
-# semantics/data audit to MODEL_PLANNED.
 ALLOWED = {
     "NEW": {"INPUT_REGISTERED", "BLOCKED_INPUT"},
     "INPUT_REGISTERED": {"DECOMPOSED", "BLOCKED_INPUT"},
@@ -264,8 +262,7 @@ def assert_live_contest_ai_use_allowed(state: dict) -> dict:
     return binding
 
 
-def validate_final_submission_report(report_path: Path) -> dict:
-    payload = read_json(report_path)
+def validate_final_submission_payload(payload: dict) -> dict:
     if payload.get("status") != "PASS":
         raise ValueError("FINAL_CHECK status must be PASS before a formal submission can complete")
     if payload.get("verification_scope") != "competition_submission_gate":
@@ -273,11 +270,56 @@ def validate_final_submission_report(report_path: Path) -> dict:
     competition = payload.get("competition_ready")
     if not isinstance(competition, dict) or competition.get("mode") != "competition_ready":
         raise ValueError("FINAL_CHECK is missing competition-ready evidence")
+    if not isinstance(payload.get("pdf_path"), str) or not payload["pdf_path"]:
+        raise ValueError("FINAL_CHECK must identify the delivered PDF")
     if not isinstance(payload.get("pdf_sha256"), str) or not payload["pdf_sha256"]:
         raise ValueError("FINAL_CHECK must bind the delivered PDF hash")
+    for key in ("paper_dir", "support_zip", "compile_report", "visual_verification", "visual_binding", "subagent_review"):
+        if not isinstance(competition.get(key), str) or not competition[key]:
+            raise ValueError(f"FINAL_CHECK competition evidence is missing {key}")
     if not isinstance(competition.get("submission_digest"), str) or not competition["submission_digest"]:
         raise ValueError("FINAL_CHECK must bind the current submission digest")
     return payload
+
+
+def validate_final_submission_report(report_path: Path) -> dict:
+    return validate_final_submission_payload(read_json(report_path))
+
+
+def revalidate_final_submission_report(report_path: Path, payload: dict) -> dict:
+    payload = validate_final_submission_payload(payload)
+    competition = payload["competition_ready"]
+    checker = Path(__file__).resolve().parents[2] / "mm-paper-compile" / "scripts" / "final_delivery_check.py"
+    if not checker.is_file():
+        raise ValueError("competition-ready final delivery checker is missing")
+    paper_dir = Path(competition["paper_dir"]).resolve()
+    if report_path.resolve().is_relative_to(paper_dir):
+        raise ValueError("FINAL_CHECK must be stored outside paper-dir so visual source revalidation cannot be self-excluded")
+    with tempfile.TemporaryDirectory(prefix="mm-final-revalidate-") as temp_dir:
+        fresh_path = Path(temp_dir) / "FINAL_CHECK.revalidated.json"
+        command = [
+            sys.executable, str(checker),
+            "--paper-dir", str(paper_dir),
+            "--output-pdf", str(Path(payload["pdf_path"]).resolve()),
+            "--support-zip", str(Path(competition["support_zip"]).resolve()),
+            "--competition-ready",
+            "--compile-report", str(Path(competition["compile_report"]).resolve()),
+            "--visual-verification", str(Path(competition["visual_verification"]).resolve()),
+            "--visual-binding", str(Path(competition["visual_binding"]).resolve()),
+            "--subagent-review", str(Path(competition["subagent_review"]).resolve()),
+            "--output", str(fresh_path),
+        ]
+        completed = subprocess.run(command, capture_output=True, text=True, timeout=120)
+        if completed.returncode != 0 or not fresh_path.is_file():
+            detail = (completed.stderr or completed.stdout or "")[-1200:]
+            raise ValueError(f"competition-ready FINAL_CHECK is stale or no longer passes current artifacts: {detail}")
+        fresh = validate_final_submission_payload(read_json(fresh_path))
+    fresh_competition = fresh["competition_ready"]
+    if fresh.get("pdf_sha256") != payload.get("pdf_sha256"):
+        raise ValueError("delivered PDF changed after FINAL_CHECK")
+    if fresh_competition.get("submission_digest") != competition.get("submission_digest"):
+        raise ValueError("submission artifacts changed after FINAL_CHECK")
+    return fresh
 
 
 def record_final_submission_gate(path: Path, report_path: Path) -> dict:
@@ -289,12 +331,13 @@ def record_final_submission_gate(path: Path, report_path: Path) -> dict:
         raise ValueError("formal final delivery can be recorded only during DELIVERING or REVIEWING")
     report_path = report_path.resolve()
     payload = validate_final_submission_report(report_path)
-    competition = payload["competition_ready"]
+    fresh = revalidate_final_submission_report(report_path, payload)
+    competition = fresh["competition_ready"]
     state["final_submission_gate"] = {
         "file": str(report_path),
         "sha256": sha256_file(report_path),
         "status": "PASS",
-        "pdf_sha256": payload["pdf_sha256"],
+        "pdf_sha256": fresh["pdf_sha256"],
         "submission_digest": competition["submission_digest"],
     }
     state["history"].append({
@@ -319,8 +362,9 @@ def assert_final_submission_gate_current(state: dict) -> dict:
     if not report_path.is_file() or sha256_file(report_path) != expected_hash:
         raise ValueError("recorded FINAL_CHECK is missing or changed; rerun and re-record final delivery")
     payload = validate_final_submission_report(report_path)
-    competition = payload["competition_ready"]
-    if payload.get("pdf_sha256") != binding.get("pdf_sha256") or competition.get("submission_digest") != binding.get("submission_digest"):
+    fresh = revalidate_final_submission_report(report_path, payload)
+    competition = fresh["competition_ready"]
+    if fresh.get("pdf_sha256") != binding.get("pdf_sha256") or competition.get("submission_digest") != binding.get("submission_digest"):
         raise ValueError("recorded FINAL_CHECK no longer matches its bound submission")
     return binding
 
@@ -332,9 +376,6 @@ def transition(path: Path, target: str, next_skill: str | None, evidence_status:
     if target not in ALLOWED[current]:
         raise ValueError(f"transition not allowed: {current} -> {target}")
 
-    # Registering inputs/rules is allowed before policy binding. Any substantive
-    # decomposition/modeling/validation/writing transition is AI work and must
-    # already be permitted by a current official/course policy in live contests.
     if state["task_mode"] == "live_contest" and target not in {"INPUT_REGISTERED", "BLOCKED_INPUT"}:
         assert_live_contest_ai_use_allowed(state)
 
@@ -448,7 +489,7 @@ def build_parser() -> argparse.ArgumentParser:
     approval = sub.add_parser("approve-model", help="Record a valid model decision while awaiting approval.")
     approval.add_argument("--state", type=Path, required=True)
     approval.add_argument("--decision-file", type=Path, required=True)
-    final_delivery = sub.add_parser("record-final-delivery", help="Bind a PASS competition-ready FINAL_CHECK before a full submission may COMPLETE.")
+    final_delivery = sub.add_parser("record-final-delivery", help="Bind and revalidate a PASS competition-ready FINAL_CHECK before a full submission may COMPLETE.")
     final_delivery.add_argument("--state", type=Path, required=True)
     final_delivery.add_argument("--final-check", type=Path, required=True)
     amendment = sub.add_parser("amend-plan", help="Invalidate approval when a material modeling plan changes.")
@@ -485,7 +526,7 @@ def main() -> int:
         else:
             emit(mark_stale(args.state, args.artifacts, args.reason))
         return 0
-    except (OSError, ValueError, RuntimeError, json.JSONDecodeError) as error:
+    except (OSError, ValueError, RuntimeError, subprocess.SubprocessError, json.JSONDecodeError) as error:
         print(f"workflow state error: {error}", file=os.sys.stderr)
         return 2
 
