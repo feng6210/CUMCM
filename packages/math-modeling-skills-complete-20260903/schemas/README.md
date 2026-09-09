@@ -11,13 +11,17 @@
 - `benchmark_challenge.schema.json`：外部/异源可行方案进入当前 evaluator 后的重算与判定；
 - `figure_plan.schema.json`：reader-task 驱动的 figure/table/text/appendix 规划，不含固定图量；
 - `competition_policy.schema.json`：live contest 中 AI、联网、外部论文、公开答案/benchmark 等权限；
-- `system_benchmark.schema.json`：整题/系统级回归案例的预期行为与阻断条件。
+- `system_benchmark.schema.json`：整题/系统级回归案例的预期行为与阻断条件；
+- `subagent_review_manifest.schema.json`：`submission_package` 的五个 distinct fresh subagent 审查角色、调用回执和 hash-bound 工件；
+- `final_submission_manifest.schema.json`：最终 PDF、支撑 ZIP 与逐分问结果/验证证据、论文锚点的参赛级交付清单。
 
 通用校验：
 
 ```powershell
 python skills/math-modeling-orchestrator/scripts/validate_contract.py --schema schemas/problem_semantics.schema.json --input PROBLEM_SEMANTICS.yaml
 python skills/math-modeling-orchestrator/scripts/validate_contract.py --schema schemas/cross_skill_envelope.schema.json --input QUESTION_HANDOFF.json
+python skills/math-modeling-orchestrator/scripts/validate_contract.py --schema schemas/subagent_review_manifest.schema.json --input SUBAGENT_REVIEW_MANIFEST.json
+python skills/math-modeling-orchestrator/scripts/validate_contract.py --schema schemas/final_submission_manifest.schema.json --input FINAL_SUBMISSION_MANIFEST.json
 ```
 
 新增或不兼容修改字段时递增对应 schema 的 `$id`/`schema_version`，并同时更新回归测试、示例和 `cross_skill_output_contract.md`。不要为了让校验通过而伪造缺失上游事实。

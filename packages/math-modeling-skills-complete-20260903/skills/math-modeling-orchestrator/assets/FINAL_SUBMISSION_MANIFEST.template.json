@@ -1,0 +1,35 @@
+{
+  "schema_version": "1.0",
+  "status": "READY",
+  "deliverable_mode": "submission_package",
+  "question_decomposition": {
+    "file": "QUESTION_DECOMPOSITION.json",
+    "sha256": "REPLACE_WITH_ACTUAL_SHA256"
+  },
+  "expected_question_ids_field": "expected_question_ids",
+  "paper_pdf": {
+    "file": "paper/main.pdf",
+    "sha256": "REPLACE_WITH_ACTUAL_SHA256"
+  },
+  "visual_binding": {
+    "file": "paper/VISUAL_REVIEW_BINDING.json",
+    "sha256": "REPLACE_WITH_ACTUAL_SHA256"
+  },
+  "support_zip": {
+    "file": "submission/support.zip",
+    "sha256": "REPLACE_WITH_ACTUAL_SHA256"
+  },
+  "question_completion": [
+    {
+      "question_id": "Q1",
+      "status": "PASS",
+      "paper_label": "sec:q1",
+      "result_artifacts": [
+        {"file": "results/q1.json", "sha256": "REPLACE_WITH_ACTUAL_SHA256"}
+      ],
+      "validation_artifacts": [
+        {"file": "validation/q1.json", "sha256": "REPLACE_WITH_ACTUAL_SHA256"}
+      ]
+    }
+  ]
+}
