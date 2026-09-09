@@ -7,7 +7,6 @@ import tempfile
 import unittest
 import zipfile
 from pathlib import Path
-from types import SimpleNamespace
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -36,25 +35,52 @@ def write_json(path: Path, payload: dict) -> None:
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
-def make_subagent_manifest(root: Path, reviewed: Path) -> Path:
+def artifact_digest(rows: list[dict]) -> str:
+    normalized = [{"file": row["file"], "sha256": row["sha256"].lower()} for row in rows]
+    raw = json.dumps(normalized, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return hashlib.sha256(raw).hexdigest()
+
+
+def make_subagent_manifest(root: Path, reviewed: Path, *, task_id: str = "demo") -> Path:
+    support = root / "support.zip"
+    if not support.exists():
+        with zipfile.ZipFile(support, "w") as archive:
+            archive.writestr("README.txt", "support")
+    batch = "review-batch-fixture"
     reviews = []
     for index, role in enumerate(ROLES, start=1):
         agent_id = f"fresh-subagent-{index}"
         invocation_id = f"invocation-{index}"
+        artifacts = [{"file": str(reviewed), "sha256": digest(reviewed)}]
+        if role == "final_submission":
+            artifacts.append({"file": str(support), "sha256": digest(support)})
         receipt = root / f"receipt-{index}.json"
         write_json(receipt, {
-            "status": "completed", "agent_kind": "subagent", "role": role,
-            "agent_id": agent_id, "invocation_id": invocation_id,
+            "receipt_kind": "runtime_subagent_invocation",
+            "status": "completed",
+            "agent_kind": "subagent",
+            "fresh_context": True,
+            "role": role,
+            "agent_id": agent_id,
+            "invocation_id": invocation_id,
+            "task_id": task_id,
+            "review_batch_id": batch,
+            "decision": "PASS",
+            "reviewed_artifacts_digest": artifact_digest(artifacts),
+            "started_at": f"2026-09-09T00:00:0{index}+00:00",
+            "completed_at": f"2026-09-09T00:01:0{index}+00:00",
         })
         reviews.append({
             "role": role, "agent_id": agent_id, "agent_kind": "subagent",
             "fresh_context": True, "invocation_id": invocation_id, "decision": "PASS",
-            "reviewed_artifacts": [{"file": str(reviewed), "sha256": digest(reviewed)}],
-            "blocking_findings": [],
+            "reviewed_artifacts": artifacts, "blocking_findings": [],
             "receipt": {"file": str(receipt), "sha256": digest(receipt)},
         })
     manifest = root / "SUBAGENT_REVIEW_MANIFEST.json"
-    write_json(manifest, {"schema_version": "1.0", "status": "PASS", "reviews": reviews})
+    write_json(manifest, {
+        "schema_version": "1.0", "status": "PASS", "task_id": task_id,
+        "review_batch_id": batch, "reviews": reviews,
+    })
     return manifest
 
 
@@ -71,20 +97,15 @@ class SubmissionWorkflowStateTests(unittest.TestCase):
     def test_submission_cannot_start_or_complete_without_hard_gates(self):
         wf = load_module("submission_workflow_state", WORKFLOW)
         with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            state_path = root / "workflow_state.json"
+            root = Path(tmp); state_path = root / "workflow_state.json"
             wf.initialize(state_path, "demo", "competition submission", "training", "submission_package")
             with self.assertRaisesRegex(ValueError, "environment preflight"):
                 wf.transition(state_path, "INPUT_REGISTERED", None, None)
-
             with patch.object(wf, "_probe_submission_environment", return_value=HOST_READY):
                 wf.record_environment_preflight(state_path, make_preflight(root))
                 wf.transition(state_path, "INPUT_REGISTERED", None, None)
-
-            state = wf.read_json(state_path)
-            state["stage"] = "REVIEWING"
-            state["evidence_status"] = "PASS"
-            state["result_to_claim_status"] = "YES"
+            state = wf.read_json(state_path); state["stage"] = "REVIEWING"
+            state["evidence_status"] = "PASS"; state["result_to_claim_status"] = "YES"
             wf.write_json(state_path, state)
             with patch.object(wf, "_probe_submission_environment", return_value=HOST_READY):
                 with self.assertRaisesRegex(ValueError, "subagent"):
@@ -94,9 +115,8 @@ class SubmissionWorkflowStateTests(unittest.TestCase):
             support = root / "support.zip"
             with zipfile.ZipFile(support, "w") as archive:
                 archive.writestr("README.txt", "support")
-            manifest = make_subagent_manifest(root, final_pdf)
+            manifest = make_subagent_manifest(root, final_pdf, task_id="demo")
             wf.record_subagent_review(state_path, manifest)
-
             dummy = root / "dummy.json"; write_json(dummy, {"ok": True})
             final_gate = root / "FINAL_SUBMISSION_GATE.json"
             gate_payload = {
@@ -104,9 +124,8 @@ class SubmissionWorkflowStateTests(unittest.TestCase):
                 "paper_dir": str(root), "workflow_state": str(state_path),
                 "submission_manifest": str(dummy), "subagent_manifest": str(manifest),
                 "compile_report": str(dummy), "visual_verification_report": str(dummy),
-                "support_zip": str(support),
-                "paper_pdf": str(final_pdf), "paper_pdf_sha256": digest(final_pdf),
-                "support_zip_sha256": digest(support),
+                "support_zip": str(support), "paper_pdf": str(final_pdf),
+                "paper_pdf_sha256": digest(final_pdf), "support_zip_sha256": digest(support),
                 "submission_manifest_sha256": digest(dummy), "subagent_manifest_sha256": digest(manifest),
                 "compile_report_sha256": digest(dummy), "visual_verification_report_sha256": digest(dummy),
                 "question_decomposition_sha256": digest(dummy),
@@ -132,10 +151,8 @@ class SubmissionWorkflowStateTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp); state_path = root / "workflow_state.json"
             state = wf.initialize(state_path, "demo", "competition submission", "training", "submission_package")
-            state["evidence_status"] = "PASS"; state["result_to_claim_status"] = "YES"
-            wf.write_json(state_path, state)
-            fake = root / "FINAL_SUBMISSION_GATE.json"
-            write_json(fake, {"status": "PASS", "competition_ready": True})
+            state["evidence_status"] = "PASS"; state["result_to_claim_status"] = "YES"; wf.write_json(state_path, state)
+            fake = root / "FINAL_SUBMISSION_GATE.json"; write_json(fake, {"status": "PASS", "competition_ready": True})
             with patch.object(wf, "_probe_submission_environment", return_value=HOST_READY):
                 with self.assertRaisesRegex(ValueError, "revalidation paths"):
                     wf.record_final_submission(state_path, fake)
@@ -145,11 +162,9 @@ class SubmissionWorkflowStateTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp); state_path = root / "workflow_state.json"
             state = wf.initialize(state_path, "demo", "competition submission", "training", "submission_package")
-            state["subagent_review_status"] = "PASS"; state["final_submission_status"] = "PASS"
-            wf.write_json(state_path, state)
+            state["subagent_review_status"] = "PASS"; state["final_submission_status"] = "PASS"; wf.write_json(state_path, state)
             stale = wf.mark_stale(state_path, ["paper/main.tex"], "paper changed")
-            self.assertEqual(stale["subagent_review_status"], "STALE")
-            self.assertEqual(stale["final_submission_status"], "STALE")
+            self.assertEqual(stale["subagent_review_status"], "STALE"); self.assertEqual(stale["final_submission_status"], "STALE")
 
 
 class SubagentReviewGateTests(unittest.TestCase):
@@ -176,6 +191,20 @@ class SubagentReviewGateTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "fresh subagent"):
                 gate.validate_manifest(bad)
 
+    def test_receipt_must_bind_current_artifact_hashes_and_task(self):
+        gate = load_module("submission_subagent_gate_receipt_binding", SUBAGENT)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp); pdf = root / "main.pdf"; pdf.write_bytes(b"%PDF-1.7\nfinal\n")
+            manifest = make_subagent_manifest(root, pdf, task_id="task-A")
+            payload = json.loads(manifest.read_text(encoding="utf-8"))
+            first = payload["reviews"][0]
+            receipt_path = Path(first["receipt"]["file"])
+            receipt = json.loads(receipt_path.read_text(encoding="utf-8")); receipt["task_id"] = "old-task"
+            write_json(receipt_path, receipt); first["receipt"]["sha256"] = digest(receipt_path)
+            bad = root / "bad.json"; write_json(bad, payload)
+            with self.assertRaisesRegex(ValueError, "task/batch"):
+                gate.validate_manifest(bad)
+
 
 class FinalSubmissionGateTests(unittest.TestCase):
     def make_fixture(self, root: Path):
@@ -191,7 +220,7 @@ class FinalSubmissionGateTests(unittest.TestCase):
         decomposition = root / "QUESTION_DECOMPOSITION.json"
         write_json(decomposition, {"expected_question_ids": ["Q1"], "questions": [{"question_id": "Q1"}]})
         state = root / "workflow_state.json"
-        write_json(state, {"deliverable_mode": "submission_package", "evidence_status": "PASS",
+        write_json(state, {"task_id": "demo", "deliverable_mode": "submission_package", "evidence_status": "PASS",
                            "result_to_claim_status": "YES", "problem_parts": ["Q1"]})
         submission = root / "FINAL_SUBMISSION_MANIFEST.json"
         write_json(submission, {
@@ -215,19 +244,18 @@ class FinalSubmissionGateTests(unittest.TestCase):
             "paper_pdf": {"file": str(pdf), "sha256": digest(pdf), "page_count": 2},
             "compile_report": {"file": str(compile_report), "sha256": digest(compile_report)},
         })
-        subagents = make_subagent_manifest(root, pdf)
+        subagents = make_subagent_manifest(root, pdf, task_id="demo")
         return paper, tex, pdf, support, state, submission, subagents, compile_report, visual, decomposition
 
     def test_complete_fixture_passes_and_placeholder_fails(self):
         gate = load_module("final_submission_gate_test", FINAL)
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            paper, tex, pdf, support, state, submission, subagents, compile_report, visual, _ = self.make_fixture(root)
+            paper, tex, _, support, state, submission, subagents, compile_report, visual, _ = self.make_fixture(root)
             with patch.object(gate, "pdf_text_and_pages", return_value=("完整答案", 2)):
                 report = gate.check_submission(paper, state, submission, subagents, compile_report, visual, support)
             self.assertEqual(report["status"], "PASS"); self.assertTrue(report["competition_ready"])
             self.assertEqual(report["support_zip_sha256"], digest(support)); self.assertEqual(report["paper_dir"], str(paper.resolve()))
-
             tex.write_text("\\documentclass{article}\n\\begin{document}\n待填写\\label{sec:q1}\n\\end{document}\n", encoding="utf-8")
             with patch.object(gate, "pdf_text_and_pages", return_value=("完整答案", 2)):
                 failed = gate.check_submission(paper, state, submission, subagents, compile_report, visual, support)
@@ -240,8 +268,7 @@ class FinalSubmissionGateTests(unittest.TestCase):
             paper, _, _, support, state, submission, subagents, compile_report, visual, decomposition = self.make_fixture(root)
             write_json(decomposition, {"expected_question_ids": ["Q1", "Q2"],
                                        "questions": [{"question_id": "Q1"}, {"question_id": "Q2"}]})
-            payload = json.loads(submission.read_text(encoding="utf-8"))
-            payload["question_decomposition"]["sha256"] = digest(decomposition)
+            payload = json.loads(submission.read_text(encoding="utf-8")); payload["question_decomposition"]["sha256"] = digest(decomposition)
             write_json(submission, payload)
             with patch.object(gate, "pdf_text_and_pages", return_value=("完整答案", 2)):
                 failed = gate.check_submission(paper, state, submission, subagents, compile_report, visual, support)
