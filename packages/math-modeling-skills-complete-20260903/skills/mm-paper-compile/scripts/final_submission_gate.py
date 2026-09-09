@@ -17,14 +17,10 @@ from pathlib import Path
 
 MAX_BYTES = 20 * 1024 * 1024
 PLACEHOLDER_PATTERNS = (
-    re.compile(r"待填写"),
-    re.compile(r"待补(?:充|全|写|完善)?"),
-    re.compile(r"\bTODO\b", re.IGNORECASE),
-    re.compile(r"\bTBD\b", re.IGNORECASE),
-    re.compile(r"\bFIXME\b", re.IGNORECASE),
-    re.compile(r"\bPLACEHOLDER\b", re.IGNORECASE),
-    re.compile(r"\bTO\s+FILL\b", re.IGNORECASE),
-    re.compile(r"INSERT\s+HERE", re.IGNORECASE),
+    re.compile(r"待填写"), re.compile(r"待补(?:充|全|写|完善)?"),
+    re.compile(r"\bTODO\b", re.IGNORECASE), re.compile(r"\bTBD\b", re.IGNORECASE),
+    re.compile(r"\bFIXME\b", re.IGNORECASE), re.compile(r"\bPLACEHOLDER\b", re.IGNORECASE),
+    re.compile(r"\bTO\s+FILL\b", re.IGNORECASE), re.compile(r"INSERT\s+HERE", re.IGNORECASE),
 )
 
 
@@ -82,12 +78,8 @@ def source_placeholder_checks(paper: Path) -> list[dict]:
     for path in sorted(files):
         text = path.read_text(encoding="utf-8", errors="replace")
         hits = placeholder_hits(text)
-        checks.append({
-            "check": "no_source_placeholders",
-            "path": str(path.relative_to(paper)),
-            "passed": not hits,
-            "hits": hits,
-        })
+        checks.append({"check": "no_source_placeholders", "path": str(path.relative_to(paper)),
+                       "passed": not hits, "hits": hits})
     return checks
 
 
@@ -146,26 +138,20 @@ def load_subagent_validator():
     return module
 
 
-def check_submission(
-    paper: Path,
-    state_path: Path,
-    manifest_path: Path,
-    subagent_manifest_path: Path,
-    compile_report_path: Path,
-    visual_report_path: Path,
-    support_zip: Path,
-) -> dict:
-    paper = paper.resolve()
-    state = load_json(state_path.resolve())
-    manifest = load_json(manifest_path.resolve())
-    checks: list[dict] = []
+def check_submission(paper: Path, state_path: Path, manifest_path: Path,
+                     subagent_manifest_path: Path, compile_report_path: Path,
+                     visual_report_path: Path, support_zip: Path) -> dict:
+    paper = paper.resolve(); state_path = state_path.resolve(); manifest_path = manifest_path.resolve()
+    subagent_manifest_path = subagent_manifest_path.resolve(); compile_report_path = compile_report_path.resolve()
+    visual_report_path = visual_report_path.resolve(); support_zip = support_zip.resolve()
+    state = load_json(state_path); manifest = load_json(manifest_path); checks: list[dict] = []
 
     checks.append({"check": "deliverable_mode_submission_package", "passed": state.get("deliverable_mode") == "submission_package"})
     checks.append({"check": "workflow_evidence_pass", "passed": state.get("evidence_status") == "PASS", "value": state.get("evidence_status")})
     checks.append({"check": "result_to_claim_yes", "passed": state.get("result_to_claim_status") == "YES", "value": state.get("result_to_claim_status")})
     checks.append({"check": "manifest_ready", "passed": manifest.get("schema_version") == "1.0" and manifest.get("status") == "READY" and manifest.get("deliverable_mode") == "submission_package"})
 
-    manifest_base = manifest_path.resolve().parent
+    manifest_base = manifest_path.parent
     paper_ok, paper_value = artifact_ok(manifest_base, manifest.get("paper_pdf"))
     checks.append({"check": "manifest_paper_pdf_hash", "passed": paper_ok, "detail": paper_value})
     pdf = resolve(manifest_base, manifest.get("paper_pdf", {}).get("file")) if paper_ok else (paper / "main.pdf")
@@ -174,14 +160,12 @@ def check_submission(
 
     zip_ok, zip_value = artifact_ok(manifest_base, manifest.get("support_zip"))
     checks.append({"check": "manifest_support_zip_hash", "passed": zip_ok, "detail": zip_value})
-    declared_zip = resolve(manifest_base, manifest.get("support_zip", {}).get("file")) if zip_ok else support_zip.resolve()
-    checks.append({"check": "support_zip_argument_matches_manifest", "passed": declared_zip == support_zip.resolve()})
-    zip_members: list[str] = []
-    zip_reopens = False
+    declared_zip = resolve(manifest_base, manifest.get("support_zip", {}).get("file")) if zip_ok else support_zip
+    checks.append({"check": "support_zip_argument_matches_manifest", "passed": declared_zip == support_zip})
+    zip_members: list[str] = []; zip_reopens = False
     try:
-        with zipfile.ZipFile(support_zip.resolve()) as archive:
-            zip_members = archive.namelist()
-            zip_reopens = archive.testzip() is None
+        with zipfile.ZipFile(support_zip) as archive:
+            zip_members = archive.namelist(); zip_reopens = archive.testzip() is None
     except (OSError, zipfile.BadZipFile):
         pass
     checks.extend([
@@ -194,8 +178,7 @@ def check_submission(
     checks.extend(source_placeholder_checks(paper))
     if pdf.is_file():
         try:
-            pdf_text, pages = pdf_text_and_pages(pdf)
-            hits = placeholder_hits(pdf_text)
+            pdf_text, pages = pdf_text_and_pages(pdf); hits = placeholder_hits(pdf_text)
             checks.append({"check": "final_pdf_text_reopens", "passed": pages > 0, "pages": pages})
             checks.append({"check": "no_pdf_placeholders", "passed": not hits, "hits": hits})
         except (OSError, RuntimeError, ValueError) as exc:
@@ -203,20 +186,15 @@ def check_submission(
     else:
         checks.append({"check": "final_pdf_text_reopens", "passed": False, "error": "final PDF missing"})
 
-    all_tex = "\n".join(
-        path.read_text(encoding="utf-8", errors="replace")
-        for path in paper.rglob("*.tex") if "build" not in path.parts
-    )
+    all_tex = "\n".join(path.read_text(encoding="utf-8", errors="replace")
+                        for path in paper.rglob("*.tex") if "build" not in path.parts)
     expected = expected_question_ids(state)
-    completion = manifest.get("question_completion")
-    if not isinstance(completion, list):
-        completion = []
+    completion = manifest.get("question_completion"); completion = completion if isinstance(completion, list) else []
     by_id = {row.get("question_id"): row for row in completion if isinstance(row, dict) and isinstance(row.get("question_id"), str)}
     checks.append({"check": "all_problem_parts_declared_complete", "passed": set(by_id) == set(expected),
                    "expected": expected, "declared": sorted(by_id)})
     for qid in expected:
-        row = by_id.get(qid, {})
-        label = row.get("paper_label")
+        row = by_id.get(qid, {}); label = row.get("paper_label")
         label_count = len(re.findall(r"\\label\{" + re.escape(str(label)) + r"\}", all_tex)) if isinstance(label, str) and label else 0
         result_rows = row.get("result_artifacts") if isinstance(row.get("result_artifacts"), list) else []
         validation_rows = row.get("validation_artifacts") if isinstance(row.get("validation_artifacts"), list) else []
@@ -229,16 +207,15 @@ def check_submission(
             {"check": "question_validation_evidence", "question_id": qid, "passed": bool(validation_rows) and all(validation_checks)},
         ])
 
-    compile_report = load_json(compile_report_path.resolve())
+    compile_report = load_json(compile_report_path)
     compile_hash_ok = pdf.is_file() and str(compile_report.get("pdf_sha256", "")).lower() == sha256(pdf).lower()
     checks.extend([
         {"check": "compile_report_published", "passed": compile_report.get("pdf_published") is True},
         {"check": "compile_report_bound_to_final_pdf", "passed": compile_hash_ok},
-        {"check": "compile_report_not_failed", "passed": compile_report.get("status") in {"COMPILED_PENDING_VISUAL_CHECK", "PASSED"},
+        {"check": "compile_report_not_failed", "passed": compile_report.get("status") in {"COMPILED_PENDING_VISUAL_CHECK", "PASSED"}},
     ])
 
-    visual = load_json(visual_report_path.resolve())
-    visual_pdf = visual.get("paper_pdf") if isinstance(visual.get("paper_pdf"), dict) else {}
+    visual = load_json(visual_report_path); visual_pdf = visual.get("paper_pdf") if isinstance(visual.get("paper_pdf"), dict) else {}
     visual_hash = visual_pdf.get("sha256", visual.get("paper_sha256"))
     checks.extend([
         {"check": "visual_verification_pass", "passed": visual.get("status") == "PASSED"},
@@ -247,7 +224,7 @@ def check_submission(
     ])
 
     try:
-        subagent_report = load_subagent_validator().validate_manifest(subagent_manifest_path.resolve())
+        subagent_report = load_subagent_validator().validate_manifest(subagent_manifest_path)
         subagent_pass = subagent_report.get("status") == "PASS" and subagent_report.get("distinct_subagents", 0) >= 5
         checks.append({"check": "five_fresh_subagent_reviews", "passed": subagent_pass,
                        "distinct_subagents": subagent_report.get("distinct_subagents")})
@@ -256,15 +233,16 @@ def check_submission(
 
     passed = all(check.get("passed") is True for check in checks)
     return {
-        "schema_version": "1.0",
-        "status": "PASS" if passed else "FAIL",
-        "competition_ready": passed,
+        "schema_version": "1.0", "status": "PASS" if passed else "FAIL", "competition_ready": passed,
         "checks": checks,
-        "paper_pdf": str(pdf),
-        "paper_pdf_sha256": sha256(pdf) if pdf.is_file() else None,
-        "support_zip": str(support_zip.resolve()),
-        "placeholder_gate": "zero_tolerance",
-        "subagent_gate": "five_distinct_fresh_subagents_required",
+        "paper_pdf": str(pdf), "paper_pdf_sha256": sha256(pdf) if pdf.is_file() else None,
+        "support_zip": str(support_zip), "support_zip_sha256": sha256(support_zip) if support_zip.is_file() else None,
+        "workflow_state": str(state_path), "workflow_state_sha256_at_gate": sha256(state_path),
+        "submission_manifest": str(manifest_path), "submission_manifest_sha256": sha256(manifest_path),
+        "subagent_manifest": str(subagent_manifest_path), "subagent_manifest_sha256": sha256(subagent_manifest_path),
+        "compile_report": str(compile_report_path), "compile_report_sha256": sha256(compile_report_path),
+        "visual_verification_report": str(visual_report_path), "visual_verification_report_sha256": sha256(visual_report_path),
+        "placeholder_gate": "zero_tolerance", "subagent_gate": "five_distinct_fresh_subagents_required",
         "completion_rule": "COMPLETE is forbidden unless this report is PASS and remains hash-current",
     }
 
@@ -281,20 +259,16 @@ def main() -> int:
     parser.add_argument("--output", type=Path, default=Path("FINAL_SUBMISSION_GATE.json"))
     args = parser.parse_args()
     try:
-        report = check_submission(
-            args.paper_dir, args.workflow_state, args.submission_manifest,
-            args.subagent_manifest, args.compile_report, args.visual_verification_report,
-            args.support_zip,
-        )
+        report = check_submission(args.paper_dir, args.workflow_state, args.submission_manifest,
+                                  args.subagent_manifest, args.compile_report, args.visual_verification_report,
+                                  args.support_zip)
         code = 0 if report["status"] == "PASS" else 2
     except (OSError, ValueError, RuntimeError, json.JSONDecodeError, zipfile.BadZipFile) as exc:
         report = {"schema_version": "1.0", "status": "FAIL", "competition_ready": False,
-                  "error": f"{type(exc).__name__}: {exc}"}
-        code = 2
+                  "error": f"{type(exc).__name__}: {exc}"}; code = 2
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    print(json.dumps(report, ensure_ascii=False, indent=2))
-    return code
+    print(json.dumps(report, ensure_ascii=False, indent=2)); return code
 
 
 if __name__ == "__main__":
