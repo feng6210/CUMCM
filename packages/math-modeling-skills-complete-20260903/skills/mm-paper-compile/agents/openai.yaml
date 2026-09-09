@@ -1,7 +1,7 @@
 interface:
   display_name: "数学建模：LaTeX 编译"
-  short_description: "编译并检查中文 CUMCM LaTeX 论文与 PDF。"
+  short_description: "编译、冻结、审阅并验收可提交的中文 CUMCM PDF。"
   brand_color: "#2563EB"
-  default_prompt: "请使用 $mm-paper-compile 编译并检查这份中文数学建模 LaTeX 论文。"
+  default_prompt: "请使用 $mm-paper-compile 编译并检查中文数学建模 LaTeX 论文。若 deliverable_mode=submission_package，编译成功只代表中间产物，不允许把骨架 PDF 当最终交付：先确保源文件零‘待填写/TODO/TBD/FIXME/PLACEHOLDER’，再按 visual_review_gate prepare→实际全页审阅→verify 绑定同一 PDF；随后必须配合五个 fresh subagent 的 SUBAGENT_REVIEW_MANIFEST 和 FINAL_SUBMISSION_MANIFEST 运行 final_submission_gate.py。只有 FINAL_SUBMISSION_GATE=PASS 且 competition_ready=true 才能作为参赛提交候选。任何占位符、缺分问、未审 PDF、PARTIAL 证据、缺支撑 ZIP 或缺 subagent 均必须 FAIL/BLOCKED，不得以‘已成功编译’替代完整交付。"
 policy:
   allow_implicit_invocation: true
