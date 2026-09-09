@@ -15,6 +15,13 @@ WORKFLOW = PKG / "skills" / "math-modeling-orchestrator" / "scripts" / "workflow
 SUBAGENT = PKG / "skills" / "math-modeling-orchestrator" / "scripts" / "subagent_review_gate.py"
 FINAL = PKG / "skills" / "mm-paper-compile" / "scripts" / "final_submission_gate.py"
 ROLES = ["semantics_math", "numerical_claims", "figure_visual", "paper_structure", "final_submission"]
+ROLE_KINDS = {
+    "semantics_math": ["question_decomposition", "problem_semantics", "paper_pdf"],
+    "numerical_claims": ["paper_pdf", "result_evidence_map"],
+    "figure_visual": ["paper_pdf", "figure_plan", "visual_verification"],
+    "paper_structure": ["paper_pdf", "paper_source"],
+    "final_submission": ["paper_pdf", "support_zip", "submission_manifest", "compile_report", "visual_verification"],
+}
 HOST_READY = {"status": "PASS", "full_submission_ready": True, "missing": []}
 HOST_BLOCKED = {"status": "FAIL", "full_submission_ready": False, "missing": ["xelatex"]}
 
@@ -32,13 +39,43 @@ def digest(path: Path) -> str:
 
 
 def write_json(path: Path, payload: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
+def ensure_text(path: Path, text: str) -> Path:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if not path.exists():
+        path.write_text(text, encoding="utf-8")
+    return path
+
+
+def ensure_json(path: Path, payload: dict) -> Path:
+    if not path.exists():
+        write_json(path, payload)
+    return path
+
+
 def artifact_digest(rows: list[dict]) -> str:
-    normalized = [{"file": row["file"], "sha256": row["sha256"].lower()} for row in rows]
+    normalized = [{"kind": row["kind"], "file": row["file"], "sha256": row["sha256"].lower()} for row in rows]
     raw = json.dumps(normalized, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
     return hashlib.sha256(raw).hexdigest()
+
+
+def review_sources(root: Path, reviewed: Path, support: Path) -> dict[str, Path]:
+    paper = root / "paper"
+    return {
+        "question_decomposition": ensure_json(root / "QUESTION_DECOMPOSITION.json", {"expected_question_ids": ["Q1"]}),
+        "problem_semantics": ensure_text(root / "PROBLEM_SEMANTICS.yaml", "question_id: Q1\nselected_interpretation: S1\n"),
+        "paper_pdf": reviewed,
+        "result_evidence_map": ensure_json(root / "result_evidence_map.json", {"Q1": {"status": "PASS"}}),
+        "figure_plan": ensure_text(root / "FIGURE_PLAN.yaml", "schema_version: '1.0'\nfigures: []\n"),
+        "visual_verification": ensure_json(paper / "visual_verification_report.json", {"status": "PASSED"}),
+        "paper_source": ensure_text(paper / "main.tex", "\\documentclass{article}\n\\begin{document}完整稿\\end{document}\n"),
+        "support_zip": support,
+        "submission_manifest": ensure_json(root / "FINAL_SUBMISSION_MANIFEST.json", {"status": "READY"}),
+        "compile_report": ensure_json(paper / "compile_report.json", {"status": "COMPILED_PENDING_VISUAL_CHECK"}),
+    }
 
 
 def make_subagent_manifest(root: Path, reviewed: Path, *, task_id: str = "demo") -> Path:
@@ -46,14 +83,16 @@ def make_subagent_manifest(root: Path, reviewed: Path, *, task_id: str = "demo")
     if not support.exists():
         with zipfile.ZipFile(support, "w") as archive:
             archive.writestr("README.txt", "support")
+    sources = review_sources(root, reviewed, support)
     batch = "review-batch-fixture"
     reviews = []
     for index, role in enumerate(ROLES, start=1):
         agent_id = f"fresh-subagent-{index}"
         invocation_id = f"invocation-{index}"
-        artifacts = [{"file": str(reviewed), "sha256": digest(reviewed)}]
-        if role == "final_submission":
-            artifacts.append({"file": str(support), "sha256": digest(support)})
+        artifacts = [
+            {"kind": kind, "file": str(sources[kind]), "sha256": digest(sources[kind])}
+            for kind in ROLE_KINDS[role]
+        ]
         receipt = root / f"receipt-{index}.json"
         write_json(receipt, {
             "receipt_kind": "runtime_subagent_invocation",
@@ -87,7 +126,7 @@ def make_subagent_manifest(root: Path, reviewed: Path, *, task_id: str = "demo")
 def make_preflight(root: Path) -> Path:
     path = root / "ENVIRONMENT_PREFLIGHT.json"
     write_json(path, {
-        "schema_version": "1.0", "profile": "submission_package", "status": "PASS",
+        "schema_version": "1.1", "profile": "submission_package", "status": "PASS",
         "full_submission_ready": True, "installation_performed": False,
     })
     return path
@@ -203,6 +242,22 @@ class SubagentReviewGateTests(unittest.TestCase):
             write_json(receipt_path, receipt); first["receipt"]["sha256"] = digest(receipt_path)
             bad = root / "bad.json"; write_json(bad, payload)
             with self.assertRaisesRegex(ValueError, "task/batch"):
+                gate.validate_manifest(bad)
+
+    def test_role_cannot_skip_its_required_review_artifacts(self):
+        gate = load_module("submission_subagent_gate_role_scope", SUBAGENT)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp); pdf = root / "main.pdf"; pdf.write_bytes(b"%PDF-1.7\nfinal\n")
+            manifest = make_subagent_manifest(root, pdf)
+            payload = json.loads(manifest.read_text(encoding="utf-8"))
+            figure = next(row for row in payload["reviews"] if row["role"] == "figure_visual")
+            figure["reviewed_artifacts"] = [row for row in figure["reviewed_artifacts"] if row["kind"] != "figure_plan"]
+            receipt_path = Path(figure["receipt"]["file"])
+            receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+            receipt["reviewed_artifacts_digest"] = artifact_digest(figure["reviewed_artifacts"])
+            write_json(receipt_path, receipt); figure["receipt"]["sha256"] = digest(receipt_path)
+            bad = root / "bad-role.json"; write_json(bad, payload)
+            with self.assertRaisesRegex(ValueError, "missing required reviewed artifact kinds"):
                 gate.validate_manifest(bad)
 
 
