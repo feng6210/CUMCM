@@ -4,14 +4,16 @@
 
 ## 0. 运行前环境门
 
-在拆题前运行：
+先创建 submission 状态，再在拆题前运行环境预检：
 
 ```powershell
+python scripts/workflow_state.py init --state workflow_state.json --task-id TASK --task-mode training --deliverable-mode submission_package
 python scripts/environment_preflight.py --profile submission_package --output ENVIRONMENT_PREFLIGHT.json
 python scripts/workflow_state.py set-environment-preflight --state workflow_state.json --report-file ENVIRONMENT_PREFLIGHT.json
+python scripts/workflow_state.py transition --state workflow_state.json --to INPUT_REGISTERED
 ```
 
-`ENVIRONMENT_PREFLIGHT.json` 必须 `status=PASS` 且 `full_submission_ready=true`。缺 Python 科学栈、确定性绘图依赖、XeLaTeX/latexmk/BibTeX 或 pdftoppm 时直接 `BLOCKED_CAPABILITY`，不得先跑半套流程再把 Markdown/骨架 PDF 当交付。
+`ENVIRONMENT_PREFLIGHT.json` 必须 `status=PASS` 且 `full_submission_ready=true`。`workflow_state.py` 在绑定报告和关键状态转换时还会重新探测**当前主机**，所以手写一个假的 PASS JSON 不能替代真实环境。缺 Python 科学栈、确定性绘图依赖、XeLaTeX/latexmk/BibTeX 或 pdftoppm 时直接 `BLOCKED_CAPABILITY`，不得先跑半套流程再把 Markdown/骨架 PDF 当交付。
 
 环境检查只读，不自动安装。需要安装时明确报告缺项，完成后重新 preflight。
 
@@ -19,14 +21,22 @@ python scripts/workflow_state.py set-environment-preflight --state workflow_stat
 
 `submission_package` 中不允许使用 `[待填写]`、`待补充`、`TODO`、`TBD`、`FIXME`、`PLACEHOLDER` 等作为最终交付内容。证据不足时回到求解/验证或报告阻塞；不得把模板占位符编译成 PDF 后声称完成。
 
-每个题目分问必须在 `workflow_state.problem_parts` 中登记，并在 `FINAL_SUBMISSION_MANIFEST.json` 中逐一出现：
+拆题产物 `QUESTION_DECOMPOSITION.json` 必须包含完整 `expected_question_ids`。`FINAL_SUBMISSION_MANIFEST.json` 对该文件做 SHA-256 绑定；最终 gate 同时比较：
+
+1. `QUESTION_DECOMPOSITION.expected_question_ids`；
+2. `workflow_state.problem_parts`；
+3. `FINAL_SUBMISSION_MANIFEST.question_completion`。
+
+三者必须覆盖同一完整分问集合，不能通过把 `workflow_state.problem_parts` 偷改成只剩 Q1 来隐藏未完成分问。
+
+每个题目分问必须逐一满足：
 
 - `status=PASS`；
 - 唯一 `paper_label`，最终 TeX 中必须恰好存在一次；
 - 至少一个 hash-bound 结果工件；
 - 至少一个 hash-bound 验证工件。
 
-最终论文必须是真实已编译并审阅的 `paper/main.pdf`（或用户明确指定的正式文件名），不是 Markdown、提纲、骨架 PDF 或未审的 `.tex`。
+最终论文必须是真实已编译并审阅的 `paper/main.pdf`（或用户明确指定的正式文件名），不是 Markdown、提纲、骨架 PDF 或未审的 `.tex`。最终交付至少包含当前最终 PDF 与支撑 ZIP；内部计划、审计 JSON 可以保留为支撑证据，但不能取代论文。
 
 ## 2. 强制 fresh subagent 审查
 
@@ -38,7 +48,7 @@ python scripts/workflow_state.py set-environment-preflight --state workflow_stat
 4. `paper_structure`：摘要、正文闭环、引用、叙事和 CUMCM 结构；
 5. `final_submission`：最终 PDF 和支撑包的整体验收。
 
-每次 subagent 调用必须保留实际 invocation receipt，并在 `SUBAGENT_REVIEW_MANIFEST.json` 中 hash 绑定。五个角色必须使用五个不同 `agent_id` 和五个不同 `invocation_id`，全部 `decision=PASS` 且无 unresolved blocking finding。
+每次 subagent 调用必须保留实际 invocation receipt，并在 `SUBAGENT_REVIEW_MANIFEST.json` 中 hash 绑定。五个角色必须使用五个不同 `agent_id` 和五个不同 `invocation_id`，全部 `decision=PASS` 且无 unresolved blocking finding。不得为了过 gate 伪造 receipt；当前静态包只能校验回执与工件的一致性，若运行平台能提供原生调用记录，应把该真实记录作为 receipt 来源。
 
 若运行平台没有 subagent 能力，`submission_package` 必须 `BLOCKED_CAPABILITY`；不得降级为主 agent 自查后继续 `COMPLETE`。
 
@@ -55,13 +65,15 @@ compile_paper.py
 → visual_review_gate.py verify
 ```
 
-不得在审图后再次 XeLaTeX 重编译来“验证”旧视觉报告。源码、PDF 或 compile report 变化后旧视觉审查失效。
+不得在审图后再次 XeLaTeX 重编译来“验证”旧视觉报告。源码、PDF 或 compile report 变化后旧视觉审查失效。最终 visual verification 还必须 hash 绑定当前 `compile_report.json`，不能拿另一轮编译的视觉报告混用。
 
 ## 4. 最终提交门
 
-在进入 `COMPLETE` 前运行：
+五路 subagent 全部完成后，先把其 manifest 绑定进状态机，再运行最终 gate：
 
 ```powershell
+python scripts/workflow_state.py set-subagent-review --state workflow_state.json --manifest-file SUBAGENT_REVIEW_MANIFEST.json
+
 python ../mm-paper-compile/scripts/final_submission_gate.py \
   --paper-dir paper \
   --workflow-state workflow_state.json \
@@ -72,18 +84,23 @@ python ../mm-paper-compile/scripts/final_submission_gate.py \
   --support-zip submission/support.zip \
   --output FINAL_SUBMISSION_GATE.json
 
-python scripts/workflow_state.py set-subagent-review --state workflow_state.json --manifest-file SUBAGENT_REVIEW_MANIFEST.json
 python scripts/workflow_state.py set-final-submission --state workflow_state.json --report-file FINAL_SUBMISSION_GATE.json
+python scripts/workflow_state.py transition --state workflow_state.json --to COMPLETE
 ```
 
-`FINAL_SUBMISSION_GATE.json` 必须 `status=PASS` 且 `competition_ready=true`。该 gate 会重新核对：
+`FINAL_SUBMISSION_GATE.json` 必须 `status=PASS` 且 `competition_ready=true`。`set-final-submission` 和最终 `COMPLETE` 不只相信 JSON 上写了 PASS，而会重新调用当前 `final_submission_gate.py` 对绑定工件复算；因此手写一个 `{"status":"PASS"}` 不能绕过最终门。
 
-- `submission_package` 工作流且证据状态为 PASS；
-- 所有分问均有结果与验证证据；
-- TeX 和实际 PDF 中占位符为零；
+最终 gate 会重新核对：
+
+- 当前主机仍满足 submission preflight；
+- `submission_package` 工作流且证据状态为 PASS、结果可进入声明；
+- 权威 `QUESTION_DECOMPOSITION`、状态机与最终 manifest 的分问集合一致；
+- 所有分问均有结果与验证证据以及唯一论文锚点；
+- TeX/Bib 和实际 PDF 中占位符为零；
 - PDF 与 compile report、无二次编译视觉报告 hash 一致；
 - 支撑 ZIP 存在、非空、可重开且 hash 一致；
-- 五个 fresh subagent 审查均真实绑定当前工件。
+- 五个 fresh subagent 审查均绑定当前工件；
+- submission manifest、subagent manifest、compile report、visual verification、最终 PDF、支撑 ZIP 与拆题文件没有在 gate 后漂移。
 
 ## 5. COMPLETE 的唯一语义
 
@@ -92,11 +109,12 @@ python scripts/workflow_state.py set-final-submission --state workflow_state.jso
 以下任一情况都禁止 `COMPLETE`：
 
 - 只生成提纲、Markdown、论文骨架或带占位符 PDF；
-- 某一问没有结果/验证证据；
+- 任一分问没有结果/验证证据或没有进入最终论文；
 - `evidence_status` 不是 PASS；
 - `result_to_claim_status` 不是 YES；
 - 最终 PDF 未编译或未全页审查；
 - subagent 不可用、数量不足、角色重复或存在 P0/P1 blocking finding；
-- 最终支撑包缺失或 gate 失败。
+- 最终支撑包缺失或 gate 失败；
+- 任何已绑定的最终工件在 gate 后发生变化而未重新审查。
 
 此模式不保证获奖，也不把启发式结果升级为全局最优；它只禁止把明显未完成的工件冒充“最终参赛论文”。
