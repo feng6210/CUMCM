@@ -87,6 +87,28 @@ def placeholder_patterns_in_text(text: str, *, tex_like: bool = False) -> list[s
     return [pattern for pattern in PLACEHOLDER_PATTERNS if re.search(pattern, text, flags=re.IGNORECASE)]
 
 
+def decode_support_text(data: bytes) -> tuple[str | None, str]:
+    """Decode supported submission text without replacement-character bypasses.
+
+    UTF-8/UTF-8-BOM and BOM-marked UTF-16 are accepted. Other byte streams must
+    be strict UTF-8; undecodable or NUL-containing results are left uninspected so
+    competition-ready mode fails closed instead of silently missing tokens.
+    """
+    if data.startswith(b"\xef\xbb\xbf"):
+        encoding = "utf-8-sig"
+    elif data.startswith((b"\xff\xfe", b"\xfe\xff")):
+        encoding = "utf-16"
+    else:
+        encoding = "utf-8"
+    try:
+        text = data.decode(encoding, errors="strict")
+    except UnicodeDecodeError:
+        return None, f"decode_failed:{encoding}"
+    if "\x00" in text:
+        return None, f"decoded_nul:{encoding}"
+    return text, encoding
+
+
 def source_program_is_substantive(filename: str, text: str) -> bool:
     """Reject whitespace/comment-only source and require Python/notebook parseability."""
     suffix = Path(filename).suffix.lower()
@@ -203,9 +225,13 @@ def inspect_support_zip(archive: Path | None) -> dict:
                     result["uninspected_text_members"].append({"path": info.filename, "bytes": info.file_size})
                     continue
                 try:
-                    text = zf.read(info).decode("utf-8", errors="replace")
+                    raw = zf.read(info)
                 except (KeyError, OSError, RuntimeError):
                     result["uninspected_text_members"].append({"path": info.filename, "reason": "unreadable"})
+                    continue
+                text, encoding = decode_support_text(raw)
+                if text is None:
+                    result["uninspected_text_members"].append({"path": info.filename, "reason": encoding})
                     continue
                 if suffix in SOURCE_PROGRAM_SUFFIXES and source_program_is_substantive(info.filename, text):
                     result["source_program_members"].append(info.filename)
