@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+from datetime import datetime
 from pathlib import Path
 
 REQUIRED_ROLES = {
@@ -36,18 +37,53 @@ def load_json(path: Path) -> dict:
     return value
 
 
-def validate_receipt(path: Path, expected: dict, role: str, agent_id: str, invocation_id: str) -> None:
+def reviewed_artifacts_digest(artifacts: list[dict]) -> str:
+    normalized = []
+    for row in artifacts:
+        if not isinstance(row, dict) or not isinstance(row.get("file"), str) or not isinstance(row.get("sha256"), str):
+            raise ValueError("invalid reviewed artifact record for digest")
+        normalized.append({"file": row["file"], "sha256": row["sha256"].lower()})
+    raw = json.dumps(normalized, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return hashlib.sha256(raw).hexdigest()
+
+
+def parse_timestamp(value: object, name: str) -> datetime:
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError(f"{name} timestamp required")
+    text = value.strip().replace("Z", "+00:00")
+    try:
+        parsed = datetime.fromisoformat(text)
+    except ValueError as exc:
+        raise ValueError(f"{name} must be ISO-8601") from exc
+    if parsed.tzinfo is None:
+        raise ValueError(f"{name} must include a timezone")
+    return parsed
+
+
+def validate_receipt(path: Path, expected: dict, *, task_id: str, review_batch_id: str,
+                     role: str, agent_id: str, invocation_id: str,
+                     artifacts: list[dict]) -> None:
     if not path.is_file() or path.is_symlink():
         raise ValueError(f"{role}: subagent receipt missing or not a regular file")
     if sha256(path).lower() != str(expected.get("sha256", "")).lower():
         raise ValueError(f"{role}: subagent receipt hash mismatch")
     payload = load_json(path)
-    if payload.get("status") != "completed":
-        raise ValueError(f"{role}: subagent receipt is not completed")
-    if payload.get("agent_kind") != "subagent":
-        raise ValueError(f"{role}: receipt does not identify a subagent invocation")
+    if payload.get("receipt_kind") != "runtime_subagent_invocation":
+        raise ValueError(f"{role}: receipt_kind must identify a runtime subagent invocation")
+    if payload.get("status") != "completed" or payload.get("decision") != "PASS":
+        raise ValueError(f"{role}: receipt must record a completed PASS decision")
+    if payload.get("agent_kind") != "subagent" or payload.get("fresh_context") is not True:
+        raise ValueError(f"{role}: receipt does not certify a fresh subagent invocation")
+    if payload.get("task_id") != task_id or payload.get("review_batch_id") != review_batch_id:
+        raise ValueError(f"{role}: receipt task/batch does not match manifest")
     if payload.get("role") != role or payload.get("agent_id") != agent_id or payload.get("invocation_id") != invocation_id:
         raise ValueError(f"{role}: receipt identity does not match manifest")
+    if payload.get("reviewed_artifacts_digest") != reviewed_artifacts_digest(artifacts):
+        raise ValueError(f"{role}: receipt does not bind the reviewed artifact hashes")
+    started = parse_timestamp(payload.get("started_at"), f"{role}.started_at")
+    completed = parse_timestamp(payload.get("completed_at"), f"{role}.completed_at")
+    if completed < started:
+        raise ValueError(f"{role}: completed_at precedes started_at")
 
 
 def validate_manifest(manifest_path: Path) -> dict:
@@ -55,6 +91,10 @@ def validate_manifest(manifest_path: Path) -> dict:
     manifest = load_json(manifest_path)
     if manifest.get("schema_version") != "1.0" or manifest.get("status") != "PASS":
         raise ValueError("subagent manifest must be schema_version 1.0 with status PASS")
+    task_id = manifest.get("task_id")
+    review_batch_id = manifest.get("review_batch_id")
+    if not isinstance(task_id, str) or not task_id or not isinstance(review_batch_id, str) or not review_batch_id:
+        raise ValueError("subagent manifest requires task_id and review_batch_id")
     reviews = manifest.get("reviews")
     if not isinstance(reviews, list) or len(reviews) < len(REQUIRED_ROLES):
         raise ValueError("at least five role-specific subagent reviews are required")
@@ -84,8 +124,7 @@ def validate_manifest(manifest_path: Path) -> dict:
             raise ValueError("submission roles must use distinct subagent identities")
         if invocation_id in invocation_ids:
             raise ValueError("submission roles must use distinct subagent invocations")
-        agent_ids.add(agent_id)
-        invocation_ids.add(invocation_id)
+        agent_ids.add(agent_id); invocation_ids.add(invocation_id)
 
         artifacts = review.get("reviewed_artifacts")
         if not isinstance(artifacts, list) or not artifacts:
@@ -102,7 +141,9 @@ def validate_manifest(manifest_path: Path) -> dict:
         receipt = review.get("receipt")
         if not isinstance(receipt, dict) or not isinstance(receipt.get("file"), str):
             raise ValueError(f"{role}: hash-bound invocation receipt required")
-        validate_receipt(resolve(base, receipt["file"]), receipt, role, agent_id, invocation_id)
+        validate_receipt(resolve(base, receipt["file"]), receipt,
+                         task_id=task_id, review_batch_id=review_batch_id, role=role,
+                         agent_id=agent_id, invocation_id=invocation_id, artifacts=artifacts)
         by_role[role] = review
 
     missing = REQUIRED_ROLES - by_role.keys()
@@ -112,10 +153,14 @@ def validate_manifest(manifest_path: Path) -> dict:
     final_artifacts = by_role["final_submission"]["reviewed_artifacts"]
     if not any(str(row.get("file", "")).lower().endswith(".pdf") for row in final_artifacts):
         raise ValueError("final_submission subagent must review the actual final PDF")
+    if not any(str(row.get("file", "")).lower().endswith(".zip") for row in final_artifacts):
+        raise ValueError("final_submission subagent must review the actual support ZIP")
 
     return {
         "schema_version": "1.0",
         "status": "PASS",
+        "task_id": task_id,
+        "review_batch_id": review_batch_id,
         "manifest": str(manifest_path),
         "manifest_sha256": sha256(manifest_path),
         "required_roles": sorted(REQUIRED_ROLES),
@@ -131,15 +176,12 @@ def main() -> int:
     parser.add_argument("--output", type=Path, default=Path("SUBAGENT_REVIEW_GATE.json"))
     args = parser.parse_args()
     try:
-        report = validate_manifest(args.manifest)
-        code = 0
+        report = validate_manifest(args.manifest); code = 0
     except (OSError, ValueError, json.JSONDecodeError) as exc:
-        report = {"schema_version": "1.0", "status": "FAIL", "error": f"{type(exc).__name__}: {exc}"}
-        code = 2
+        report = {"schema_version": "1.0", "status": "FAIL", "error": f"{type(exc).__name__}: {exc}"}; code = 2
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    print(json.dumps(report, ensure_ascii=False, indent=2))
-    return code
+    print(json.dumps(report, ensure_ascii=False, indent=2)); return code
 
 
 if __name__ == "__main__":
