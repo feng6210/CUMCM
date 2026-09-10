@@ -17,8 +17,8 @@ $skills = Get-ChildItem -LiteralPath $sourceRoot -Directory |
     Where-Object { $_.Name -eq "math-modeling-orchestrator" -or $_.Name -like "mm-*" } |
     Sort-Object Name
 
-if ($skills.Count -ne 22) {
-    throw "Expected 22 mathematical-modeling skills, found $($skills.Count)."
+if ($skills.Count -ne 23) {
+    throw "Expected 23 mathematical-modeling skills, found $($skills.Count)."
 }
 
 foreach ($skill in $skills) {
@@ -78,7 +78,7 @@ try {
 
     $installed = Get-ChildItem -LiteralPath $Destination -Directory |
         Where-Object { $_.Name -eq "math-modeling-orchestrator" -or $_.Name -like "mm-*" }
-    if ($installed.Count -lt 22) {
+    if ($installed.Count -lt 23) {
         throw "Post-install count check failed."
     }
 }
