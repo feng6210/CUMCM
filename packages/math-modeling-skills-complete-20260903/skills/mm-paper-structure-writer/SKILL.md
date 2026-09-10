@@ -7,7 +7,7 @@ description: Create evidence-grounded Chinese CUMCM mathematical-modeling paper 
 
 ## Purpose
 
-默认生成中文、CUMCM 电子版格式、XeLaTeX 的数学建模论文。论文不是研究软件审计报告：默认围绕赛题分问、共享数学内核、逐问模型增量、关键结果和必要验证组织。
+默认生成中文、CUMCM 电子版格式、XeLaTeX 的数学建模论文。论文不是研究软件审计报告：默认围绕赛题分问、共享数学内核、逐问模型增量、关键结果和对读者判断真正必要的验证组织。证据链必须完整，但不等于把全部审计细节暴露在正文。
 
 默认模板在 [assets/cumcm-2026](assets/cumcm-2026)。它是依据 CUMCM 2026 格式要求实现的内置模板，不是组委会官方模板；用户提供正式 `.cls`、`.sty` 或 `.tex` 模板时，用户模板优先。
 
@@ -18,16 +18,16 @@ description: Create evidence-grounded Chinese CUMCM mathematical-modeling paper 
 正文目标是让评委快速理解：
 
 ```text
-题目要求 → 数学对象/机制 → 本问模型增量 → 求解策略 → 关键结果 → 必要检验
+题目要求 → 数学对象/机制 → 本问模型增量 → 求解策略 → 关键结果 → 必要解释/检验
 ```
 
-以下内容默认不进入正文，除非它们直接改变结论：完整 gate 名、hash、backend report、旧版本 FAIL 谱系、全部随机种子、微小步长差、软件运行日志。它们放入附录/支撑材料。关键敏感性矩阵若直接解释设计风险可留正文，不因“验证图”类别自动迁移。
+每个核心 claim 仍必须能回溯到验证证据，但不要求每个结果句后机械附一段 validation 和声明边界。以下内容默认不进入正文，除非它们直接改变结论：完整 gate 名、hash、backend report、旧版本 FAIL 谱系、全部随机种子、微小步长差、软件运行日志。它们放入附录/支撑材料。关键敏感性矩阵若直接解释设计风险可留正文，不因“验证图”类别自动迁移。
 
 ### `research_audit`
 
 面向科研复现或工程审计，可展开版本谱系、失败证据、工件哈希、完整验证链和后端报告。
 
-两种 profile 共用同一结果和验证状态；`competition_compact` 只压缩表达，不得把 FAIL 隐藏成 PASS。
+两种 profile 共用同一结果和验证状态；`competition_compact` 只压缩表达，不得把 FAIL 隐藏成 PASS，也不得删除会改变答案含义的适用条件、未收敛区域或最优性边界。
 
 ## Modes
 
@@ -41,19 +41,19 @@ description: Create evidence-grounded Chinese CUMCM mathematical-modeling paper 
 已有论文修订或根据优秀论文改进表达时，先读 [读者任务、版式与修订闭环](references/paper_readability_and_revision.md)。区分用户要求修改的是论文还是 Skill；字体与强调规则是可调整默认值，不覆盖用户正式模板。
 
 1. 读取题目、`PROBLEM_SEMANTICS.yaml`、分问、假设、结果、`RESULTS_TO_CLAIMS.md` 与 `result_evidence_map.json`。任何主目标或计时/资源口径在写作阶段发生变化，都必须回到语义/求解阶段，不能靠措辞修复。
-2. 读取总控的 [国奖与优秀论文叙事—图表蒸馏](../math-modeling-orchestrator/references/local_corpus/award_paper_narrative_figure_distillation.md)。先建立 `NARRATIVE_MAP.yaml`：论文总矛盾、分问依赖图、共享模型内核、每问继承对象与模型增量、精确结果位置、关键检验、声明边界和问间交接。
+2. 读取总控的 [国奖与优秀论文叙事—图表蒸馏](../math-modeling-orchestrator/references/local_corpus/award_paper_narrative_figure_distillation.md)。先建立 `NARRATIVE_MAP.yaml`：论文总矛盾、分问依赖图、共享模型内核、每问继承对象与模型增量、精确结果位置、关键检验、声明边界和问间交接。这里的“检验/声明边界”属于证据层记录，不要求逐项原样进入正文。
 3. 与叙事同步建立 `FIGURE_PLAN.yaml`，而不是最后才补图。逐段检查读者障碍：场景、几何/受力、case、状态、协同、时间区间、空间结果、响应面或关键验证；选择 `figure/table/text/appendix/not_applicable`。不设置每问固定图数。
 4. 建立中文 `PAPER_PLAN.md`：论文主线、分问和章节对应、Claims–Evidence Matrix、公式计划、图表任务与版面预算、摘要事实表、正文页数预算、附录和待补证据。
 5. 按 CUMCM 结构写作：摘要专页、问题重述、问题分析、模型假设、符号说明、数据处理/共享模型准备、各问模型增量与求解、结果与分析、模型检验、优缺点、改进推广、结论、参考文献、附录。没有共享内核时省略相应章节。
-6. 每问形成“任务与难点—输入/继承—模型增量与约束—求解及停止条件—精确结果—必要图形/表格证据—检验、解释和声明边界”微闭环。
+6. 每问必须在证据层闭合“任务与难点—输入/继承—模型增量与约束—求解及停止条件—精确结果—必要图形/表格证据—检验与声明边界”。写入正文时按读者价值选择：结果、模型和必要解释优先；验证只保留最有区分度的证据，边界只在不写会改变当前答案含义时就地出现，其余集中到模型检验、模型评价或支撑材料。不要把上述证据链机械写成固定七段。
 7. 共享的坐标系、运动学、数据变换、几何判据、指标体系或评价规则只定义一次；后续分问只写新增变量、目标、约束、求解变化和误差传播。
 8. **模型解释优先于审计展示。** 对复杂物理/几何判据，如果公式对首次阅读者不透明，正文优先安排二维机制图、case 图、投影或时间轴。多种子、M1/M2 微小差异、重力 10 ms 等验证只有在它们改变主结论时才占正文图位。
 9. 复杂优化算法只解释本题真正使用的结构：为什么基线不够、如何分解、决策变量如何编码、停止条件是什么。不要把算法名称串成创新清单，也不要把每次恢复/版本修复写成正文主线。
-10. `competition_compact` 中，内部名称如 `G4/G5/PASS_RESTRICTED/incumbent/hash/manifest/backend_report` 改写为读者可理解的数学含义：例如“多初值稳定性检验”“有限候选库最优”“连续复算未发现进一步提升”；原始技术名保留在支撑材料。
-11. 摘要、标题和结论最后锁定；摘要按分问回答“做了什么—怎么算—得到什么—怎样验证”，不放公式、图表、身份信息或工程审计术语。
+10. `competition_compact` 中，内部名称如 `G4/G5/PASS_RESTRICTED/incumbent/hash/manifest/backend_report` 改写为读者可理解的数学含义；若只是工程追溯而不改变数学结论，直接移入支撑材料。不能为了去掉内部词而把“有限候选库最优/当前搜索域最优”升级成无条件“全局最优”。
+11. 摘要、标题和结论最后锁定；摘要按分问优先回答“做了什么—怎么算—得到什么”，验证只保留最能支撑核心答案且有摘要读者价值的一项，限制只在会改变答案解释时保留。摘要不放公式、图表、身份信息或工程审计术语。
 12. 附录先列支撑材料文件、运行入口、数据版本和配置，再放完整可运行源程序与必要长表；不得用代码截图代替可运行源码。
 13. 交给 `mm-visualization-delivery` 按已批准 `FIGURE_PLAN` 渲染，不允许渲染阶段为“图量完整”新增图。
-14. 交给 `mm-paper-reviewer` 审计题意语义、数字、叙事、图表和引用，再调用 `mm-paper-compile` 进行 XeLaTeX/PDF 检查。
+14. 初稿完成后先交 `mm-paper-reviewer` 检查题意语义、数字、最优性、图表和声明强度。P0/P1 清零且结果冻结后，可交 `mm-paper-humanizer` 做 `light/compact` 自然化，再回到冷审和 `mm-paper-compile`。Humanizer 不能代替技术审查。
 
 ## CUMCM electronic profile
 
@@ -73,17 +73,19 @@ description: Create evidence-grounded Chinese CUMCM mathematical-modeling paper 
 - “预算内最优”“候选集最优”“局部最优”“未被当前挑战击穿”和“全局最优”必须区分。
 - 未通过验证的结果不能进入摘要、结论或无条件声明。
 - 不把内部验证术语当成论文创新点；创新要落到数学机制、目标/约束、表示、推断或求解结构。
+- 不把每段固定写成“主题句—三句解释—总结句”；段落长度和结束方式由其数学功能决定。
 
 ## Quality checks
 
 - `PROBLEM_SEMANTICS.yaml` 与正文目标函数/判据一致；P5 类“总和 vs 同时覆盖”“一资源一目标 vs 可复用”等语义不能在写作时漂移。
-- `NARRATIVE_MAP.yaml` 与实际章节一致；共享内核没有重复推导，每问都有精确答案位置、必要验证和声明边界。
+- `NARRATIVE_MAP.yaml` 与实际章节一致；共享内核没有重复推导，每问都有精确答案位置、可追溯验证和声明边界；后两者不要求逐句暴露，但不得从全文消失。
 - `FIGURE_PLAN.yaml` 与正文同步；复杂几何/机理没有被收敛图和审计图挤掉。
 - 不设固定图数；图只承担机制、趋势、空间、区间、权衡或关键验证。简单数值答案可只用表格。
 - 摘要、正文、结论、表格、图题和附件关键数字一致。
 - 引用只来自已核验来源；无法核验时保留待补位置，不能虚构条目。
 - 不出现姓名、学校、赛区、Logo、本机用户名或绝对路径。
 - `competition_compact` 中若正文出现大量 hash、gate、版本 FAIL、runtime report 或固定种子表，必须证明其不可替代读者价值，否则移附录。
+- 若每个结果段都重复“验证—限制—不能声称”，即使技术上正确，也应视为竞赛叙事过度审计，交 `mm-paper-humanizer` 压缩和迁移。
 - 需要编译时调用 `mm-paper-compile`，不把“生成 tex 文件”说成“格式已通过”。
 
 ## 本地优秀论文写作蒸馏
