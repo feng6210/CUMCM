@@ -1,6 +1,6 @@
 # 数学建模 Skills 完整包
 
-这是当前活动版本的离线完整包，共包含 22 个数学建模 Skills。默认论文语言为中文，默认交付为 CUMCM 结构的 LaTeX/XeLaTeX 论文。绘图层同步了全量样式索引、22 类基础图型适配器，以及 2026-09-07 增补的通用几何/物理示意图工作流和可编辑 TikZ 模板。
+这是当前活动版本的离线完整包，共包含 23 个数学建模 Skills。默认论文语言为中文，默认交付为 CUMCM 结构的 LaTeX/XeLaTeX 论文。绘图层同步了全量样式索引、22 类基础图型适配器，以及 2026-09-07 增补的通用几何/物理示意图工作流和可编辑 TikZ 模板。
 
 ## 内容
 
@@ -9,7 +9,8 @@
 - 题意语义锁定、最小正确基线、创新路线、实验计划、外部/异源 challenge、结果到声明和独立验证；
 - `schemas/` 的版本化机器契约：`PROBLEM_SEMANTICS`、跨 Skill envelope、`BENCHMARK_CHALLENGE`、`FIGURE_PLAN`、`COMPETITION_POLICY`；
 - live contest 的 `COMPETITION_POLICY.yaml` 权限门：AI、联网、外部论文、公开答案/benchmark 未明确允许时 fail-closed；
-- 中文 CUMCM 论文结构、摘要、审稿和 XeLaTeX 编译；
+- 中文 CUMCM 论文结构、摘要、自然化精修、审稿和 XeLaTeX 编译；
+- `mm-paper-humanizer`：在结果与声明冻结后，按“作者站位→结构→句式”清理模板化、回答者式和审计式表达，并用 LaTeX-aware integrity gate 保护公式、数值、引用和最优性等级；
 - 可追溯图表、三维图、热力矩阵、Origin/Visio 原生后端与 Python/SVG/TikZ 回退；
 - `mm-visualization-delivery` 的全量本地样式检索：145 文件、68 张图片变体、50 个教程命名槽位、37 份源码审计，以及 22 类不拟合/不偷偷计算统计量的基础渲染器；
 - ARIS 方法归属与 MIT 许可说明。
@@ -51,4 +52,4 @@ schema 通过只说明字段、类型和枚举边界正确，不证明题意、�
 - `skills\`：实际可安装目录；
 - `schemas\`：机器可验证交接契约。
 
-仓库 `main` 可能领先于最近一次提交到 `dist/` 的 ZIP；正式发布时应从同一源提交重新生成 ZIP、manifest 和 SHA256SUMS。`quick_validate` 或 schema PASS 都不代表模型结论、论文声明或外部软件后端已被自动认证。
+仓库 `main` 可能领先于最近一次提交到 `dist/` 的 ZIP；正式发布时应从同一源提交重新生成 ZIP、manifest 和 SHA256SUMS。新增或修改 Skill 后，现有 `PACKAGE_MANIFEST.json`、`SHA256SUMS.txt`、`VALIDATION_REPORT.json` 视为上一发布快照，不得把它们直接当作当前工作分支的验证结果。`quick_validate` 或 schema PASS 都不代表模型结论、论文声明或外部软件后端已被自动认证。
