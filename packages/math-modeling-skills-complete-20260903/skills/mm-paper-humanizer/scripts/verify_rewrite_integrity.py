@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Check semantic invariants before/after CUMCM prose humanization."""
 from __future__ import annotations
-import argparse, json, re, sys
+import argparse, json, re
 from collections import Counter
 from pathlib import Path
 
@@ -10,6 +10,7 @@ REF_COMMANDS=('cite','citep','citet','ref','eqref','autoref','label','SI','si','
 STRONG_CLAIMS=('全局最优','唯一最优','严格证明','充分证明','有力证明','完全证明','普适','必然导致','证明了')
 SCOPE_MARKERS=('局部最优','当前搜索域','当前搜索范围','所考察参数范围','预算内','候选','未收敛','不收敛','未证明','不能证明','不作全局最优','在该条件下','在上述条件下','模型内')
 CAUSAL_WORDS=('导致','因果','证明')
+OPTIMUM_WORDS=('最优','最大值','最小值','最佳')
 NUMBER_RE=re.compile(r'(?<![A-Za-z_])[-+]?\d+(?:\.\d+)?(?:[eE][-+]?\d+)?%?')
 
 def read(path): return Path(path).read_text(encoding='utf-8-sig',errors='replace')
@@ -38,13 +39,30 @@ def compare_counter(name,a,b,critical=True):
     lost=list((ca-cb).elements()); added=list((cb-ca).elements())
     return {'name':name,'critical':critical,'passed':not lost and not added,'lost':lost[:50],'added':added[:50],'original_count':sum(ca.values()),'rewritten_count':sum(cb.values())}
 
+def added_by_count(terms, original, rewritten):
+    """Return terms whose occurrence count increased after rewriting."""
+    return [term for term in terms if rewritten.count(term) > original.count(term)]
+
 def claim_guard(original,rewritten):
-    added_strong=[term for term in STRONG_CLAIMS if term in rewritten and term not in original]
+    added_strong=added_by_count(STRONG_CLAIMS,original,rewritten)
     orig_scope={term for term in SCOPE_MARKERS if term in original}
     new_scope={term for term in SCOPE_MARKERS if term in rewritten}
-    scope_warning=bool(orig_scope) and not new_scope
-    added_causal=[term for term in CAUSAL_WORDS if term in rewritten and term not in original]
-    return {'name':'claim_guard','critical':True,'passed':not added_strong and not added_causal,'added_strong_claims':added_strong,'added_causal_or_proof_words':added_causal,'scope_markers_original':sorted(orig_scope),'scope_markers_rewritten':sorted(new_scope),'scope_all_removed_warning':scope_warning}
+    scope_all_removed=bool(orig_scope) and not new_scope
+    added_causal=added_by_count(CAUSAL_WORDS,original,rewritten)
+    optimum_still_asserted=any(term in rewritten for term in OPTIMUM_WORDS)
+    scope_loss_with_optimum=scope_all_removed and optimum_still_asserted
+    passed=not added_strong and not added_causal and not scope_loss_with_optimum
+    return {
+        'name':'claim_guard',
+        'critical':True,
+        'passed':passed,
+        'added_strong_claims':added_strong,
+        'added_causal_or_proof_words':added_causal,
+        'scope_markers_original':sorted(orig_scope),
+        'scope_markers_rewritten':sorted(new_scope),
+        'scope_all_removed_warning':scope_all_removed,
+        'scope_loss_with_optimum_failure':scope_loss_with_optimum,
+    }
 
 def main():
     ap=argparse.ArgumentParser(); ap.add_argument('--original',required=True); ap.add_argument('--rewritten',required=True); ap.add_argument('--json',action='store_true',dest='as_json'); ap.add_argument('--allow-number-formatting',action='store_true'); a=ap.parse_args()
@@ -61,7 +79,8 @@ def main():
     critical_fail=[c for c in checks if c.get('critical') and not c.get('passed')]
     warnings=[]
     cg=checks[-1]
-    if cg.get('scope_all_removed_warning'): warnings.append('all recognized scope markers disappeared; verify relocation or semantic preservation')
+    if cg.get('scope_all_removed_warning') and not cg.get('scope_loss_with_optimum_failure'):
+        warnings.append('all recognized scope markers disappeared; verify relocation or semantic preservation')
     report={'status':'PASS' if not critical_fail else 'FAIL','critical_failures':[c['name'] for c in critical_fail],'warnings':warnings,'checks':checks}
     if a.as_json: print(json.dumps(report,ensure_ascii=False,indent=2))
     else:
