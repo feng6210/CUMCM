@@ -1,0 +1,7 @@
+interface:
+  display_name: "数学建模：论文自然化"
+  short_description: "在冻结数学语义和结果后，去除模板化、回答者式与审计式表达。"
+  brand_color: "#2563EB"
+  default_prompt: "请使用 $mm-paper-humanizer 在不改变公式、变量、数值、单位、引用、图表编号、术语和声明强度的前提下，按 CUMCM 竞赛文风自然化论文；先检查作者站位和结构，再处理句式与词汇，并执行改写完整性核验。"
+policy:
+  allow_implicit_invocation: true
