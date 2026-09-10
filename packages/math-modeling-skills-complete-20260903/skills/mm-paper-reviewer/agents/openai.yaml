@@ -1,7 +1,7 @@
 interface:
   display_name: "数学建模：论文冷审稿"
-  short_description: "优先攻击题意、目标、外部击穿，再审叙事与图表。"
+  short_description: "优先攻击题意、目标、外部击穿，再审叙事、图表与自然度。"
   brand_color: "#2563EB"
-  default_prompt: "请使用 $mm-paper-reviewer 做对抗性冷审稿：先逐问对照题面和 PROBLEM_SEMANTICS 检查目标函数、并/交、时长计数、资源复用和多目标聚合；再检查硬约束、最小基线、正式 evaluator、求解边界和 BENCHMARK_CHALLENGE。外部更优可行解击穿“最佳”声明按 P1 处理。随后审查 NARRATIVE_MAP、FIGURE_PLAN 和 competition_compact：复杂几何/机理是否缺解释图，验证图是否过量，正文是否泄漏大量 gate/hash/旧失败谱系而变成软件 QA 报告。最后再检查摘要、LaTeX、引用与排版。"
+  default_prompt: "请使用 $mm-paper-reviewer 做对抗性冷审稿：先逐问对照题面和 PROBLEM_SEMANTICS 检查目标函数、并/交、时长计数、资源复用和多目标聚合；再检查硬约束、最小基线、正式 evaluator、求解边界和 BENCHMARK_CHALLENGE。外部更优可行解击穿“最佳”声明按 P1 处理。随后审查 NARRATIVE_MAP、FIGURE_PLAN 和 competition_compact：复杂几何/机理是否缺解释图，验证图是否过量，正文是否泄漏大量 gate/hash/旧失败谱系而变成软件 QA 报告；同时检查是否存在回答者惯性、自我辩护、连续“不能/不代表/不声称”、每段固定总结和重复 validation/caveat。区分真正会改变答案含义的边界与可迁移的审计脚手架。若技术 P0/P1 已关闭但语言问题明显，建议交 $mm-paper-humanizer；已经自然的段落不要强制改写。最后检查摘要、LaTeX、引用与排版。"
 policy:
   allow_implicit_invocation: true

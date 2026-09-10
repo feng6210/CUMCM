@@ -1,22 +1,22 @@
 ---
 name: math-modeling-orchestrator
-description: Orchestrate mathematical-modeling work from contest-policy and problem semantics through minimum baselines, approved solving, adversarial validation, CUMCM Chinese LaTeX writing, figure planning/rendering, and delivery checks. Use for multi-stage modeling tasks; do not fabricate results, silently resolve objective ambiguity, bypass contest rules, or let a solver self-certify strong claims.
+description: Orchestrate mathematical-modeling work from contest-policy and problem semantics through minimum baselines, approved solving, adversarial validation, CUMCM Chinese LaTeX writing, paper humanization, figure planning/rendering, and delivery checks. Use for multi-stage modeling tasks; do not fabricate results, silently resolve objective ambiguity, bypass contest rules, or let a solver or humanizer self-certify strong claims.
 ---
 
 # 数学建模：总控调度
 
 ## Purpose
 
-协调数模任务的赛制权限、题意语义、拆题、最小正确基线、模型路线、实验与验证、中文数模论文、图表和交付。总控维护唯一的 `workflow_state.json`，并把“能否使用某类外部工具/资料”“数学问题是否定义正确”“候选解是否好”“数值是否可信”“论文如何表达”分成不同责任层。
+协调数模任务的赛制权限、题意语义、拆题、最小正确基线、模型路线、实验与验证、中文数模论文、自然化精修、图表和交付。总控维护唯一的 `workflow_state.json`，并把“能否使用某类外部工具/资料”“数学问题是否定义正确”“候选解是否好”“数值是否可信”“论文如何表达”“文字是否自然但仍保持原声明”分成不同责任层。
 
 默认论文模式是 `cumcm-2026-electronic`：中文、LaTeX、XeLaTeX、摘要专页、无目录、按分问写作。用户提供正式模板时优先使用该模板。
 
 ## Two reporting profiles
 
-- `competition_compact`：training/live_contest/coursework 的 CUMCM 正文默认画像。正文只保留理解模型、策略、关键结果和必要检验所需内容；哈希、gate 名、版本谱系、失败运行明细和后端审计默认进入支撑材料/附录，除非它们本身改变科学结论。
+- `competition_compact`：training/live_contest/coursework 的 CUMCM 正文默认画像。正文只保留理解模型、策略、关键结果和对读者判断必要的检验；哈希、gate 名、版本谱系、失败运行明细和后端审计默认进入支撑材料/附录，除非它们本身改变科学结论。每个 claim 仍需有完整证据链，但不要求在每个结果句后机械展开“验证+边界”。
 - `research_audit`：research/engineering 等模式。可完整保留实验谱系、失败证据、工件哈希、验证门和复现材料。
 
-两种画像使用同一机器证据，区别只在**正文暴露多少工程审计信息**，不能通过精简叙事掩盖失败。
+两种画像使用同一机器证据，区别只在**正文暴露多少工程审计信息**，不能通过精简叙事或自然化隐藏失败、未收敛区域、题意歧义或最优性边界。
 
 ## FULL_SUBMISSION mode
 
@@ -40,10 +40,10 @@ FULL_SUBMISSION 的终审不沿用一般任务的 same-family fallback：必须�
 10. 先执行 [证据预检查](scripts/evidence_precheck.py)，再调用 `mm-uncertainty-validation`。验证至少区分：同源重算、数值收敛、统计/随机稳定、情景稳健、异源/外部挑战。多种子收敛到同一平台不能单独证明解盆地覆盖。
 11. 将通过验证的结果写入 `RESULTS_TO_CLAIMS.md` 和 `result_evidence_map.json`。文件存在或数字可定位只证明证据存在，不证明结论成立。
 12. 只有 `PASS` 或范围明确的 `PARTIAL` 才能进入论文链。先依据 [国奖与优秀论文叙事—图表蒸馏](references/local_corpus/award_paper_narrative_figure_distillation.md) 建立 `NARRATIVE_MAP.yaml`，同时建立 `FIGURE_PLAN.yaml`：先识别“读者在哪里会看不懂”，再决定是否需要场景图、几何/机制图、case 图、时间区间图、结果图或验证图。**不设每问固定图数。** 推荐用 `schemas/figure_plan.schema.json` 做结构校验，再交给 `mm-visualization-delivery` 做更严格的来源/输出/视觉审查。
-13. 调用 `mm-paper-structure-writer`。普通结构/讨论任务可生成竞赛叙事骨架；FULL_SUBMISSION 必须继续填充为完整论文，逐问闭合“任务—模型—求解—结果—验证—结论”，填完符号表、图表、参考文献、附录和支撑材料清单，直到占位符为零。`competition_compact` 正文优先“问题 → 数学结构 → 方法 → 结果 → 必要验证”；完整 gate 名、hash、旧版本 FAIL 谱系和后端运行日志默认移入支撑材料。`research_audit` 可展开复现实验链。
+13. 调用 `mm-paper-structure-writer`。普通结构/讨论任务可生成竞赛叙事骨架；FULL_SUBMISSION 必须继续填充为完整论文，逐问在**证据层**闭合任务、模型、求解、结果、验证和声明边界，填完符号表、图表、参考文献、附录和支撑材料清单，直到占位符为零。`competition_compact` 正文优先“问题 → 数学结构 → 方法 → 结果 → 必要解释/检验”；验证和边界只有在会改变当前答案判断时就地出现，其余集中到模型检验、模型评价或支撑材料。完整 gate 名、hash、旧版本 FAIL 谱系和后端运行日志默认移入支撑材料。`research_audit` 可展开复现实验链。
 14. 调用 `mm-visualization-delivery` 时分两步：`figure planning` 已由叙事阶段确定每张图的不可替代读者任务；`figure rendering` 只负责真实数据绑定、视觉语法、原生文件、PDF 和最终尺寸检查。不得用“每问至少 N 张图”驱动渲染。题面要求的时程、曲线、策略图、结果表等必须真实生成，不能用“程序可输出/建议绘制”代替。
-15. 对一般非 FULL_SUBMISSION 任务，可按平台能力组织数字/结论、题意语义、图表/证据、CUMCM 结构/叙事等审查线；若 fresh-agent 不可用，same-family cross-review 只能作为披露上下文的同源/同族诊断，不得冒充外部独立认证。
-16. **FULL_SUBMISSION 终审是例外且更严格**：必须实际调用四个不同 fresh subagent，分别产生 `semantics_math`、`numbers_claims`、`figures_evidence`、`paper_delivery` 四份独立审查工件。每份工件记录 subagent invocation/run id、reviewer id、当前 submission digest、PASS/FAIL 和 blocking findings；总控生成 hash-bound `SUBAGENT_REVIEW_SUMMARY.json`。任一 P0/P1 未关闭、任一 reviewer 重复、任一工件与当前 submission digest 不符，均不得进入最终交付。P0/P1 修复后对应 subagent 必须重跑。
+15. **技术冷审在自然化之前。** 先调用 `mm-paper-reviewer` 检查题意语义、数字/约束/最优性、图表证据和 `competition_compact` 叙事。存在 P0/P1 时回到对应模型、结果或写作阶段修复，不允许 Humanizer 用措辞掩盖问题。只有技术 P0/P1 关闭、结果与 claim scope 冻结后，才调用 `mm-paper-humanizer`：默认 `light`，审计/回答者措辞明显时使用 `compact`；先保护 LaTeX/数字/引用/声明层级，再按“作者站位 → 结构 → 句式”自然化，并运行 `verify_rewrite_integrity.py`。任何 critical integrity failure 都必须恢复或进入 `REVIEW_REQUIRED`。自然化后再做一次论文冷审；已经自然的段落允许 `NO_CHANGE_RECOMMENDED`，不追求所谓 AI 分数。
+16. **FULL_SUBMISSION 终审是例外且更严格**：在自然化、技术复审和最终文字冻结后，必须实际调用四个不同 fresh subagent，分别产生 `semantics_math`、`numbers_claims`、`figures_evidence`、`paper_delivery` 四份独立审查工件。每份工件记录 subagent invocation/run id、reviewer id、当前 submission digest、PASS/FAIL 和 blocking findings；总控生成 hash-bound `SUBAGENT_REVIEW_SUMMARY.json`。任一 P0/P1 未关闭、任一 reviewer 重复、任一工件与当前 submission digest 不符，均不得进入最终交付。P0/P1 修复或 Humanizer 后继续修改正文都会改变 submission digest，对应审查必须按契约重跑。
 17. 完成论文数字审计、引用审计和 XeLaTeX 编译；使用 `visual_review_gate.py prepare → 实际查看全部 PDF 页面 → visual_review_gate.py verify` 对同一已发布 PDF 做 no-recompile 视觉复核。FULL_SUBMISSION 必须保留 `VISUAL_REVIEW_BINDING.json` 与 `visual_verification_report.json`，不能手写一个 PASS JSON 代替 gate。
 18. FULL_SUBMISSION 最后生成非空支撑材料 ZIP，并执行 `mm-paper-compile/scripts/final_delivery_check.py --competition-ready`。检测到任意占位符、PDF/compile/visual provenance 漂移、support ZIP 缺失、四个 provenance-bound subagent review 不完整或 `unresolved_p0_p1` 非空时，必须 FAIL/BLOCKED/PARTIAL，禁止 `COMPLETE`。只有 hard gate PASS 才完成交付。
 
@@ -57,12 +57,14 @@ FULL_SUBMISSION 的终审不沿用一般任务的 same-family fallback：必须�
 
 `FAIL` 不得通过更换论文措辞进入摘要、结论或交付。`PARTIAL` 必须缩小声明范围。缺少输入使用 `BLOCKED_INPUT`；能力未覆盖使用 `BLOCKED_CAPABILITY`。FULL_SUBMISSION 中缺少 subagent、XeLaTeX/PDF、视觉复核或支撑材料能力时必须 `BLOCKED_CAPABILITY`，不得降级成骨架 PDF 后 `COMPLETE`。
 
+Humanizer 只属于写作层：它改变 prose 不应使上游模型批准 stale，但任何涉及公式、数值、目标、约束、claim scope 的修改都不再属于“自然化”，必须回到相应上游阶段重新验证。
+
 ## Machine-verifiable contracts and system benchmarks
 
 - `schemas/` 保存版本化 JSON Schema。YAML 工件先解析后按同一 schema 校验。
 - 通用结构校验器：`scripts/validate_contract.py`。它只校验字段/类型/枚举，不代替数学或证据审查。
 - FULL_SUBMISSION 的强制交付契约见 [正式参赛交付硬契约](references/full_submission_contract.md)。
-- 训练/研发阶段应运行仓库根目录 `benchmarks/` 的系统级回归案例，检查语义门、基线门、外部 challenge、声明边界和 Figure Planning 是否在整题流程中仍然生效。
+- 训练/研发阶段应运行仓库根目录 `benchmarks/` 的系统级回归案例，检查语义门、基线门、外部 challenge、声明边界、Figure Planning 和 Humanizer integrity 是否在整题流程中仍然生效。
 - benchmark 通过不代表获奖水平；它只证明指定的系统行为没有回归。
 
 ## CUMCM writing and delivery
@@ -74,6 +76,7 @@ FULL_SUBMISSION 的终审不沿用一般任务的 same-family fallback：必须�
 - 共享的坐标系、动力学、数据变换或评价规则集中建立一次；后续分问只写继承对象、模型增量、求解差异和误差传播。
 - 图表角色为导航、机制、证据或验证。正文优先机制与决策必需图；精确答案优先表格；低价值收敛、微小数值误差、完整参数扫描和工程审计图默认进附录。
 - 真实空间、双参数响应或三维轨迹可采用三维与二维组合，提供投影/切片/关键点；样式按用户选择，不把低装饰或二维作为绝对优先。论文修订的可读性与审查重绑见 [通用修订规则](../mm-paper-structure-writer/references/paper_readability_and_revision.md)。
+- `competition_compact` 的自然语言应优先直接陈述数学对象、结果和模型内解释；若每段都出现“不能/不代表/不声称/预算内候选/严格复算”，即使事实无误，也应检查是否把可迁移的审计脚手架误放在正文。
 - FULL_SUBMISSION 中，`待填写/待补/TODO/TBD/FIXME/PLACEHOLDER` 任一残留都属于交付失败；题面要求的逐问结果、时程、表格、附件或策略必须真实存在。
 
 ## Local corpus distillation route
@@ -83,11 +86,13 @@ FULL_SUBMISSION 的终审不沿用一般任务的 same-family fallback：必须�
 - 语料只提供候选问题结构和反例，不提供自动获准的模型或目标解释。
 - 接收本地代码时按 `SOURCE_ONLY → DEMO_ONLY → STATIC_OK_RUNTIME_UNVERIFIED → RUNTIME_VERIFIED → EVIDENCE_ELIGIBLE` 分级；文件存在、语法通过或脚本运行均不得输出语义 PASS。
 - 真题回归至少覆盖机理--优化、预测--决策、统计--决策、几何--搜索、随机仿真和在线重规划，并增加“外部可行解击穿内部稳定”的反例测试。
+- 论文自然化规则来自 `mm-paper-humanizer/references/source_distillation.md` 的公开 Skill 方法蒸馏和本地优秀论文写作规律；外部 Humanizer 不能覆盖本仓库的 CUMCM 语义、结果和声明真值。
 
 ## Boundaries
 
 - 不设置 GitHub、仓库、分支、提交、PR 或远端状态作为数学结果门控；运行时不依赖远端仓库。
 - 不伪造数据、结果、图表、参考文献、subagent review、运行回执或程序执行记录。
+- 不把 style lint、句长 CV、TTR 或任何所谓“AI 概率”作为论文正确性、奖项水平或交付 PASS 的判据。
 - 正式竞赛中对外部资料、AI 和协作工具的使用必须遵守赛事规则；关键权限未知时不默认允许。
 - ARIS 派生内容与本地化范围见 [归属说明](references/aris_derivation_notice.md)。
 
@@ -101,6 +106,6 @@ FULL_SUBMISSION 的终审不沿用一般任务的 same-family fallback：必须�
 ## 需要用户批准的决定
 ## 主求解与外部挑战证据
 ## 验证与声明边界
-## 论文、图表与交付路径
+## 论文、自然化、图表与交付路径
 ## 未解决项与停止条件
 ```
