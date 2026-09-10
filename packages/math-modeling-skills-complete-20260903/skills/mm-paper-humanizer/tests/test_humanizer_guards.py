@@ -79,11 +79,27 @@ class HumanizerGuardTests(unittest.TestCase):
         self.assertFalse(check["passed"])
         self.assertIn("全局最优", check["added_strong_claims"])
 
-    def test_claim_guard_warns_when_all_scope_markers_disappear(self):
+    def test_claim_guard_fails_when_scope_is_removed_but_optimum_remains(self):
         original = "该结果为预算内候选，部分区域未收敛。"
         rewritten = "得到最优方案。"
         check = integrity.claim_guard(original, rewritten)
         self.assertTrue(check["scope_all_removed_warning"])
+        self.assertTrue(check["scope_loss_with_optimum_failure"])
+        self.assertFalse(check["passed"])
+
+    def test_claim_guard_detects_added_second_proof_even_if_word_existed(self):
+        original = "解析推导证明命题 A。数值实验显示命题 B。"
+        rewritten = "解析推导证明命题 A。数值实验证明命题 B。"
+        check = integrity.claim_guard(original, rewritten)
+        self.assertFalse(check["passed"])
+        self.assertIn("证明", check["added_causal_or_proof_words"])
+
+    def test_scope_may_move_if_an_equivalent_scope_marker_remains(self):
+        original = "该结果为预算内候选。"
+        rewritten = "在当前搜索范围内得到最优方案。"
+        check = integrity.claim_guard(original, rewritten)
+        self.assertFalse(check["scope_all_removed_warning"])
+        self.assertTrue(check["passed"])
 
 
 if __name__ == "__main__":
