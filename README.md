@@ -1,37 +1,79 @@
 # CUMCM 数学建模 Skills
 
-本仓库保存当前完整的中文数学建模 Skill 套件。默认工作流覆盖赛题拆解、题意语义锁定、最小正确基线、模型路线审批、数据与实验审计、模型求解、外部/异源挑战、数值验证、Origin/Visio/TikZ/确定性回退绘图、CUMCM 中文 LaTeX 写作、论文冷审查、XeLaTeX 编译和最终交付检查。
+面向中文数学建模任务的一套可离线安装 Skill 集合，覆盖读题、建模、求解、验证、可视化、CUMCM LaTeX 写作与交付。
 
-## 当前源码与发布包
+本仓库当前包含 22 个 Skills。设计目标不是堆叠流程，而是让 Agent 在保证题意、数值和交付可靠性的前提下，尽量走最短路径。
 
-- **当前源码**：`main` 分支始终作为最新开发/活动版本；
-- 解压版：[`packages/math-modeling-skills-complete-20260903`](packages/math-modeling-skills-complete-20260903)
-- 已提交 ZIP：[`dist/math-modeling-skills-complete-20260903.zip`](dist/math-modeling-skills-complete-20260903.zip)
-- Skill 数量：22
-- 2026-09-07 示意图更新：通用几何/物理示意图工作流、两张用户确认的 TikZ 原创模板（受力、分层传热）、源码/矢量 PDF/PNG 与有范围限制的历史审查记录。
-- 绘图 Skill：全量本地样式索引（145 文件 / 68 张图片 / 50 个教程槽位）与 22 类基础适配器已同步。
-- 已提交 ZIP SHA-256：`39a68401af01c33a863a520a1df2e318904858b8f6145e9bcc6cd1f1594162af`
+## 核心设计
 
-`dist/` 是**已打包发布快照**，不再假设每个源码提交都会同步改写二进制 ZIP。PR 的 `skill-regression` 会从当前源码重新构建确定性 preview ZIP 并作为 Actions artifact 上传；正式发布时再刷新 `dist/`、manifest 和 SHA256SUMS。这样避免“源码已更新但旧 ZIP 仍被误称为当前源码的逐字镜像”。发布规则见 [`RELEASE_POLICY.md`](RELEASE_POLICY.md)。
+### 1. 默认精简执行
 
-## 新增的系统级可靠性层
+普通任务使用 `standard`：
 
-2026-09-08 论文质量更新（源码）：
+`读题与关键语义 → 主模型 → 求解 → 必要验证 → 用户需要的最终产物`
 
-- 中文摘要选择性强调、关键词整行粗体，以及可覆盖的内置标题/图表/符号表样式；用户正式模板优先。
-- 根据数学对象组织叙事和图后解释；不固定四问、段落数、图数、少色或二维偏好。
-- 几何图、隔离受力图与消约束广义作用图区分；示意/流程图默认黑线黑字白底，结果图保留鲜明配色；新增按唯一 LaTeX label 提取完整图注的工具，保留可编辑 TikZ/Visio 路线。
-- 同族交叉审查真实角色、修改后证据失效与限定复核；数值比较明确时间窗和聚合口径。
-- 编译输出显式另存与锁文件失败报告，避免旧 PDF 冒充本轮产物；新增正反例及可选真实 XeLaTeX 模板回归。
+不会因为流程本身强制生成大量 JSON/YAML、三路线方案、外部 benchmark、多 seed 或多 Agent 审计。
 
-这是对既有阅读和修订经验的通用化，不分发参考论文、题目答案或本地数据，不等于全语料阅读/全后端/全部数学模型验证。使用细则见 [论文可读性与修订](packages/math-modeling-skills-complete-20260903/skills/mm-paper-structure-writer/references/paper_readability_and_revision.md)。
+### 2. 按风险升级
 
-- `packages/.../schemas/`：`PROBLEM_SEMANTICS`、`BENCHMARK_CHALLENGE`、`FIGURE_PLAN`、`COMPETITION_POLICY` 等版本化机器契约；
-- `benchmarks/`：整题/系统级行为回归，不只测单个脚本；
-- `COMPETITION_POLICY.yaml`：live contest 中先锁 AI、联网、外部论文和公开答案/benchmark 权限；
-- 扩展 CI：工作流/契约、可视化回归、包结构与确定性 package preview 分开检查。
+只有在以下场景才增加流程：
 
-## 快速安装
+- 高风险题意歧义会改变模型或结论；
+- 多人/多 Agent 协作需要机器化交接；
+- 多版本代码和结果需要跨会话恢复；
+- live contest 的 AI/联网/外部资料权限需要约束；
+- 用户明确要求严格复现、审计或 competition-ready provenance。
+
+### 3. 论文正文与工程审计分离
+
+竞赛论文默认使用 `competition_compact`：正文只保留问题、模型、结果、必要验证和结论。哈希、gate 名、失败运行谱系等工程细节不进入正文，除非它们本身影响科学结论。
+
+### 4. 图表按读者任务生成
+
+不设“每问至少 N 张图”。结果图绑定真实数据；几何/机理示意图优先使用可编辑 TikZ/SVG/Visio 或确定性绘制方案。
+
+## 执行档位
+
+- `standard`：默认。适用于大多数赛题分析、课程任务、训练和论文迭代。
+- `structured`：适用于长流程、多问耦合、多人协作和跨会话恢复；可启用状态机与机器契约。
+- `strict_submission_audit`：仅在用户明确要求 provenance-bound competition-ready 审计时启用四路 fresh-subagent、hash binding 和 `--competition-ready` 硬门。
+
+普通“完整论文/最终 PDF”属于 `formal_delivery`，不自动进入 strict audit。
+
+## Skills
+
+核心调度与建模：
+
+- `math-modeling-orchestrator`
+- `mm-problem-decomposer`
+- `mm-variable-assumption-builder`
+- `mm-model-selector`
+- `mm-model-innovation-designer`
+- `mm-data-eda-cleaning`
+
+专业模型：
+
+- `mm-optimization-models`
+- `mm-evaluation-models`
+- `mm-prediction-models`
+- `mm-dynamic-mechanism-models`
+- `mm-graph-network-models`
+- `mm-simulation-models`
+- `mm-statistical-inference`
+- `mm-classification-clustering`
+- `mm-signal-image-trajectory`
+- `mm-uncertainty-validation`
+
+论文与交付：
+
+- `mm-visualization-delivery`
+- `mm-paper-structure-writer`
+- `mm-abstract-polisher`
+- `mm-paper-reviewer`
+- `mm-paper-compile`
+- `mm-contest-operations-planner`
+
+## 安装
 
 ```powershell
 cd packages\math-modeling-skills-complete-20260903
@@ -41,8 +83,36 @@ py -m pip install -r requirements.txt
 .\install.ps1 -ReplaceExisting
 ```
 
-安装器默认写入当前用户的 `.codex\skills`。覆盖模式会先备份同名目录，并在安装失败时尝试回滚。完整依赖、外部软件边界、逐文件哈希和验证结果见发布目录中的 `ENVIRONMENT.md`、`PACKAGE_MANIFEST.json`、`SHA256SUMS.txt` 与 `VALIDATION_REPORT.json`。
+默认安装到当前用户的 `.codex\skills`。Origin 和 Microsoft Visio 为可选外部软件；没有原生后端时使用 Python/Matplotlib、SVG 或 TikZ 回退。
 
-Origin 和 Microsoft Visio 是可选的外部授权软件，不随仓库分发；没有原生后端时，绘图工作流使用 Python/Matplotlib 与 SVG/FigureSpec/TikZ 回退。Skills 本身不依赖远端仓库即可运行。
+## 仓库结构
 
-几何、受力、边界与空间关系示意图优先使用可编辑 TikZ，解析或数值坐标可使用 PGFPlots；流程图选择原生节点连线或 TikZ。用户要求“画出来”时不改用生成式图片。新增模板是可扩展起点，不是题型白名单；Visio 任意物理图元支持和全目录论文阅读均不在现有验证声明内。
+- `packages/math-modeling-skills-complete-20260903/`：当前可安装源码包；
+- `benchmarks/`：系统行为回归案例；
+- `tests/`：状态、契约、论文交付与可视化回归；
+- `tools/`：确定性发布包构建工具；
+- `dist/`：最近一次正式打包快照，不保证与每个源码提交逐字同步；
+- `RELEASE_POLICY.md`：发布与快照同步规则。
+
+## 发布与验证
+
+Pull Request 会运行 `skill-regression`：
+
+- workflow / schema 回归；
+- system benchmark spec 校验；
+- 可视化确定性回归；
+- 包结构检查；
+- deterministic preview ZIP 构建。
+
+CI、schema 或 benchmark PASS 只代表对应检查通过，不代表数学结论正确，也不代表获奖水平。
+
+正式发布时，从同一通过 CI 的源提交重新生成 ZIP、manifest、SHA256SUMS 和 validation report。具体规则见 `RELEASE_POLICY.md`。
+
+## 使用边界
+
+- 不伪造结果、引用或独立审查；
+- 不把复杂模型本身当作创新；
+- 不把内部随机稳定性当作全局最优证明；
+- 不在 live contest 中绕过赛事规则；
+- 用户正式模板优先于内置模板；
+- 论文、图表和结论必须能追溯到真实模型、代码或数据。

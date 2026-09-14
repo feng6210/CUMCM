@@ -1,30 +1,38 @@
-# CUMCM 正式参赛交付硬契约
+# CUMCM 严格提交审计契约
 
 ## 适用范围
 
-当 `deliverable_mode` 为 `cumcm_latex_paper` 或 `submission_package`，或者用户明确表示“最终文件要参加比赛/正式提交/可直接交付”时，进入 **FULL_SUBMISSION** 模式。本模式禁止把论文骨架、占位模板、只编译成功的 PDF、作者自查稿或缺支撑材料的半成品标记为完成。
+本文件对应 `strict_submission_audit`，即 provenance-bound 的 competition-ready 严格终审。
 
-## 唯一允许的终态
+只有以下情况进入本模式：
 
-FULL_SUBMISSION 的最终状态只有两类：
+- 用户明确要求 `competition-ready`、严格终审、provenance-bound 审计或等价要求；
+- 团队把本仓库当作正式提交前的强审计流水线，并主动选择该门；
+- 需要验证最终 PDF、支撑材料、视觉检查和多个独立 reviewer 的一致性绑定。
 
-- `COMPLETE`：完整参赛论文与支撑材料全部通过硬门；
-- `BLOCKED_INPUT / BLOCKED_CAPABILITY / PARTIAL / FAIL`：任何关键输入、求解、后端、审查或交付证据未满足时必须如实停在非完成状态。
+**不要仅因为用户要求“完整论文”“最终 PDF”“正式排版”就自动触发本模式。** 普通完整论文由总控的 `formal_delivery` 处理：内容完整、结果真实、编译成功、视觉检查通过即可；本文件是在此基础上的额外严格审计层。
 
-不得为了“给用户一个文件”把不完整 PDF 降格包装成最终论文。
+## 严格模式的终态
 
-## 强制 Subagent 审查
+启用 `strict_submission_audit` 后，最终状态只有：
 
-正式交付前必须实际调用 fresh subagent，并形成四条互相独立的审查记录：
+- `COMPLETE`：当前提交工件通过严格门；
+- `BLOCKED_INPUT / BLOCKED_CAPABILITY / PARTIAL / FAIL`：任一关键证据不足时保持非完成状态。
 
-1. `semantics_math`：题意语义、目标函数、约束、模型推导和分问闭合；
-2. `numbers_claims`：关键数字、表格、摘要、结论、验证与声明边界；
-3. `figures_evidence`：图表是否真实生成、与数据/公式一致、机制表达和最终尺寸；
-4. `paper_delivery`：论文结构、占位符、匿名性、PDF、支撑材料、最终提交完整性。
+不能把论文骨架、带占位符的 PDF、作者自查稿或缺少支撑材料的半成品包装成严格审计通过。
 
-四条记录必须来自四个不同的 fresh subagent。`reviewer_id` 与 `invocation.run_id` 去首尾空格并大小写归一后都必须各自保持四个唯一值；作者/主求解 agent 不能兼任。若当前平台没有 subagent 能力，FULL_SUBMISSION 必须进入 `BLOCKED_CAPABILITY`；不允许退化成作者自查后仍宣称可交付。
+## 四路 fresh-subagent 审查
 
-每个 subagent 必须输出单独 JSON review artifact，至少记录：
+`--competition-ready` 当前实现要求四条独立审查：
+
+1. `semantics_math`：题意、目标函数、约束、推导和分问闭合；
+2. `numbers_claims`：关键数字、表格、摘要、结论、验证和声明边界；
+3. `figures_evidence`：图表是否来自真实数据/公式、机制表达与最终尺寸；
+4. `paper_delivery`：结构、占位符、匿名性、PDF、支撑材料和提交完整性。
+
+四条记录必须来自不同 fresh subagent，且作者/主求解 agent 不能兼任。平台没有 subagent 能力时，只能说明严格审计不可执行；这不妨碍输出一个经过常规 `formal_delivery` 检查的完整论文，但不得把它称为 `strict_submission_audit PASS`。
+
+每份 review 至少记录：
 
 ```json
 {
@@ -43,66 +51,60 @@ FULL_SUBMISSION 的最终状态只有两类：
 }
 ```
 
-`SUBAGENT_REVIEW_SUMMARY.json` 必须记录非空 `author_agent_id`、当前 `submission_digest`，以及四份 review artifact 的路径和 SHA-256。最终 gate 会重新打开这些 review 文件、校验哈希、reviewer/dimension、四个不同 fresh invocation、当前 submission digest 和 P0/P1 状态；不能只写四行自报 PASS。
+`SUBAGENT_REVIEW_SUMMARY.json` 必须绑定当前 submission digest、四份 review 的路径和 SHA-256，并保持 `unresolved_p0_p1=[]`。论文/PDF/支撑材料变化导致 submission digest 变化时，受影响的严格审查证据必须重建。
 
-Subagent 不接收“预期 PASS”或拟议结论，只接收当前工件、原始证据和审查维度。P0/P1 修复、论文/PDF/支撑材料变化后 submission digest 会变化，四份审查必须重跑，旧 summary 不得复用。
+## 禁止占位交付
 
-## 禁止交付论文骨架
-
-最终论文源和支撑材料中不得出现任何未完成标记，包括但不限于：
+严格提交的论文源和支撑材料不得包含：
 
 - `待填写`、`待补`、`待验证`、`待确认`；
 - `TODO / TBD / FIXME / PLACEHOLDER`；
 - 模板默认符号表、默认章节占位句；
 - “后续补图/后续补代码/后续完善”等未关闭内容。
 
-`paper/main.tex` 必须真实存在。正式 gate 会扫描论文目录中的文本型源码/配置/结果文件，并扫描支撑 ZIP 内可读文本成员；发现任意未完成标记直接 FAIL。
-
-## 每个分问必须闭合
-
-每个题目分问必须至少形成以下闭环：
+`paper/main.tex` 必须真实存在，每个题目分问应闭合：
 
 `任务与数学对象 → 模型/约束 → 求解或计算 → 关键结果 → 验证/边界 → 本问结论`
 
-题面要求时程、曲线、表格、策略、参数或附件时，必须真实产出对应工件，不能用“程序可输出”或“建议绘制”代替。
+题面要求时程、曲线、表格、策略、参数或附件时，必须真实产出对应工件。
 
-## 视觉复核不得自报 PASS
+## 视觉复核
 
-FULL_SUBMISSION 必须采用 `visual_review_gate.py prepare → 实际打开全部 PDF 页面 → visual_review_gate.py verify`。最终交付检查不仅看 `visual_verification_report.json.status=PASSED`，还重新校验：
+严格审计使用：
 
-- `verification_mode=existing_published_artifact_no_recompile`；
-- `VISUAL_REVIEW_BINDING.json`；
-- 当前 `compile_report.json` 与 PDF 哈希；
-- 当前 source snapshot；
-- hash-bound visual report 是否仍满足全页 `PASSED` 语义；
-- visual report 与 verification report 是否真实登记在 binding 的 review provenance 中。
+```text
+visual_review_gate.py prepare
+→ 实际查看全部最终 PDF 页面
+→ visual_review_gate.py verify
+```
 
-手工写一个 `{"status":"PASSED"}`、只改 PDF 哈希，或把失败/不完整 visual report 重新哈希，都不能通过正式交付门。
+必须绑定同一已发布 PDF、当前 `compile_report.json` 和论文源快照。不能手写一个 `PASSED` JSON 代替真实 gate，也不能在审图之后重新编译却继续复用旧视觉报告。
 
-## 支撑材料硬门
+## 支撑材料检查
 
 支撑材料 ZIP 必须：
 
-- 文件存在、可重新打开、20 MB 限制内；
-- 至少包含一个非目录、非零字节的有效成员；
-- 至少包含一份真实、有实质内容的源程序/脚本，而不是只有空目录、空白/纯注释源码或零字节占位文件；
-- 文本型源程序、结果、配置和清单必须被完整读取后做占位符与匿名性检查；超过单文件检查上限、无法安全解码或编码不明确的文本成员一律 fail-closed，不能跳过；
-- UTF-8/UTF-8 BOM 与带 BOM 的 UTF-16 文本应按实际编码解码后检查；不得使用替换字符方式把 UTF-16 中的 `姓名/学号/TODO/待填写` 等关键字拆散后误判通过。
+- 可重新打开且满足赛事大小限制；
+- 含非空、实质性的源程序/脚本，而不是空目录或纯占位文件；
+- 文本源码、结果、配置和清单可完整检查；
+- 不含姓名、学号等身份泄露；
+- 不含占位符；
+- 对 UTF-8、UTF-8 BOM 和带 BOM 的 UTF-16 按实际编码检查，不能用替换字符掩盖关键字。
 
-## 最终交付工件
+## 严格模式最终工件
 
-至少必须存在并保持一致：
+至少存在并相互一致：
 
-- `paper/main.tex` 及实际使用的章节/表格/图形源码；
-- 最终发布 PDF；
-- `compile_report.json`，绑定实际发布 PDF；
+- `paper/main.tex` 及实际使用的章节、图表和参考文献；
+- 最终 PDF；
+- `compile_report.json`；
 - `VISUAL_REVIEW_BINDING.json`；
-- `visual_verification_report.json`，由 no-recompile visual gate 对同一 PDF 验证通过；
-- 四份 fresh subagent review artifact；
-- `SUBAGENT_REVIEW_SUMMARY.json`，四条独立 subagent 审查全部通过，`unresolved_p0_p1=[]`；
-- 支撑材料 ZIP，满足上述有效载荷和源码要求。
+- `visual_verification_report.json`；
+- 四份 fresh-subagent review；
+- `SUBAGENT_REVIEW_SUMMARY.json`；
+- 支撑材料 ZIP。
 
-对于 FULL_SUBMISSION，执行：
+执行：
 
 ```powershell
 python skills/mm-paper-compile/scripts/final_delivery_check.py `
@@ -112,7 +114,9 @@ python skills/mm-paper-compile/scripts/final_delivery_check.py `
   --output FINAL_CHECK.json
 ```
 
-`FINAL_CHECK.json` 应放在 `paper/` 目录之外，避免把终审报告误归类为论文源文件。只有返回码 0 且 `FINAL_CHECK.json.status=PASS` 后，才能运行：
+`FINAL_CHECK.json` 应位于 `paper/` 之外。只有返回码 0 且 `status=PASS` 时，才可进一步把严格审计状态记为完成。
+
+如果使用 `workflow_state.py`，再执行：
 
 ```powershell
 python skills/math-modeling-orchestrator/scripts/workflow_state.py `
@@ -121,20 +125,15 @@ python skills/math-modeling-orchestrator/scripts/workflow_state.py `
   --final-check FINAL_CHECK.json
 ```
 
-`record-final-delivery` 会重新运行 competition-ready gate；从 `REVIEWING → COMPLETE` 时还会再次重验当前 PDF、论文 source snapshot、visual provenance、support ZIP 和四份 subagent evidence。任何工件在 FINAL_CHECK 后变化，旧 gate 立即失效，必须重跑检查和受影响的 subagent 审查。
+## 与普通 formal_delivery 的区别
 
-只有该状态门也通过，才允许对用户使用“最终参赛文件/可交付论文/COMPLETE”等表述。
+`formal_delivery` 要求的是：论文内容完整、数字可信、无占位、编译成功、视觉可读、支撑材料按需要生成。
 
-## 与环境的关系
+`strict_submission_audit` 额外要求：四路 fresh-subagent、submission digest、review provenance、hash binding 和 `--competition-ready` 硬门。
 
-FULL_SUBMISSION 启动前必须先做 task-aware 环境预检。缺少 XeLaTeX、latexmk、BibTeX、PDF 页面渲染/审查能力，或缺少 subagent 能力时，应在开始大规模求解前报告并进入 `BLOCKED_CAPABILITY`，而不是最后输出半成品。
+因此：
 
-## 不可降级原则
-
-- 编译成功 ≠ 论文完成；
-- 结构完整 ≠ 数学正确；
-- 作者自查 ≠ subagent 审查；
-- PDF 存在 ≠ 可参赛；
-- schema/CI PASS ≠ 竞赛质量 PASS。
-
-正式交付必须同时满足数学证据、论文内容、图表、编译、视觉审查、subagent 审查和支撑材料硬门。
+- 编译成功 ≠ 数学正确；
+- 完整论文 ≠ strict audit PASS；
+- 作者自查可以用于普通论文质量控制，但不能替代 strict audit 的四路 fresh-subagent；
+- schema/CI PASS 只能证明相应机器检查，不代表获奖水平。
