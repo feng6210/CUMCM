@@ -1,0 +1,50 @@
+name: Feature request
+description: Propose a focused modeling, validation, visualization, paper, or workflow improvement.
+title: "[Feature] "
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        新能力最好解决一个明确失败模式，而不是仅增加流程或模型复杂度。
+  - type: textarea
+    id: gap
+    attributes:
+      label: Current gap
+      description: 现有 Skill 在什么任务上不够？请描述具体场景。
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed capability
+      description: 希望增加或修改什么？
+    validations:
+      required: true
+  - type: textarea
+    id: benefit
+    attributes:
+      label: Why it is worth the complexity
+      description: 它改善正确性、稳定性、效率、可解释性还是交付质量？
+    validations:
+      required: true
+  - type: dropdown
+    id: default_path
+    attributes:
+      label: Should this affect the default standard path?
+      options:
+        - No, opt-in only
+        - Yes, but only under a clear trigger
+        - Unsure
+    validations:
+      required: true
+  - type: textarea
+    id: validation
+    attributes:
+      label: Suggested validation
+      description: 如何证明新能力真正有效？可给出 baseline、fixture、benchmark 或失败边界。
+  - type: textarea
+    id: references
+    attributes:
+      label: References / prior art
+      description: 如涉及论文、仓库或第三方实现，请附来源和许可证信息。
