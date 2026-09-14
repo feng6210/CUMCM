@@ -1,0 +1,55 @@
+name: Bug report
+description: Report a reproducible Skill, script, validation, visualization, or delivery problem.
+title: "[Bug] "
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢反馈。请尽量提供最小可复现信息；不要上传比赛规则禁止公开的数据、密钥或个人隐私。
+  - type: input
+    id: version
+    attributes:
+      label: Version / commit
+      description: 例如 v1.0.0 或 commit SHA。
+      placeholder: v1.0.0
+    validations:
+      required: true
+  - type: input
+    id: skill
+    attributes:
+      label: Affected Skill / component
+      placeholder: math-modeling-orchestrator / mm-visualization-delivery / installer / CI
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: 实际发生了什么？
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: 你期望发生什么？
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Minimal reproduction
+      description: 给出最小步骤、命令、输入结构或必要日志。
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: OS、Python、Agent/ChatGPT/Codex 环境及相关可选后端。
+  - type: textarea
+    id: notes
+    attributes:
+      label: Additional context
+      description: 可附截图、错误栈或去敏后的样例。请勿粘贴 API key、token、账号或其他敏感信息。
