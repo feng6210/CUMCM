@@ -91,8 +91,10 @@ py -m pip install -r requirements.txt
 - `benchmarks/`：系统行为回归案例；
 - `tests/`：状态、契约、论文交付与可视化回归；
 - `tools/`：确定性发布包构建工具；
-- `dist/`：最近一次正式打包快照，不保证与每个源码提交逐字同步；
-- `RELEASE_POLICY.md`：发布与快照同步规则。
+- `dist/`：历史正式打包快照，不保证与每个源码提交逐字同步；
+- `CHANGELOG.md`：版本级变更记录；
+- `RELEASE_POLICY.md`：发布与快照同步规则；
+- `THIRD_PARTY_NOTICES.md`：第三方来源和许可证归属。
 
 ## 发布与验证
 
@@ -104,9 +106,13 @@ Pull Request 会运行 `skill-regression`：
 - 包结构检查；
 - deterministic preview ZIP 构建。
 
-CI、schema 或 benchmark PASS 只代表对应检查通过，不代表数学结论正确，也不代表获奖水平。
+正式发布使用 `.github/workflows/release-package.yml`。该工作流会在同一源提交上重新运行发布范围测试，生成新的 `VALIDATION_REPORT.json`，再由 `tools/build_release_package.py` 生成带新 manifest/SHA256SUMS 的正式 ZIP。只有显式将 `publish_release` 设为 `true` 时才创建 GitHub Release 和对应 tag；若同名 Release 已存在则 fail-closed，不覆盖旧版本。
 
-正式发布时，从同一通过 CI 的源提交重新生成 ZIP、manifest、SHA256SUMS 和 validation report。具体规则见 `RELEASE_POLICY.md`。
+CI、schema 或 benchmark PASS 只代表对应检查通过，不代表数学结论正确，也不代表获奖水平。发布包中的 validation report 明确限制在软件/包级验证范围。
+
+## License
+
+本仓库主体采用 [MIT License](LICENSE)。第三方派生或审阅来源的归属见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) 以及包内保留的许可证文件。
 
 ## 使用边界
 
