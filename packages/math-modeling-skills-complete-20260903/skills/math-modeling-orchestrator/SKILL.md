@@ -47,6 +47,8 @@ description: Orchestrate mathematical-modeling work from problem semantics throu
 - 需要明显扩大计算预算、联网、外部服务或数据范围；
 - 高风险歧义尚未由题面或用户确认。
 
+结构化模式需要机器契约时，使用包内 `schemas/` 与 `scripts/validate_contract.py` 校验字段/类型/枚举；需要做整题系统行为回归时使用仓库 `benchmarks/`。这些工具验证的是契约和工作流行为，不替代数学正确性审查，也不是 `standard` 的默认步骤。
+
 ### 3. `strict_submission_audit`
 
 仅在用户明确要求 provenance-bound、competition-ready、严格终审或等价审计时启用。此时读取 `references/full_submission_contract.md`，使用现有 `--competition-ready` 交付门、视觉绑定、支撑材料检查和四路 fresh-subagent 审查。
