@@ -1,0 +1,208 @@
+name: release-package
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release tag, for example v1.0.0"
+        required: true
+        default: "v1.0.0"
+        type: string
+      release_date:
+        description: "Release date in YYYY-MM-DD format"
+        required: true
+        default: "2026-09-14"
+        type: string
+      publish_release:
+        description: "Create the GitHub Release after validation"
+        required: true
+        default: false
+        type: boolean
+  pull_request:
+    paths:
+      - ".github/workflows/release-package.yml"
+      - "LICENSE"
+      - "THIRD_PARTY_NOTICES.md"
+      - "CHANGELOG.md"
+      - "tools/build_release_package.py"
+      - "packages/math-modeling-skills-complete-20260903/**"
+      - "tests/**"
+      - "benchmarks/**"
+
+jobs:
+  build-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      RELEASE_VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.version || 'v1.0.0-rc' }}
+      RELEASE_DATE: ${{ github.event_name == 'workflow_dispatch' && inputs.release_date || '2026-09-14' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install CJK fonts
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends fonts-noto-cjk
+          fc-cache -f
+
+      - name: Install package dependencies
+        run: python -m pip install --disable-pip-version-check -r packages/math-modeling-skills-complete-20260903/requirements.txt
+
+      - name: Run root workflow and contract regressions
+        run: python -m unittest discover -s tests -p "test_*.py" -v
+
+      - name: Validate system benchmark specifications
+        shell: bash
+        run: |
+          set -euo pipefail
+          found=0
+          for case_file in benchmarks/*/benchmark.yaml; do
+            test -f "$case_file" || continue
+            found=1
+            python packages/math-modeling-skills-complete-20260903/skills/math-modeling-orchestrator/scripts/validate_contract.py \
+              --schema packages/math-modeling-skills-complete-20260903/schemas/system_benchmark.schema.json \
+              --input "$case_file"
+          done
+          test "$found" -eq 1
+
+      - name: Run visualization regressions
+        working-directory: packages/math-modeling-skills-complete-20260903/skills/mm-visualization-delivery/scripts
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m unittest test_geometry_primitives.py -v
+          python -m unittest test_extract_latex_caption.py test_visual_review_provenance.py test_monochrome_diagrams.py -v
+          python test_scientific_illustration.py --output-dir "$RUNNER_TEMP/scientific-illustration-release"
+          python test_validate_figure_intent.py
+          python test_render_corpus_chart.py --output-dir "$RUNNER_TEMP/corpus-renderer-release"
+          python test_reference_templates.py --output-dir "$RUNNER_TEMP/reference-template-release"
+
+      - name: Check package structure
+        shell: bash
+        run: |
+          set -euo pipefail
+          count=$(find packages/math-modeling-skills-complete-20260903/skills -mindepth 2 -maxdepth 2 -name SKILL.md | wc -l)
+          test "$count" -eq 22
+          test -f LICENSE
+          test -f THIRD_PARTY_NOTICES.md
+          if find packages/math-modeling-skills-complete-20260903 \( -type d -name __pycache__ -o -type f -name '*.pyc' \) -print | grep -q .; then
+            echo "compiled Python cache found in package"
+            exit 1
+          fi
+
+      - name: Validate release inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]
+          [[ "$RELEASE_DATE" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]
+
+      - name: Write formal scoped validation report
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p release
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          report = {
+              "schema_version": "release-1.0",
+              "status": "PASS_SCOPED_RELEASE_CHECKS",
+              "release_version": os.environ["RELEASE_VERSION"],
+              "release_date": os.environ["RELEASE_DATE"],
+              "source_sha": os.environ["GITHUB_SHA"],
+              "skill_count": 22,
+              "checks": [
+                  {"name": "root_workflow_and_contract_regressions", "status": "PASS"},
+                  {"name": "system_benchmark_specifications", "status": "PASS"},
+                  {"name": "visualization_regressions", "status": "PASS"},
+                  {"name": "package_structure", "status": "PASS"},
+                  {"name": "license_and_third_party_notices", "status": "PASS"},
+              ],
+              "semantic_claim_validation": False,
+              "scope": "Software/package release validation for the exact source SHA; does not certify contest results, mathematical correctness for arbitrary problems, or award level.",
+          }
+          Path("release/VALIDATION_REPORT.json").write_text(
+              json.dumps(report, ensure_ascii=False, indent=2) + "\n",
+              encoding="utf-8",
+          )
+          PY
+
+      - name: Build formal release package
+        shell: bash
+        run: |
+          set -euo pipefail
+          output="release/CUMCM-Skills-${RELEASE_VERSION}.zip"
+          python tools/build_release_package.py \
+            --output-zip "$output" \
+            --report release/package-build-report.json \
+            --release-date "$RELEASE_DATE" \
+            --validation-report release/VALIDATION_REPORT.json
+          sha256sum "$output" > release/RELEASE_SHA256SUMS.txt
+          cat > release/RELEASE_NOTES.md <<EOF
+          # CUMCM Skills ${RELEASE_VERSION}
+
+          Source commit: `${GITHUB_SHA}`
+
+          This release uses the lean default execution model introduced in v1.0.0: `standard`, `structured`, and `strict_submission_audit` are separated so ordinary mathematical-modeling work does not pay the cost of a provenance-heavy audit unless explicitly requested.
+
+          The package contains 22 installable Skills, the visualization and CUMCM LaTeX toolchain, schemas and system benchmarks, plus the opt-in strict competition-ready delivery gate.
+
+          Validation scope is recorded in `VALIDATION_REPORT.json`; it certifies the release checks run by this workflow, not mathematical correctness for arbitrary contest problems or award level.
+          EOF
+
+      - name: Upload release candidate artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: CUMCM-Skills-${{ env.RELEASE_VERSION }}
+          path: release/
+          if-no-files-found: error
+
+  publish-release:
+    if: github.event_name == 'workflow_dispatch' && inputs.publish_release == true
+    needs: build-release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      RELEASE_VERSION: ${{ inputs.version }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: CUMCM-Skills-${{ env.RELEASE_VERSION }}
+          path: release
+
+      - name: Refuse to overwrite an existing release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh release view "$RELEASE_VERSION" >/dev/null 2>&1; then
+            echo "Release $RELEASE_VERSION already exists; refusing to overwrite."
+            exit 1
+          fi
+
+      - name: Create GitHub Release and tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release create "$RELEASE_VERSION" \
+            release/CUMCM-Skills-${RELEASE_VERSION}.zip \
+            release/VALIDATION_REPORT.json \
+            release/package-build-report.json \
+            release/RELEASE_SHA256SUMS.txt \
+            --target "$GITHUB_SHA" \
+            --title "CUMCM Skills ${RELEASE_VERSION}" \
+            --notes-file release/RELEASE_NOTES.md
