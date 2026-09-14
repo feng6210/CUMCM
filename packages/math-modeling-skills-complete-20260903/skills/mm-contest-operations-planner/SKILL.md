@@ -22,6 +22,8 @@ description: Plan mathematical-modeling contest preparation, problem selection, 
 
 只有当团队明确使用脚本、Agent 或 CI 消费机器文件时，再拆分为 `TEAM_ROLES.yaml`、`MILESTONE_PLAN.yaml`、`QUESTION_HANDOFF.yaml` 等结构化工件。
 
+若确实启用结构化 `QUESTION_HANDOFF.yaml`，继续遵守现有跨 Skill 合同，至少保留后续机器真正需要的归一化字段：`problem_semantics_ref`、`baseline`、`benchmark_challenge`、`figure_intents`，以及模型/代码入口、机器可读结果、验证状态和未解决风险。这里保留字段兼容性，不代表普通团队任务必须生成该文件。
+
 ## Workflow
 
 1. 明确比赛阶段和允许使用的工具。只有 `live_contest` 且 AI、联网、外部论文或公开答案权限会影响当前动作时，才建立 `COMPETITION_POLICY.yaml`；训练和赛后复盘不做形式化权限文件。
