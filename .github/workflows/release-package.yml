@@ -148,17 +148,24 @@ jobs:
             --release-date "$RELEASE_DATE" \
             --validation-report release/VALIDATION_REPORT.json
           sha256sum "$output" > release/RELEASE_SHA256SUMS.txt
-          cat > release/RELEASE_NOTES.md <<EOF
-          # CUMCM Skills ${RELEASE_VERSION}
+          python - <<'PY'
+          import os
+          from pathlib import Path
 
-          Source commit: `${GITHUB_SHA}`
+          version = os.environ["RELEASE_VERSION"]
+          source_sha = os.environ["GITHUB_SHA"]
+          notes = f"""# CUMCM Skills {version}
+
+          Source commit: `{source_sha}`
 
           This release uses the lean default execution model introduced in v1.0.0: `standard`, `structured`, and `strict_submission_audit` are separated so ordinary mathematical-modeling work does not pay the cost of a provenance-heavy audit unless explicitly requested.
 
           The package contains 22 installable Skills, the visualization and CUMCM LaTeX toolchain, schemas and system benchmarks, plus the opt-in strict competition-ready delivery gate.
 
           Validation scope is recorded in `VALIDATION_REPORT.json`; it certifies the release checks run by this workflow, not mathematical correctness for arbitrary contest problems or award level.
-          EOF
+          """
+          Path("release/RELEASE_NOTES.md").write_text(notes, encoding="utf-8")
+          PY
 
       - name: Upload release candidate artifact
         uses: actions/upload-artifact@v4
