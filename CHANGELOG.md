@@ -2,6 +2,15 @@
 
 All notable release-level changes to the CUMCM Skill suite are documented here.
 
+## Unreleased
+
+### Public repository polish
+
+- Reworked the root README into a public landing page with release/CI/license badges, quick-start instructions, usage examples, execution-profile guidance, repository structure, verification steps, and clearer compatibility boundaries.
+- Added `CONTRIBUTING.md` with contribution scope, testing guidance, complexity constraints, and third-party attribution requirements.
+- Added public bug-report and feature-request issue forms plus a concise pull-request template.
+- Performed a public-readiness scan for common committed secret/token, `.env`, email, and local absolute-path patterns on the current tree; no matches were found in the scanned patterns.
+
 ## v1.0.0 — 2026-09-14
 
 ### Execution model
