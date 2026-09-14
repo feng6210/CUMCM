@@ -84,18 +84,27 @@ schema PASS 只说明字段/类型/枚举符合约定，不证明题意、模型
 
 ## 校验材料
 
-正式发布快照可包含：
+正式发布 ZIP 会重新生成：
 
 - `VALIDATION_REPORT.json`
 - `PACKAGE_MANIFEST.json`
 - `SHA256SUMS.txt`
+
+同时包含：
+
+- `LICENSE`
+- `THIRD_PARTY_NOTICES.md`
 - `requirements.txt`
 - `ENVIRONMENT.md`
 - `check_environment.ps1`
 - `skills/`
 - `schemas/`
 
-仓库 `main` 可能领先于最近一次 `dist/` ZIP；正式发布应从同一通过 CI 的源提交重新生成 ZIP、manifest、SHA256SUMS 和 validation report。
+仓库源码中的历史 release metadata 不应被当作当前发行认证；正式 ZIP 由发布工作流从同一通过验证的 source SHA 重新生成 metadata。
+
+## License
+
+本离线包主体采用 MIT License，见 `LICENSE`。第三方派生与方法审阅来源见 `THIRD_PARTY_NOTICES.md`，ARIS 的完整 MIT 文本也保留在包内对应 references 目录中。
 
 ## 设计原则
 
