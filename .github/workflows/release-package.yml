@@ -88,11 +88,14 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          count=$(find packages/math-modeling-skills-complete-20260903/skills -mindepth 2 -maxdepth 2 -name SKILL.md | wc -l)
+          package_dir="packages/math-modeling-skills-complete-20260903"
+          count=$(find "$package_dir/skills" -mindepth 2 -maxdepth 2 -name SKILL.md | wc -l)
           test "$count" -eq 22
           test -f LICENSE
           test -f THIRD_PARTY_NOTICES.md
-          if find packages/math-modeling-skills-complete-20260903 \( -type d -name __pycache__ -o -type f -name '*.pyc' \) -print | grep -q .; then
+          test -f "$package_dir/LICENSE"
+          test -f "$package_dir/THIRD_PARTY_NOTICES.md"
+          if find "$package_dir" \( -type d -name __pycache__ -o -type f -name '*.pyc' \) -print | grep -q .; then
             echo "compiled Python cache found in package"
             exit 1
           fi
@@ -175,13 +178,14 @@ jobs:
           if-no-files-found: error
 
   publish-release:
-    if: github.event_name == 'workflow_dispatch' && inputs.publish_release == true
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.publish_release == true
     needs: build-release
     runs-on: ubuntu-latest
     permissions:
       contents: write
     env:
       RELEASE_VERSION: ${{ inputs.version }}
+      GH_REPO: ${{ github.repository }}
     steps:
       - uses: actions/download-artifact@v4
         with:
