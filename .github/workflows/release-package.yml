@@ -95,8 +95,8 @@ jobs:
           test -f THIRD_PARTY_NOTICES.md
           test -f "$package_dir/LICENSE"
           test -f "$package_dir/THIRD_PARTY_NOTICES.md"
-          if find "$package_dir" \( -type d -name __pycache__ -o -type f -name '*.pyc' \) -print | grep -q .; then
-            echo "compiled Python cache found in package"
+          if git ls-files "$package_dir" | grep -E '(^|/)(__pycache__/|[^/]+\.pyc$)' >/dev/null; then
+            echo "compiled Python cache is tracked in the package source"
             exit 1
           fi
 
